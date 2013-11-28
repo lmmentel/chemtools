@@ -226,10 +226,10 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
         else:
             sys.exit("<driver>: wrong objective in code dictionary")
         if code["name"].lower() in ["gamess", "gamessus", "gamess-us"]:
-            if len(bsnoopt) > 0:
+            if bsnoopt and len(bsnoopt) > 0:
                 bsnooptobj = bas.parse_gamess_basis(bsnoopt)
         elif code["name"].lower() in ["molpro"]:
-            if len(bsnoopt) > 0:
+            if bsnoopt and len(bsnoopt) > 0:
                 bsnooptobj = bas.parse_molpro_basis(bsnoopt)
         else:
             sys.exit("<driver>: wrong code name: {}".format(code["name"]))
