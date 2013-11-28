@@ -211,7 +211,7 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
             opts["lambda"] = 10.0
 
     if not bsnoopt:
-        bsnoopt = []
+        bsnooptobj = []
 
     if code:
         if code["objective"].lower() == "coreenergy":
