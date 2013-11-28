@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from basis import Basis
+from basisset import Basis
 from molecule import Molecule
 from subprocess import Popen
 import numpy as np
