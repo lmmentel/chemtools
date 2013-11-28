@@ -58,26 +58,16 @@ programs. Currently the is some limited support for <a class="reference external
 <a class="reference external" href="http://www.molpro.net/">MolPro</a> program packages.</p>
 <div class="section" id="current-modules">
 <h2>Current Modules<a class="headerlink" href="#current-modules" title="Permalink to this headline">¶</a></h2>
-<ul>
-<li><p class="first">basisopt: module for optimizing one electron basis function exponents</p>
-</li>
-<li><dl class="first docutils">
-<dt>basisset: module for handling basis set in different formats and obtaining</dt>
-<dd><p class="first last">exponents from series like: even tempered, well tempered, Legendre
-expansion,</p>
-</dd>
-</dl>
-</li>
-<li><p class="first">dmft: utility functions for running DMFT calculations,</p>
-</li>
-<li><p class="first">gamessus: utility function for parsing input and log files from Gamess-US
-calculations, wrappers for running the code from python</p>
-</li>
-<li><p class="first">molpro: parser for the output file</p>
-</li>
-<li><p class="first">molecule: general purpose module intorducing moelcule class for handling
-molecules</p>
-</li>
+<ul class="simple">
+<li>basisopt: module for optimizing one electron basis function exponents</li>
+<li>basisset: module for handling basis set in different formats and obtaining
+exponents from series like: even tempered, well tempered, Legendre expansion,</li>
+<li>dmft: utility functions for running DMFT calculations,</li>
+<li>gamessus: utility function for parsing input and log files from Gamess-US
+calculations, wrappers for running the code from python</li>
+<li>molpro: parser for the output file</li>
+<li>molecule: general purpose module intorducing moelcule class for handling
+molecules</li>
 </ul>
 </div>
 <div class="section" id="license">
@@ -89,9 +79,46 @@ molecules</p>
 <h1>Download and Installation<a class="headerlink" href="#download-and-installation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference external" href="http://python.org/">Python</a> version 2.7.3 or later
-<a class="reference external" href="https://pypi.python.org/pypi/periodic">Periodic</a> package
-<a class="reference external" href="http://www.scipy.org/">Scipy</a> verison 0.11 or later</p>
+<ul class="simple">
+<li><a class="reference external" href="http://python.org/">Python</a> version 2.7.3 or later</li>
+<li><a class="reference external" href="https://pypi.python.org/pypi/periodic">Periodic</a> package</li>
+<li><a class="reference external" href="http://www.scipy.org/">Scipy</a> verison 0.11 or later</li>
+</ul>
+</div>
+<div class="section" id="obtaining-code">
+<h2>Obtaining Code<a class="headerlink" href="#obtaining-code" title="Permalink to this headline">¶</a></h2>
+<p>The code is hosted via public bitbucket repository named <a class="reference external" href="https://bitbucket.org/lukaszmentel/chemtools/">ChemTools</a>
+and a source distibution can be downloaded from there as a zip, gz or bz2
+bundle. After downloading  <tt class="docutils literal"><span class="pre">command</span></tt></p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>All the examples below assume that a file <tt class="docutils literal"><span class="pre">chemtools-0.1.0.tar.gz</span></tt> was already
+downloaded from the repository.</p>
+<div class="section" id="using-standard-setup-py">
+<h3>Using standard setup.py<a class="headerlink" href="#using-standard-setup-py" title="Permalink to this headline">¶</a></h3>
+<p>First we have to unpack the tarball by:</p>
+<div class="highlight-python"><pre>$ tar xzvf chemtools-0.1.0.tar.gz</pre>
+</div>
+<p>go to the the main directory:</p>
+<div class="highlight-python"><pre>$ cd chemtools-0.1.0</pre>
+</div>
+<p>and install the package by:</p>
+<div class="highlight-python"><pre>$ [sudo] python setup.py install --prefix=$HOME/PythonPackages</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">--prefix</span></tt> is optional and if not given the package will be installed
+into the default system installation of python (in this case you probably need
+sudo).</p>
+</div>
+<div class="section" id="using-easy-install">
+<h3>Using easy_install<a class="headerlink" href="#using-easy-install" title="Permalink to this headline">¶</a></h3>
+<p>To install ChemTools using <tt class="docutils literal"><span class="pre">easy_install</span></tt> just type:</p>
+<div class="highlight-python"><pre>$ [sudo] easy_install --prefix=$HOME/PythonPackages chemtools-0.1.0.gz</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">--prefix</span></tt> is optional and if not given the package will be installed
+into the default system installation of python (in this case you probably need
+sudo).</p>
+</div>
 </div>
 </div>
 
@@ -113,6 +140,12 @@ molecules</p>
 </li>
 <li><a class="reference internal" href="#download-and-installation">Download and Installation</a><ul>
 <li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#obtaining-code">Obtaining Code</a></li>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#using-standard-setup-py">Using standard setup.py</a></li>
+<li><a class="reference internal" href="#using-easy-install">Using easy_install</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

@@ -9,6 +9,7 @@ setup(
     author = "Lukasz Mentel",
     author_email = "lmmentel@gmail.com",
     py_modules = ['basisopt', 'basisset', 'dmft', 'gamessus', 'molecule', 'molpro'],
-    license=open('LICENSE.txt').read(),
-    long_description=open('README.txt').read(),
+    license = open('LICENSE.txt').read(),
+    long_description = open('README.txt').read(),
+    url = 'https://bitbucket.org/lukaszmentel/chemtools/',
 )
