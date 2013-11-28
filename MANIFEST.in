@@ -1,0 +1,6 @@
+include doc/*.rst
+include doc/Makefile
+include doc/conf.py
+include README.txt
+include LICENSE.txt
+
