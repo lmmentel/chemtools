@@ -1,5 +1,6 @@
 syntax: glob
 # do not keep build directory created by foray under version control
+TODO
 example/**
 doc/_build/**
 *.x

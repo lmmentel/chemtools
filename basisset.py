@@ -346,3 +346,45 @@ def parse_function(shell, atomic, los):
           "atomic" : atomic,
          }]
     return bs
+
+def write_gamess_basis(bs):
+
+    outstr =  ""
+    for atomic, functions in groupby(bs, lambda x: x["atomic"]):
+        for function in functions:
+            outstr = outstr + " {s:<1s} {n:>3d}\n".format(s=_shells[function["shell"]], n=len(function["exps"]))
+            for i, prim in enumerate(zip(function["exps"], function["coeffs"])):
+                outstr = outstr + "{0:>3d}{z:>20.10e}{c:>20.10f}\n".format(i+1, z=prim[0], c=prim[1])
+        outstr = outstr + "\n"
+
+    return outstr
+
+def write_dalton_basis(bs):
+
+    outstr = ""
+    newd = []
+    for atom, atomgroup in groupby(bs, lambda x: x["atomic"]):
+        for shell, shellgroup in groupby(atomgroup, lambda x: x["shell"]):
+            exps    = []
+            indices = []
+            coeffs  = []
+            for function in shellgroup:
+                for zeta in function["exps"]:
+                    if zeta not in exps:
+                        exps.append(zeta)
+                istart = exps.index(function["exps"][0]) + 1
+                istop  = exps.index(function["exps"][-1]) + 1
+                indices.append((istart, istop))
+                coeffs.append(function["coeffs"])
+            newd.append({"atomic" : atom,
+                            "shell"  : shell,
+                            "exps"   : exps,
+                            "indices": indices,
+                            "coeffs" : coeffs})
+
+    for f in sorted(newd, key=itemgetter("atomic", "shell")):
+        elem = periodic.element(f["atomic"])
+        outstring = outstring + "{0}\n".format(elem.symbol)
+        print f["exps"]
+    return outstring
+

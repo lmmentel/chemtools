@@ -255,8 +255,9 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
 
 def run_total_energy(x0, *args):
 
-    if args[0]["typ"] in ["direxp", "direct", "exps", "exponents"]:
-        penalty = sum(min(0, x)**2 for x in x0)
+    if args[0]["typ"] in ["direxp", "direct", "exps", "exponents", "event", "eventemp"]:
+        #penalty = sum(min(0, x)**2 for x in x0)
+        penalty = 0.0
         if any(x < 0 for x in x0):
             x0 = [abs(x) for x in x0]
     else:

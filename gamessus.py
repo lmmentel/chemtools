@@ -112,6 +112,10 @@ class Gamess(object):
         '''Write gamess input file with starting orbitals from a previous run,
             stored in the self.datname file.'''
 
+        #  TODO
+        # dopisac opcjonalny parametr norb zeby moc pisac tylko podzbior
+        # orbitali zamiast wszystkich
+
         gp = GamessParser(self.outputfile)
 
         with open(self.inputfile, 'r') as inp:
@@ -345,7 +349,7 @@ class GamessParser(object):
         with open(self.logfile, 'r') as log:
             data = log.read()
 
-        hfre = re.compile(r'FINAL RHF ENERGY IS\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
+        hfre = re.compile(r'FINAL R[O]*HF ENERGY IS\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
         match = hfre.search(data)
         if match:
             return float(match.group("energy"))
