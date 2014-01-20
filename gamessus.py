@@ -16,8 +16,8 @@ import sys
 
 # fortran modules nedded for GamessReader Class
 try:
-    import dictionaryfile as df
-    import twoelectron
+    import dictfile as df
+    import twoe
 except:
     pass
 
@@ -457,13 +457,13 @@ class GamessReader(object):
         if filename:
             if os.path.exists(filename):
                 print("Reading {}".format(filename))
-                twoelectron.integrals.readinao(rdm2, filename)
+                twoe.integrals.readinao(rdm2, filename)
                 return rdm2
             else:
                 sys.exit("File '{0:s}' doesn't exist, exiting...".format(filename))
         elif os.path.exists(self.rdm2file):
             print("Reading {}".format(self.rdm2file))
-            twoelectron.integrals.readinao(rdm2, self.rdm2file)
+            twoe.integrals.readinao(rdm2, self.rdm2file)
             return rdm2
         else:
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.rdm2file))
@@ -473,17 +473,17 @@ class GamessReader(object):
         '''Read the two electron integrals from the gamess-us file'''
 
         # initialize numpy array to zeros
-        twoe = np.zeros(nmo, dtype=float)
+        ints = np.zeros(nmo, dtype=float)
         # use gamess module to read the integrals from the file -filename-
         if filename:
             if os.path.exists(filename):
-                twoelectron.integrals.readinmo(twoe, filename)
-                return twoe
+                twoe.integrals.readinmo(ints, filename)
+                return ints
             else:
                 sys.exit("File '{0:s}' doesn't exist, exiting...".format(filename))
         elif os.path.exists(self.twoemofile):
-            twoelectron.integrals.readinmo(twoe, self.twoemofile)
-            return twoe
+            twoe.integrals.readinmo(ints, self.twoemofile)
+            return ints
         else:
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.twoemofile))
 
