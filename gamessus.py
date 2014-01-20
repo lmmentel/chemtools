@@ -1,4 +1,11 @@
-#!/usr/bin/env python
+
+'''
+Module for handling Gamess-US related jobs,:
+    Gamess       : running and submitting jobs, writing inputs,
+    GamessParser : parsing the log file,
+    GamessReader : reading gamess bianry files.
+'''
+
 from basisset import Basis
 from molecule import Molecule
 from subprocess import Popen
@@ -7,22 +14,26 @@ import os
 import re
 import sys
 
+# fortran modules nedded for GamessReader Class
+try:
+    import dictionaryfile as df
+    import twoelectron
+except:
+    pass
 
 class Gamess(object):
 
     '''Container object for Gamess-us jobs.'''
 
-    def __init__(self, molecule=None, basis=None, inputname=None,
+    def __init__(self, inp, molecule=None, basis=None,
                  workdir=os.getcwd(), template=None):
+        #self.executable =
         self.molecule = molecule
         self.basis    = basis
         self.workdir  = workdir
         self.scratch  = "/home/lmentel/scratch"
         self.template = template
-        if inputname:
-            self.filebase   = os.path.splitext(inputname)[0]
-        else:
-            self.filebase   = "_".join([self.molecule.name, self.basis.name])
+        self.filebase   = os.path.splitext(inputname)[0]
         self.inputfile  = self.filebase + ".inp"
         self.outputfile = self.filebase + ".log"
         self.datfile    = self.filebase + ".dat"
@@ -36,7 +47,6 @@ class Gamess(object):
         '''Run a single gamess job interactively - without submitting to the
         queue.'''
 
-        # should add checking for the existance of the .dat file before running
 
         if remove_dat:
             if os.path.exists(os.path.join(self.scratch, self.datfile)):
@@ -66,30 +76,6 @@ class Gamess(object):
         '''Submit a single gamess job into the queue.'''
 
         pass
-
-    def norbitals(self, spherical=True):
-
-        '''Get the total number of atomic orbitals (spherical of cartesian)
-           from the basis set information.'''
-
-        nao = 0
-        for atom in self.molecule.atoms:
-            nao += self.basis.get_number_of_aos(atom.atomic, spherical)
-        return nao
-
-    def get_atoms_and_basis(self):
-
-        '''Print all the atoms with their corresponding basis set into a format
-        of Gamess-us $DATA card and return it as a string "atandbas".'''
-
-        atandbas = ""
-        atoms = [self.molecule.atoms[i] for i in self.molecule.unique]
-        for atom in atoms:
-            atandbas = atandbas + "{s:<4s}{a:>5.2f}{x:>15.6f}{y:>15.6f}{z:>15.6f}\n".format(s=atom.symbol,
-                        a=float(atom.atomic), x=atom.xyz.x, y=atom.xyz.y, z=atom.xyz.z)
-            atandbas = atandbas + self.basis.get_basis(atom.atomic) + '\n'
-        atandbas = atandbas + ' $END'
-        return atandbas
 
     def write_input(self, spherical=False, core=0):
 
@@ -263,7 +249,6 @@ class GamessParser(object):
         if match:
             return int(match.group("nao"))
 
-
     def get_number_of_mos(self):
 
         '''Get the number of molecular orbitals from Gammess log file.'''
@@ -418,14 +403,196 @@ class GamessParser(object):
         energies = re.findall(r'^\s+NUCLEAR REPULSION ENERGY =\s*(\-?\d+\.\d+)', data, re.MULTILINE)
         return float(energies[-1])
 
-    def get_onee_size(self):
-        '''Get the size of the vector holding upper (or lower) triangle
-           of a square matrix of size nmos.'''
-        n = self.get_number_of_mos()
+
+
+class GamessReader(object):
+
+    '''Class for holding method for reading gamess binary files:
+        $JOB.F08 : two electron integrals over AO's,
+        $JOB.F09 : two electron integrals over MO's,
+        $JOB.F10 : the dictionary file with one electron integrals, orbitals etc.,
+        $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
+
+        TODO:
+        CI coefficients, and CI hamiltonian amtrix elements.'''
+
+    def __init__(self, log):
+        self.logfile    = log
+        i = self.logfile.index("log")
+        self.filebase   = self.logfile[:i-1]
+        self.datfile    = self.filebase + ".dat"
+        self.twoeaofile = self.filebase + ".F08"
+        self.twoemofile = self.filebase + ".F09"
+        self.dictionary = self.filebase + ".F10"
+        self.rdm2file   = self.filebase + ".F15"
+        self.gp         = GamessParser(log=self.logfile)
+
+    def get_onee_size(self, aos=True):
+        '''
+        Get the size of the vector holding upper (or lower) triangle
+        of a square matrix of size naos or nmos.
+        '''
+        if aos:
+            n = self.gp.get_number_of_aos()
+        else:
+            n = self.gp.get_number_of_mos()
         return n*(n+1)/2
 
     def get_twoe_size(self):
-        '''Get the size of the 1d vector holding upper (or lower) triangle
-           of a supermatrix of size nmos (2RDM and two-electrons integrals) .'''
-        n = self.get_onee_size()
+        '''
+        Get the size of the 1d vector holding upper (or lower) triangle
+        of a supermatrix of size nmos (2RDM and two-electrons integrals).
+        '''
+        n = self.get_onee_size(aos=False)
         return n*(n+1)/2
+
+    def read_rdm2(self, filename=None, nmo=None):
+
+        '''Read the 2rdm from the gamess-us file'''
+
+        # initialize numpy array to zeros
+        rdm2 = np.zeros(nmo, dtype=float)
+
+        # use gamess module to read the integrals from the file -filename-
+        if filename:
+            if os.path.exists(filename):
+                print("Reading {}".format(filename))
+                twoelectron.integrals.readinao(rdm2, filename)
+                return rdm2
+            else:
+                sys.exit("File '{0:s}' doesn't exist, exiting...".format(filename))
+        elif os.path.exists(self.rdm2file):
+            print("Reading {}".format(self.rdm2file))
+            twoelectron.integrals.readinao(rdm2, self.rdm2file)
+            return rdm2
+        else:
+            sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.rdm2file))
+
+    def read_twoemo(self, filename=None, nmo=None):
+
+        '''Read the two electron integrals from the gamess-us file'''
+
+        # initialize numpy array to zeros
+        twoe = np.zeros(nmo, dtype=float)
+        # use gamess module to read the integrals from the file -filename-
+        if filename:
+            if os.path.exists(filename):
+                twoelectron.integrals.readinmo(twoe, filename)
+                return twoe
+            else:
+                sys.exit("File '{0:s}' doesn't exist, exiting...".format(filename))
+        elif os.path.exists(self.twoemofile):
+            twoelectron.integrals.readinmo(twoe, self.twoemofile)
+            return twoe
+        else:
+            sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.twoemofile))
+
+
+    def read_H(self):
+        '''
+        Read the bare nucleus hamiltonian integrals form section 11 of gamess-us
+        dictionary file.
+        '''
+        vec = np.zeros(self.get_onee_size(), dtype=float)
+        df.readit(self.dictionary, vec, 11)
+        return vec
+
+    def read_S(self):
+        '''
+        Read the overlap integrals form section 12 of gamess-us dictionary
+        file.
+        '''
+        vec = np.zeros(self.get_onee_size(), dtype=float)
+        df.readit(self.dictionary, vec, 12)
+        return vec
+
+    def read_T(self):
+        '''
+        Read the kinetic energy integrals form section 13 of gamess-us
+        dictionary file.
+        '''
+        vec = np.zeros(self.get_onee_size(), dtype=float)
+        df.readit(self.dictionary, vec, 13)
+        return vec
+
+
+    def read_occupations(self):
+        '''
+        Get the natural orbital occupation numbers from section 21 of the
+        gamess-us dictionary file.
+        '''
+        vec = np.zeros(self.gp.get_number_of_mos(), dtype=float)
+        df.readit(self.dictionary, vec, 21)
+        return vec
+
+    def read_mos(self):
+        '''
+        Read the Hartree-Fock MO's from the section 15 of the gamess dictionary
+        file.
+        '''
+
+        mat = np.zeros(self.gp.get_number_of_aos()*self.gp.get_number_of_mos(), dtype=float)
+        df.readit(self.dictionary, mat, 15)
+        mat = mat.reshape((self.gp.get_number_of_aos(), self.gp.get_number_of_mos()), order='F')
+        return mat
+
+    def read_orbital_energies(self):
+        '''
+        Read orbital energies (HF) from the section 17 of the gamess dictionary
+        file.
+        '''
+
+        vec = np.zeros(self.gp.get_number_of_mos(), dtype=float)
+        df.readit(self.dictionary, vec, 17)
+        return vec
+
+    def read_nos(self):
+        '''
+        Read Natural Orbitals form section 19 of the gamess dictionary file.
+        '''
+
+        mat = np.zeros(self.gp.get_number_of_aos()*self.gp.get_number_of_mos(), dtype=float)
+        df.readit(self.dictionary, mat, 19)
+        mat  = mat.reshape((self.gp.get_number_of_aos(), self.gp.get_number_of_mos()), order='F')
+        return mat
+
+    def factor(i,j,k,l):
+        '''
+        Based on the orbitals indices return the factor that takes into account 
+        the index permutational symmetry.
+        '''
+        if i == j and k == l and i == k:
+            fijkl = 1.0
+        elif i == j and k == l:
+            fijkl = 2.0
+        elif (i == k and j == l) or (i == j and i == k) or (j == k and j == l) or (i == j or k == l):
+            fijkl = 4.0
+        else:
+            fijkl = 8.0
+        return fijkl
+
+    def ijkl(i,j,k,l):
+        '''
+        Based on the four orbital indices i,j,k,l return the address 
+        in the 1d vector.
+        '''
+        ij = max(i, j)*(max(i, j) + 1)/2 + min(i, j)
+        kl = max(k, l)*(max(k, l) + 1)/2 + min(k, l)
+        return max(ij, kl)*(max(ij, kl) + 1)/2 + min(ij, kl)
+
+    def print_twoe(twoe, nbf):  
+        '''Print the two-electron integrals.'''
+        ij=0 
+        for i in xrange(nbf):
+            for j in xrange(i+1):
+                ij += 1
+                kl = 0 
+                for k in xrange(nbf):
+                    for l in xrange(k+1):
+                        kl += 1
+                        if ij >= kl: 
+                            if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10: 
+                                print "{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
+                                    i, j, k, l, twoe[ijkl(i,j,k,l)]) 
+
+

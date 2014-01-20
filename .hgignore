@@ -3,6 +3,8 @@ syntax: glob
 TODO
 example/**
 doc/_build/**
+dist/**
+build/**
 *.x
 *.a
 *.so

@@ -51,7 +51,7 @@ Obtaining Code
 
 The code is hosted via public bitbucket repository named ChemTools_
 and a source distibution can be downloaded from there as a zip, gz or bz2 
-bundle. After downloading  ``command``
+bundle.
 
 .. _ChemTools: https://bitbucket.org/lukaszmentel/chemtools/
 
