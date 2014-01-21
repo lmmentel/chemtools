@@ -473,7 +473,7 @@ class GamessReader(object):
         '''Read the two electron integrals from the gamess-us file'''
 
         # initialize numpy array to zeros
-        ints = np.zeros(nmo, dtype=float)
+        ints = np.zeros(self.get_twoe_size(), dtype=float)
         # use gamess module to read the integrals from the file -filename-
         if filename:
             if os.path.exists(filename):
@@ -593,6 +593,28 @@ class GamessReader(object):
                         if ij >= kl: 
                             if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10: 
                                 print "{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
-                                    i, j, k, l, twoe[ijkl(i,j,k,l)]) 
+                                    i, j, k, l, twoe[ijkl(i,j,k,l)])
 
+class GamessDatParser(object):
+
+    def __init__(self, datfile):
+        self.datfile = datfile
+
+    def get_occupations(self):
+        '''
+        Parse the occupation numbers from the ASCII $JOB.dat gamess-us punch file.
+        '''
+
+        with open(self.datfile, 'r') as dat:
+            data = dat.read()
+
+        no_patt = re.compile(r'\$OCC(.*?)\$END', flags=re.DOTALL)
+        match = no_patt.search(data)
+        nooc = []
+        if match:
+            for line in match.group(1).split('\n'):
+                nooc.extend([float(x) for x in line.split()])
+            return np.asarray(nooc)
+        else:
+            sys.exit('No section with occupation numbers found.')
 
