@@ -148,16 +148,11 @@ class GamessParser(object):
 
     '''Object holding tools for parsing gmaess-us log file.'''
 
-    def __init__(self, log=None, inp=None):
-        if log:
-            self.logfile    = log
-            i = self.logfile.index("log")
-            self.filebase   = self.logfile[:i-1]
-            self.inputfile  = self.filebase + ".inp"
-        elif inp:
-            self.inputfile  = inp
-            self.filebase   = os.path.splitext(self.inputfile)[0]
-            self.logfile    = self.filebase + ".log"
+    def __init__(self, log):
+        self.logfile    = log
+        i = self.logfile.index("log")
+        self.filebase   = self.logfile[:i-1]
+        self.inputfile  = self.filebase + ".inp"
         self.logexists()
         self.datfile    = self.filebase + ".dat"
         self.twoeaofile = self.filebase + ".F08"
@@ -571,27 +566,29 @@ class GamessReader(object):
             fijkl = 8.0
         return fijkl
 
-    def ijkl(i,j,k,l):
+# this function should be moved somewhere else
+
+    def ijkl(self, i,j,k,l):
         '''
-        Based on the four orbital indices i,j,k,l return the address 
+        Based on the four orbital indices i,j,k,l return the address
         in the 1d vector.
         '''
         ij = max(i, j)*(max(i, j) + 1)/2 + min(i, j)
         kl = max(k, l)*(max(k, l) + 1)/2 + min(k, l)
         return max(ij, kl)*(max(ij, kl) + 1)/2 + min(ij, kl)
 
-    def print_twoe(twoe, nbf):  
+    def print_twoe(twoe, nbf):
         '''Print the two-electron integrals.'''
-        ij=0 
+        ij=0
         for i in xrange(nbf):
             for j in xrange(i+1):
                 ij += 1
-                kl = 0 
+                kl = 0
                 for k in xrange(nbf):
                     for l in xrange(k+1):
                         kl += 1
-                        if ij >= kl: 
-                            if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10: 
+                        if ij >= kl:
+                            if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10:
                                 print "{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
                                     i, j, k, l, twoe[ijkl(i,j,k,l)])
 
