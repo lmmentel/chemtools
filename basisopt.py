@@ -325,7 +325,6 @@ def run_core_energy(x0, *args):
     cie  = []
     if args[2]["name"].lower() in ["molpro"]:
         for fname, core in zip((nb+"_core-"+str(sum(x))+".inp" for x in args[2]["core"]), args[2]["core"]):
-            print fname, core
             write_molpro_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
             run_molpro(fname, args[2])
             output = os.path.splitext(fname)[0] + ".out"
