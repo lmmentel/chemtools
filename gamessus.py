@@ -184,7 +184,6 @@ class GamessParser(object):
         else:
             return False
 
-
     def get_charge(self):
 
         '''Get total charge.'''
@@ -612,6 +611,25 @@ class GamessDatParser(object):
             for line in match.group(1).split('\n'):
                 nooc.extend([float(x) for x in line.split()])
             return np.asarray(nooc)
+        else:
+            sys.exit('No section with occupation numbers found.')
+
+    def get_nos(self):
+        '''
+        Parse the natural orbitals from the ASCII $JOB.dat gamess-us punch file.
+        '''
+
+        with open(self.datfile, 'r') as dat:
+            data = dat.read()
+
+        no_patt = re.compile(r'NO.*\$VEC(.*?)\$END', flags=re.DOTALL)
+        match = no_patt.search(data)
+        nooc = []
+        if match:
+            #    for line in match.group(1).split('\n'):
+            #    nooc.extend([float(x) for x in line.split()])
+            #return np.asarray(nooc)
+            print match.group(1)
         else:
             sys.exit('No section with occupation numbers found.')
 

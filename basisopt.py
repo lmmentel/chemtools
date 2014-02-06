@@ -139,14 +139,10 @@ def write_molpro_input(fname=None, core=None, bs=None, code=None, mol=None):
 
     inpt = re.sub('geometry', mol.molpro_rep(), inpt, flags=re.I)
     inpt = re.sub('basis', bas.write_molpro_basis(bs), inpt, flags=re.I)
-    inpt = re.sub("core","core,{},0,0,0,0,0,0,0\n".format(core), inpt, flags=re.I)
+    inpt = re.sub("core","core,{0:s}\n".format(",".join([str(x) for x in core])), inpt, flags=re.I)
 
-    inp = open(fname, 'w')
-
-    inp.write(inpt)
-
-    inp.close()
-
+    with open(fname, 'w') as inp:
+        inp.write(inpt)
 
 def run_gamess(fname, code=None):
 
@@ -266,7 +262,7 @@ def run_total_energy(x0, *args):
     bs2opt = bas.get_basis(x0, args[0])
 
     fname = args[2]["inputname"]
-    core  = args[2]["core"][0]
+    core  = sum(args[2]["core"][0])
 
     if args[2]["name"].lower() in ["molpro"]:
         write_molpro_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
@@ -327,8 +323,9 @@ def run_core_energy(x0, *args):
     pars = []
     hfe  = []
     cie  = []
-    for fname, core in zip([nb+"_core-"+str(x)+".inp" for x in args[2]["core"]], args[2]["core"]):
-        if args[2]["name"].lower() in ["molpro"]:
+    if args[2]["name"].lower() in ["molpro"]:
+        for fname, core in zip((nb+"_core-"+str(sum(x))+".inp" for x in args[2]["core"]), args[2]["core"]):
+            print fname, core
             write_molpro_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
             run_molpro(fname, args[2])
             output = os.path.splitext(fname)[0] + ".out"
@@ -337,7 +334,8 @@ def run_core_energy(x0, *args):
             pars.append(parser)
             hfe.append(parser.get_hf_total_energy())
             cie.append(parser.get_cisd_total_energy())
-        elif args[2]["name"].lower() in ["gamess", "gamess-us", "gamessus"]:
+    elif args[2]["name"].lower() in ["gamess", "gamess-us", "gamessus"]:
+        for fname, core in zip((nb+"_core-"+str(x)+".inp" for x in args[2]["core"]), args[2]["core"]):
             write_gamess_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
             output = run_gamess(fname, args[2])
             outs.append(output)
@@ -345,8 +343,8 @@ def run_core_energy(x0, *args):
             pars.append(parser)
             hfe.append(parser.get_hf_total_energy())
             cie.append(parser.get_ormas_total_energy())
-        else:
-            sys.exit("<run_total_energy>: unknown code")
+    else:
+        sys.exit("<run_total_energy>: unknown code")
 
     print "Current exponents"
     bas.print_functions(bs2opt)

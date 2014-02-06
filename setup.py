@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 
 setup(
     name='chemtools',
-    version='0.2.1',
+    version='0.2.2',
     description = "Python tools for quantum chemical calculations",
     author = "Lukasz Mentel",
     author_email = "lmmentel@gmail.com",
