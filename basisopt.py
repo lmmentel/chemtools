@@ -248,6 +248,8 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
             options=opts["options"])
     print res
     print "Elapsed time : {0:>20.3f} sec".format(time.time()-starttime)
+    # write a nice printer of the optimized exponents if converged
+    return res
 
 def run_total_energy(x0, *args):
 

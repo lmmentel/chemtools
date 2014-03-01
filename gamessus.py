@@ -27,15 +27,14 @@ class Gamess(object):
 
     def __init__(self, inp, molecule=None, basis=None,
                  workdir=os.getcwd(), template=None):
-        #self.executable =
         self.molecule = molecule
         self.basis    = basis
         self.workdir  = workdir
         self.scratch  = "/home/lmentel/scratch"
         self.template = template
-        self.filebase   = os.path.splitext(inputname)[0]
+        self.filebase   = os.path.splitext(inp)[0]
         self.inputfile  = self.filebase + ".inp"
-        self.outputfile = self.filebase + ".log"
+        self.logfile = self.filebase + ".log"
         self.datfile    = self.filebase + ".dat"
         self.twoeaofile = self.filebase + ".F08"
         self.twoemofile = self.filebase + ".F09"
@@ -52,14 +51,14 @@ class Gamess(object):
             if os.path.exists(os.path.join(self.scratch, self.datfile)):
                 os.remove(os.path.join(self.scratch, self.datfile))
 
-        out = open(self.outputfile, 'w')
+        out = open(self.logfile, 'w')
         process = Popen([executable, self.inputfile, version, nproc], stdout=out, stderr=out)
         process.wait()
         out.close()
 
     def run_startno(self, executable, version="00", nproc="1"):
 
-        '''Run gamess calculation starting ffrom the orbitals in the dat file.'''
+        '''Run gamess calculation starting from the orbitals in the dat file.'''
 
         # should add checking for the existance of the .dat file before running
 
@@ -102,7 +101,7 @@ class Gamess(object):
         # dopisac opcjonalny parametr norb zeby moc pisac tylko podzbior
         # orbitali zamiast wszystkich
 
-        gp = GamessParser(self.outputfile)
+        gp = GamessParser(self.logfile)
 
         with open(self.inputfile, 'r') as inp:
             inpcontent = inp.read()
@@ -115,28 +114,9 @@ class Gamess(object):
         newinp.write(inpcontent)
         newinp.write(" $GUESS guess=moread norb={:<d} $END\n\n".format(gp.get_number_of_mos()))
         newinp.write(" $VEC\n")
-
-        dat    = open(self.datfile, 'r')
-
-        citype = gp.get_ci_type()
-
-        if citype == "GUGA":
-            datheader = 'GUGA-CI'
-        elif citype == "ORMAS":
-            datheader = "- - - NO-S OF CI STATE"
-
-        line = dat.readline()
-        while not datheader in line and line != "":
-            line = dat.readline()
-
-        while not "$VEC" in line and line != "":
-            line = dat.readline()
-
-        while not "$END" in line and line != "":
-            line = dat.readline()
-            newinp.write(line)
-
-        dat.close()
+        gr = GamessReader(self.logfile)
+        newinp.write(gr.get_nos())
+        newinp.write(" $END\n")
         newinp.close()
         return startnofile
 
@@ -397,7 +377,27 @@ class GamessParser(object):
         energies = re.findall(r'^\s+NUCLEAR REPULSION ENERGY =\s*(\-?\d+\.\d+)', data, re.MULTILINE)
         return float(energies[-1])
 
+    def get_energy_components(self, method):
+        '''
+        Read the summary of the energies printed in the gamess log file at the
+        property section corresponding to a particular "method".
+        '''
 
+        if method.lower() in ["hf", "scf", "hfscf"]:
+            if self.get_scf_type() != "NONE":
+                header = 'PROPERTY VALUES FOR THE {0:<5s} SELF-CONSISTENT FIELD WAVEFUNCTION'.format(self.get_scf_type())
+            else:
+                sys.exit("No HF calculation was performed, check the log file once again.")
+        elif method.lower() in ["ci"]:
+            if self.get_ci_type().lower() in ["guga", "ormas", "fsoci"]:
+                header  = '{0:<5s} CI PROPERTIES'.format(self.get_ci_type())
+        else:
+            sys.exit("Wrong method in <get_energy_components>: {0:s}".format(method))
+
+        with open(self.logfile, 'r') as log:
+            data = log.readlines()
+
+        return parse_pairs(slice_after(data, header, 22))
 
 class GamessReader(object):
 
@@ -445,7 +445,7 @@ class GamessReader(object):
         '''Read the 2rdm from the gamess-us file'''
 
         # initialize numpy array to zeros
-        rdm2 = np.zeros(nmo, dtype=float)
+        rdm2 = np.zeros(self.get_twoe_size(), dtype=float)
 
         # use gamess module to read the integrals from the file -filename-
         if filename:
@@ -576,7 +576,7 @@ class GamessReader(object):
         kl = max(k, l)*(max(k, l) + 1)/2 + min(k, l)
         return max(ij, kl)*(max(ij, kl) + 1)/2 + min(ij, kl)
 
-    def print_twoe(twoe, nbf):
+    def print_twoe(self, twoe, nbf):
         '''Print the two-electron integrals.'''
         ij=0
         for i in xrange(nbf):
@@ -587,9 +587,9 @@ class GamessReader(object):
                     for l in xrange(k+1):
                         kl += 1
                         if ij >= kl:
-                            if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10:
+                            if abs(twoe[self.ijkl(i,j,k,l)]) > 1.0e-10:
                                 print "{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
-                                    i, j, k, l, twoe[ijkl(i,j,k,l)])
+                                    i, j, k, l, twoe[self.ijkl(i,j,k,l)])
 
 class GamessDatParser(object):
 
@@ -624,12 +624,44 @@ class GamessDatParser(object):
 
         no_patt = re.compile(r'NO.*\$VEC(.*?)\$END', flags=re.DOTALL)
         match = no_patt.search(data)
-        nooc = []
         if match:
-            #    for line in match.group(1).split('\n'):
-            #    nooc.extend([float(x) for x in line.split()])
-            #return np.asarray(nooc)
-            print match.group(1)
+            return match.group(1)
         else:
-            sys.exit('No section with occupation numbers found.')
+            sys.exit('No section with natural orbitals found.')
+
+    def parse_nos(self):
+        '''
+        Parse the orbitals read from the $JOB.dat file in the ASCII format into
+        an 2 dimensional array.
+        '''
+        pass
+
+
+def take(seq, num):
+    '''
+    Iterate over a sequence "seq" "num" times and return the list of the
+    elements iterated over.
+    '''
+    return [next(seq) for i in range(num)]
+
+def parse_pairs(los, sep="="):
+    '''
+    Parse a given list of strings "los" into a dictionary based on separation
+    by "sep" character and return the dictionary.
+    '''
+    out = []
+    for line in los:
+        if sep in line:
+            (name, value) = line.split(sep)
+            out.append((name.strip(), float(value)))
+    return dict(out)
+
+def slice_after(seq, item, num):
+    '''
+    Return "num" elements of a sequence "seq" present after the item "item".
+    '''
+    it = iter(seq)
+    for element in it:
+        if item in element:
+            return [next(it) for i in range(num)]
 

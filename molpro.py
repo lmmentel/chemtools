@@ -1,5 +1,15 @@
 import re
 import os
+from job import Job
+
+class Molpro(Job):
+    '''
+    Generic class holding a Molpro object.
+    '''
+
+    def __init__(self, **kwargs):
+        super(Molpro, self).__init__(**kwargs)
+        pass
 
 class OutputParser(object):
 

@@ -384,7 +384,7 @@ def write_dalton_basis(bs):
 
     for f in sorted(newd, key=itemgetter("atomic", "shell")):
         elem = periodic.element(f["atomic"])
-        outstring = outstring + "{0}\n".format(elem.symbol)
+        outstr = outstr + "{0}\n".format(elem.symbol)
         print f["exps"]
-    return outstring
+    return outstr
 
