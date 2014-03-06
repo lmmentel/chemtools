@@ -3,6 +3,7 @@ LICENSE.txt
 README.txt
 basisopt.py
 basisset.py
+code.py
 dmft.py
 gamessus.py
 molecule.py

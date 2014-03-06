@@ -9,7 +9,7 @@ Overview
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure methods/
 programs. Currently the is some limited support for Gamess-US_ and
-MolPro_ program packages.
+MolPro_ program packages but other codes can be easily interfaced.
 
 .. _Gamess-US: http://www.msg.ameslab.gov/gamess
 .. _MolPro: http://www.molpro.net/
@@ -24,12 +24,12 @@ Current Modules
 * gamessus: utility function for parsing input and log files from Gamess-US
   calculations, wrappers for running the code from python
 * molpro: parser for the output file
-* molecule: general purpose module intorducing moelcule class for handling
+* molecule: general purpose module intorducing molecule class for handling
   molecules
 
 License
 -------
-ChemTools are release under GPLv3.0.
+ChemTools are released under GPLv3.0.
 
 Download and Installation
 =========================
@@ -90,3 +90,38 @@ To install ChemTools using ``easy_install`` just type::
 where ``--prefix`` is optional and if not given the package will be installed
 into the default system installation of python (in this case you probably need
 sudo).
+
+Usage
+=====
+
+Optimizing basis set exponents
+
+Optimization of the exponents si done by the API of the driver funtcion
+from the ``basisopt`` module. The function accepts the following arguments:
+    * code
+    * job
+    * mol
+    * bsnoopt
+    * bsopt
+    * opt
+
+
+Code
+----
+
+
+
+job dictionary
+--------------
+
+method
+    * hf
+    * cisd
+
+objective
+    * total energy,
+    * core energy,
+    * correlation energy
+
+core
+    * core specification

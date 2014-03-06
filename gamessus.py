@@ -25,31 +25,21 @@ class Gamess(object):
 
     '''Container object for Gamess-us jobs.'''
 
-    def __init__(self, inp, molecule=None, basis=None,
-                 workdir=os.getcwd(), template=None):
-        self.molecule = molecule
-        self.basis    = basis
-        self.workdir  = workdir
-        self.scratch  = "/home/lmentel/scratch"
-        self.template = template
-        self.filebase   = os.path.splitext(inp)[0]
-        self.inputfile  = self.filebase + ".inp"
-        self.logfile = self.filebase + ".log"
-        self.datfile    = self.filebase + ".dat"
-        self.twoeaofile = self.filebase + ".F08"
-        self.twoemofile = self.filebase + ".F09"
-        self.dictionary = self.filebase + ".F10"
-        self.rdm2file   = self.filebase + ".F15"
+    def __init__(self, **kwargs):
+        super(Gamess, self).__init__(**kwargs)
 
-    def run(self, executable, version="00", nproc="1", remove_dat=True):
+        if "version" in kwargs.items():
+            self.version = kwargs["version"]
+
+    def run_single(self, inpfile, remove_dat=True):
 
         '''Run a single gamess job interactively - without submitting to the
         queue.'''
 
-
+        datfile = os.path.splitext(inpfile)[0] + ".dat"
         if remove_dat:
-            if os.path.exists(os.path.join(self.scratch, self.datfile)):
-                os.remove(os.path.join(self.scratch, self.datfile))
+            if os.path.exists(os.path.join(self.scratch, datfile)):
+                os.remove(os.path.join(self.scratch, datfile))
 
         out = open(self.logfile, 'w')
         process = Popen([executable, self.inputfile, version, nproc], stdout=out, stderr=out)
@@ -124,7 +114,7 @@ class Gamess(object):
         return "Gamess-US job object:\n\tMolecule  : {0:s}\n\tBasis     : {1:s}\n\tInput file: {2:s}".format(self.molecule.name, self.basis.name, self.inputfile)
 
 
-class GamessParser(object):
+class GamessLogParser(object):
 
     '''Object holding tools for parsing gmaess-us log file.'''
 

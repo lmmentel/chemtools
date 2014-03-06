@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# lmentel's packages 
-from gamessus import GamessParser
+# lmentel's packages
+from gamessus import Gamess
 from molecule import Atom, Molecule
-from molpro import OutputParser
+from molpro import Molpro
 import basisset as bas
 
 # standard python packages
@@ -133,16 +133,6 @@ def parse_gamess_input(contents):
     else:
         return dinput
 
-def write_molpro_input(fname=None, core=None, bs=None, code=None, mol=None):
-
-    inpt = code["input"]
-
-    inpt = re.sub('geometry', mol.molpro_rep(), inpt, flags=re.I)
-    inpt = re.sub('basis', bas.write_molpro_basis(bs), inpt, flags=re.I)
-    inpt = re.sub("core","core,{0:s}\n".format(",".join([str(x) for x in core])), inpt, flags=re.I)
-
-    with open(fname, 'w') as inp:
-        inp.write(inpt)
 
 def run_gamess(fname, code=None):
 
@@ -162,24 +152,8 @@ def run_gamess(fname, code=None):
     fout.close()
     return output_file
 
-def run_molpro(fname, code=None):
 
-    '''Run a single molpro job interactively - without submitting to the queue.'''
-
-    opts = []
-    opts.append(code["exec"])
-    opts.append(fname)
-    opts.extend(code["opts"])
-    process = Popen(opts, stdout=PIPE, stderr=PIPE)
-    out, err = process.communicate()
-    error_file = os.path.splitext(fname)[0]+".err"
-    ferr = open(error_file, 'w')
-    ferr.write(out)
-    ferr.write("{0:s}\n{1:^80s}\n{0:s}\n".format("="*80, "Error messages:"))
-    ferr.write(err)
-    ferr.close()
-
-def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
+def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     '''
     Driver for the basis set optimization
     '''
@@ -189,8 +163,8 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
     starttime = time.time()
 
     # set default optimization options if opts not given
-    if not opts:
-        opts = {"method"  : "BFGS",
+    if not opt:
+        opt = {"method"  : "BFGS",
                 "lambda"  : 10.0,
                 "tol"     : 1.0e-4,
                 "options" : {"maxiter" : 50,
@@ -199,36 +173,36 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
                             }
                }
     else:
-        if opts["method"].lower() == "nelder-mead":
+        if opt["method"].lower() == "nelder-mead":
             jacob = None
         else:
             jacob = False
-        if "lambda" not in opts.keys():
-            opts["lambda"] = 10.0
+        if "lambda" not in opt.keys():
+            opt["lambda"] = 10.0
 
     if not bsnoopt:
         bsnooptobj = []
 
-    if code:
-        if code["objective"].lower() == "coreenergy":
-            if len(code["core"]) == 2:
-                if code["core"][0] > code["core"][1]:
-                    code["core"].reverse()
+    if job:
+        if job["objective"].lower() == "core energy":
+            if len(job["core"]) == 2:
+                if job["core"][0] > job["core"][1]:
+                    job["core"].reverse()
             else:
-                sys.exit("<driver>: core should have 2 entries, but it has {0:4d}".format(len(code["core"])))
+                sys.exit("<driver>: core should have 2 entries, but it has {0:4d}".format(len(job["core"])))
             function = run_core_energy
-        elif code["objective"].lower() == "totalenergy":
+        elif job["objective"] in ["total energy", "correlation energy", "regexp"]:
             function = run_total_energy
         else:
             sys.exit("<driver>: wrong objective in code dictionary")
-        if code["name"].lower() in ["gamess", "gamessus", "gamess-us"]:
+        if isinstance(code, Gamess):
             if bsnoopt and len(bsnoopt) > 0:
                 bsnooptobj = bas.parse_gamess_basis(bsnoopt)
-        elif code["name"].lower() in ["molpro"]:
+        elif isinstance(code, Molpro):
             if bsnoopt and len(bsnoopt) > 0:
                 bsnooptobj = bas.parse_molpro_basis(bsnoopt)
         else:
-            sys.exit("<driver>: wrong code name: {}".format(code["name"]))
+            sys.exit("<driver>: unknown code object given")
     else:
         sys.exit("<driver>: no dictionary describing code given")
 
@@ -241,19 +215,39 @@ def driver(code=None, mol=None, bsnoopt=None, bsopt=None, opts=None):
     x0 = bas.get_x0(bsopt)
 
     res = minimize(function, x0,
-            args=(bsopt, bsnooptobj, code, mol, opts,),
-            method=opts["method"],
+            args=(bsopt, bsnooptobj, code, job, mol, opt,),
+            method=opt["method"],
             jac=jacob,
-            tol=opts["tol"],
-            options=opts["options"])
+            tol=opt["tol"],
+            options=opt["options"])
     print res
     print "Elapsed time : {0:>20.3f} sec".format(time.time()-starttime)
     # write a nice printer of the optimized exponents if converged
     return res
 
 def run_total_energy(x0, *args):
+    '''
+    Funtion for running a single point calculation and parsing the
+    resulting energy (or property) as specified by the objective
+    function.
 
-    if args[0]["typ"] in ["direxp", "direct", "exps", "exponents", "event", "eventemp"]:
+    Input
+        x0: list/numpy 1d array
+            contains a list of parameters to be optimized, may be
+            explicit exponents or parametrized exponents in terms
+            of some polynomial
+        args: tuple of dictionaries
+            bsopt, bsnoopt, code, job, mol, opt, needed for writing
+            input and parsing output
+    Output
+        parsed result of the single point calculation as speficied by the
+        objective function in the "job" dictionary
+    '''
+
+    # unpack the args tuple for code readability
+    bsopt, bsnoopt, code, job, mol, opt = args
+
+    if bsopt["typ"] in ["direxp", "direct", "exps", "exponents", "event", "eventemp"]:
         #penalty = sum(min(0, x)**2 for x in x0)
         penalty = 0.0
         if any(x < 0 for x in x0):
@@ -261,116 +255,66 @@ def run_total_energy(x0, *args):
     else:
         penalty = 0.0
 
-    bs2opt = bas.get_basis(x0, args[0])
+    bs2opt = bas.get_basis(x0, bsopt)
 
-    fname = args[2]["inputname"]
-    core  = sum(args[2]["core"][0])
-
-    if args[2]["name"].lower() in ["molpro"]:
-        write_molpro_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
-        run_molpro(fname, args[2])
-        output = os.path.splitext(fname)[0] + ".out"
-        parser = OutputParser(out=output)
-        hfenergy = parser.get_hf_total_energy()
-        cienergy = parser.get_cisd_total_energy()
-    elif args[2]["name"].lower() in ["gamess", "gamess-us", "gamessus"]:
-        write_gamess_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
-        output = run_gamess(fname, args[2])
-        parser = GamessParser(log=output)
-        hfenergy = parser.get_hf_total_energy()
-        cienergy = parser.get_ormas_total_energy()
-    else:
-        sys.exit("<run_total_energy>: unknown code")
-
-    print "Current exponents"
-    bas.print_functions(bs2opt)
-    print "x0 : ", ", ".join([str(x) for x in x0])
-    print "\n{0:<20s} : {1:>30s}".format("Output", output)
-
-    if parser.terminatedOK():
-        termok = "YES"
-        print "{0:<20s} : {1:>30s}".format("Terminated OK", termok)
-        if args[2]["method"] == "hf":
-            print "{0:<20s} : {1:>30.10f}".format("HF total energy", hfenergy)
-            print "{0:<20s} : {1:>30.10f}".format("Obejctive", hfenergy + args[4]["lambda"]*penalty)
+    code.write_input(job["inpname"], job["core"], bs=bsnoopt+bs2opt, mol=mol, inpdata=job["inpdata"])
+    code.run_single(job["inpname"])
+    if code.isok():
+        objective = code.parse(job["method"], job["objective"], job.get("regexp", None))
+        if job["verbose"]:
+            print "{0:<s}".format("Job Terminated without errors")
+            print "Current exponents"
+            bas.print_functions(bs2opt)
+            print "x0 : ", ", ".join([str(x) for x in x0])
+            print "\n{0:<20s} : {1:>30s}".format("Output", code.outfile)
+            print "{0:<20s} : {1:>30.10f}".format("Obejctive", objective + opt["lambda"]*penalty)
             print "="*80
-            return hfenergy + args[4]["lambda"]*penalty
-        if args[2]["method"] in ["cisd", "mrcisd"]:
-            print "{0:<20s} : {1:>30.10f}".format("HF total energy", hfenergy)
-            print "{0:<20s} : {1:>30.10f}".format("CI total energy", cienergy)
-            print "{0:<20s} : {1:>30.10f}".format("Objective", cienergy + args[4]["lambda"]*penalty)
-            print "="*80
-            return cienergy + args[4]["lambda"]*penalty
+        return objective +opt["lambda"]*penalty
     else:
-        termok = "NO"
-        print "{0:<20s} : {1:>30s}".format("Terminated OK", termok)
-        if args[2]["name"] == "gamess" and not isinstance(parser.get_linear_deps(), type(None)):
-            return parser.get_hf_total_energy() + args[4]["lambda"]*parser.get_linear_deps()
-        else:
-            sys.exit("something went wrong, check output {0:s}".format(output))
+        sys.exit("something went wrong, check output {0:s}".format(code.outfile))
 
 def run_core_energy(x0, *args):
 
-    if args[0]["typ"] in ["direxp", "direct", "exps", "exponents"]:
-        penalty = sum(min(0, x)**2 for x in x0)
+    # unpack the args tuple for code readability
+    bsopt, bsnoopt, code, job, mol, opt = args
+
+    if bsopt["typ"] in ["direxp", "direct", "exps", "exponents", "event", "eventemp"]:
+        #penalty = sum(min(0, x)**2 for x in x0)
+        penalty = 0.0
         if any(x < 0 for x in x0):
             x0 = [abs(x) for x in x0]
     else:
         penalty = 0.0
 
-    bs2opt = bas.get_basis(x0, args[0])
+    bs2opt = bas.get_basis(x0, bsopt)
 
-    nb = os.path.splitext(args[2]["inputname"])[0]
-    outs = []
-    pars = []
-    hfe  = []
-    cie  = []
-    if args[2]["name"].lower() in ["molpro"]:
-        for fname, core in zip((nb+"_core-"+str(sum(x))+".inp" for x in args[2]["core"]), args[2]["core"]):
-            write_molpro_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
-            run_molpro(fname, args[2])
-            output = os.path.splitext(fname)[0] + ".out"
-            outs.append(output)
-            parser = OutputParser(out=output)
-            pars.append(parser)
-            hfe.append(parser.get_hf_total_energy())
-            cie.append(parser.get_cisd_total_energy())
-    elif args[2]["name"].lower() in ["gamess", "gamess-us", "gamessus"]:
-        for fname, core in zip((nb+"_core-"+str(x)+".inp" for x in args[2]["core"]), args[2]["core"]):
-            write_gamess_input(fname, core, code=args[2], bs=args[1]+bs2opt, mol=args[3])
-            output = run_gamess(fname, args[2])
-            outs.append(output)
-            parser = GamessParser(log=output)
-            pars.append(parser)
-            hfe.append(parser.get_hf_total_energy())
-            cie.append(parser.get_ormas_total_energy())
-    else:
-        sys.exit("<run_total_energy>: unknown code")
+    citote = []
+    stats  = []
+    base   = os.path.splitext(job["inpname"])[0]
+    inputs = [base+"_core"+str(sum(x))+".inp" for x in job["core"]]
 
-    print "Current exponents"
-    bas.print_functions(bs2opt)
-    print "x0 : ", ", ".join([str(x) for x in x0])
-    print "\n{0:<20s} : {1:>30s} {2:>30s}".format("Outputs", outs[0], outs[1])
+    for inpname, core in zip(inputs, job["core"]):
+        code.write_input(inpname, core=core, bs=bsnoopt+bs2opt, mol=mol, inpdata=job["inpdata"])
 
-    termok = []
-    for parser in pars:
-        if parser.terminatedOK():
-            termok.append("YES")
-        else:
-            termok.append("NO")
+    outs = code.run_multiple(inputs)
+    for out in outs:
+        citote.append(code.parse_tote(out))
+        stats.append(code.isok(out))
 
-    print "{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK", termok[0], termok[1])
-    if pars[0].terminatedOK() and pars[1].terminatedOK():
-        print "{0:<20s} : {1:>30.10f} {2:>30.10f}".format("HF total energy", hfe[0], hfe[1])
-        print "{0:<20s} : {1:>30.10f} {2:>30.10f}".format("CI total energy", cie[0], cie[1])
-        coreenergy = cie[0] - cie[1]
-        print "-"*84
-        print "{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy)
-        print "{0:<20s} : {1:>30.10f}".format("Objective", coreenergy)
-        print "="*84
+    if stats[0] and stats[1]:
+        if job["verbose"]:
+            print "Current exponents"
+            bas.print_functions(bs2opt)
+            print "x0 : ", ", ".join([str(x) for x in x0])
+            print "{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK", str(stats[0]), str(stats[1]))
+            print "{0:<20s} : {1:>30.10f} {2:>30.10f}".format("CI total energy", citote[0], citote[1])
+            print "-"*84
+        coreenergy = citote[0] - citote[1]
+        if job["verbose"]:
+            print "{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy)
+            print "{0:<20s} : {1:>30.10f}".format("Objective", coreenergy)
+            print "="*84
         return coreenergy
     else:
-        if args[2]["name"] == "gamess" and not isinstance(gpsc.get_linear_deps(), type(None)):
-            return gpsc.get_hf_total_energy() + args[4]["lambda"]*gp.get_linear_deps()
-        else:
-            sys.exit("something went wrong, check output {0:s}".format(output))
+        print "{0:<20s} : {1:>30s}".format("Job terminated with ERRORS, check output.")
+        sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outs)))

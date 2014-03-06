@@ -130,25 +130,30 @@ def group(lst, n):
 def get_x0(basisopt):
     '''Collect all the parameters in a consecutive list of elements.'''
 
+    #x0 = list(chain.from_iterable([item for i, item in  enumerate(basisopt["params"]) if basisopt["nfpshell"][i] != 0]))
     x0 = list(chain.from_iterable(basisopt["params"]))
     return x0
 
 def get_basis(x0, bsoptdict):
 
-    icount = 0
+    icount  = 0
+    skipped = 0
     basis = []
     for lqn, nf in enumerate(bsoptdict["nfpshell"]):
+        if nf == 0:
+            skipped += 1
+            continue
         if bsoptdict["typ"].lower() in ["direxp", "direct", "exps", "exponents"]:
             exps = x0[icount:icount+nf]
             icount += nf
         elif bsoptdict["typ"].lower() in ["even", "eventemp", "eventempered"]:
             groups = group(x0, 2)
-            exps = eventemp(nf, groups[lqn])
+            exps = eventemp(nf, groups[lqn-skipped])
         elif bsoptdict["typ"].lower() in ["well", "welltemp", "welltempered"]:
             groups = group(x0, 4)
-            exps = welltemp(nf, groups[lqn])
+            exps = welltemp(nf, groups[lqn-skipped])
         elif bsoptdict["typ"].lower() in ["legendre"]:
-            npar = len(bsoptdict["params"][lqn])
+            npar = len(bsoptdict["params"][lqn-skipped])
             pars = x0[icount:icount+npar]
             exps = legendre(nf, pars)
 
