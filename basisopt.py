@@ -267,7 +267,7 @@ def run_total_energy(x0, *args):
             bas.print_functions(bs2opt)
             print "x0 : ", ", ".join([str(x) for x in x0])
             print "\n{0:<20s} : {1:>30s}".format("Output", code.outfile)
-            print "{0:<20s} : {1:>30.10f}".format("Obejctive", objective + opt["lambda"]*penalty)
+            print "{0:<20s} : {1:>30.10f}".format("Objective", objective + opt["lambda"]*penalty)
             print "="*80
         return objective +opt["lambda"]*penalty
     else:
