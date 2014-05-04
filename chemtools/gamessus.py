@@ -4,8 +4,10 @@ Module for handling Gamess-US related jobs,:
     Gamess       : running and submitting jobs, writing inputs,
     GamessParser : parsing the log file,
     GamessReader : reading gamess bianry files.
+    GamessDatParser : parsing data from the gamess PUNCH (*.dat) file
 '''
 
+from code import Code
 from basisset import Basis
 from molecule import Molecule
 from subprocess import Popen
@@ -21,7 +23,7 @@ try:
 except:
     pass
 
-class Gamess(object):
+class Gamess(Code):
 
     '''Container object for Gamess-us jobs.'''
 
@@ -82,7 +84,7 @@ class Gamess(object):
         inp.write(contents)
         inp.close()
 
-    def write_startno_input(self):
+    def write_startno_input(self, oldinp):
 
         '''Write gamess input file with starting orbitals from a previous run,
             stored in the self.datname file.'''
@@ -91,24 +93,27 @@ class Gamess(object):
         # dopisac opcjonalny parametr norb zeby moc pisac tylko podzbior
         # orbitali zamiast wszystkich
 
-        gp = GamessParser(self.logfile)
-
-        with open(self.inputfile, 'r') as inp:
+        with open(oldinp, 'r') as inp:
             inpcontent = inp.read()
-
         inpcontent = re.sub(r'scftyp=[A-Za-z]*', r'scftyp=none', inpcontent, flags=re.I)
 
-        startnofile = self.filebase + "_NO.inp"
-        newinp = open(startnofile, "w")
+        base    = os.path.splitext(oldinp)[0]
+        oldlog  = base + ".log"
+        datfile = base + ".dat"
+        newinpfile = base + "_NO.inp"
+
+        glp = GamessLogParser(oldlog)
+
+        newinp = open(newinpfile, "w")
 
         newinp.write(inpcontent)
-        newinp.write(" $GUESS guess=moread norb={:<d} $END\n\n".format(gp.get_number_of_mos()))
+        newinp.write(" $GUESS guess=moread norb={:<d} $END\n\n".format(glp.get_number_of_mos()))
         newinp.write(" $VEC\n")
-        gr = GamessReader(self.logfile)
-        newinp.write(gr.get_nos())
+        gdp = GamessDatParser(datfile)
+        newinp.write(gdp.get_nos())
         newinp.write(" $END\n")
         newinp.close()
-        return startnofile
+        return newinpfile
 
     def __repr__(self):
         return "Gamess-US job object:\n\tMolecule  : {0:s}\n\tBasis     : {1:s}\n\tInput file: {2:s}".format(self.molecule.name, self.basis.name, self.inputfile)

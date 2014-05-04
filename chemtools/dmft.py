@@ -1,17 +1,20 @@
 
+from code import Code
 from gamessus import GamessParser
 from subprocess import Popen
 
 import os
 
-class Dmft(object):
+class Dmft(Code):
 
     def __init__(self, logfile):
 
-        '''Initialize the dmft class object, logfile is the gamess log file
-        name.'''
+        '''
+        Initialize the dmft class object, logfile is the gamess log file name.
+        '''
 
-        self.logfile    = logfile
+        super(Dmft, self).__init__(**kwargs)
+        self.logfile = logfile
 
     def write_input(self, functional=None, a1=None, b1=None, a2=None, b2=None, printlevel=None, analyze=None):
 
@@ -75,11 +78,11 @@ class Dmft(object):
         return inputdata
 
 
-    def run(self, executable):
+    def run(self):
 
         '''Run a single dmft job.'''
 
         out = open(self.outputfile, 'w')
-        process = Popen([executable, self.inputfile], stdout=out, stderr=out)
+        process = Popen([self.execpath, self.inputfile], stdout=out, stderr=out)
         process.wait()
         out.close()

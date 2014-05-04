@@ -1,0 +1,5 @@
+1. make one interface for runnning different codes
+2. integrate multiprocessing module in order to able able to run multiple jobs at once
+2.1 apply multiprocessing for calculating core energy
+3. explain the input dictionaries in the documentation
+4. basis set conversion tool, convert basis set from one format to another
