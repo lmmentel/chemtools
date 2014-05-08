@@ -84,7 +84,7 @@ class Gamess(Code):
         inp.write(contents)
         inp.close()
 
-    def write_startno_input(self, oldinp):
+    def write_startno_input(self, inp=None):
 
         '''Write gamess input file with starting orbitals from a previous run,
             stored in the self.datname file.'''
@@ -93,23 +93,23 @@ class Gamess(Code):
         # dopisac opcjonalny parametr norb zeby moc pisac tylko podzbior
         # orbitali zamiast wszystkich
 
-        with open(oldinp, 'r') as inp:
-            inpcontent = inp.read()
+        with open(inp, 'r') as finp:
+            inpcontent = finp.read()
         inpcontent = re.sub(r'scftyp=[A-Za-z]*', r'scftyp=none', inpcontent, flags=re.I)
 
-        base    = os.path.splitext(oldinp)[0]
-        oldlog  = base + ".log"
-        datfile = base + ".dat"
+        base = os.path.splitext(inp)[0]
+        log  = base + ".log"
+        dat  = base + ".dat"
         newinpfile = base + "_NO.inp"
 
-        glp = GamessLogParser(oldlog)
+        glp = GamessLogParser(log)
 
         newinp = open(newinpfile, "w")
 
         newinp.write(inpcontent)
         newinp.write(" $GUESS guess=moread norb={:<d} $END\n\n".format(glp.get_number_of_mos()))
         newinp.write(" $VEC\n")
-        gdp = GamessDatParser(datfile)
+        gdp = GamessDatParser(dat)
         newinp.write(gdp.get_nos())
         newinp.write(" $END\n")
         newinp.close()
@@ -118,22 +118,72 @@ class Gamess(Code):
     def __repr__(self):
         return "Gamess-US job object:\n\tMolecule  : {0:s}\n\tBasis     : {1:s}\n\tInput file: {2:s}".format(self.molecule.name, self.basis.name, self.inputfile)
 
+class GamessInpParser(object):
+    '''
+    A class for larsing and writing gamess-us input files.
+    '''
+
+    def __init__(self, inp):
+        '''
+        Initialize the class.
+        '''
+        self.inpfile = inp
+
+    def parse_gamess_input(contents):
+        '''
+        Parse gamess input file into a dictionary of dictionaries, where the
+        highest level entries are gamess namelist fileds and that contain
+        dictionaries of options. All key are converted to lowercase. For example if
+        the following input was parsed:
+
+        " $CONTRL scftyp=rhf units=bohr
+            runtyp=energy   cityp=ormas $END
+        $SYSTEM TIMLIM=1000 mwords=500 $END
+        ..."
+
+        the follwoing dictionary will be produced:
+
+        {"$contrl" : {"scftyp" : "rhf",
+                    "units"  : "bohr",
+                    "runtyp" : "energy",
+                    "cityp"  : "ormas"},
+        "$system" : {"timlim" : "1000",
+                    "mwords" : "500"},
+        ...
+        }
+        '''
+
+        dontparse = ["$data", "$vec", ]
+
+        pat = re.compile(r'(?P<group>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.S)
+
+        dinput = {}
+
+        iterator = pat.finditer(contents)
+
+        for match in iterator:
+            if match.group("group").lower() not in dontparse:
+                dinput[match.group("group").lower()] = {}
+                fields = [s.strip() for s in match.group("entries").split("\n")]
+                for field in fields:
+                    if not field.startswith("!"):
+                        for line in field.split():
+                            key, value = line.split("=")
+                            dinput[match.group("group").lower()][key.lower()] = value
+            elif match.group("group").lower() == "$data":
+                bs = parse_basis(match.group("entries").split("\n"))
+        if "$data" in [match.group("group").lower() for match in iterator]:
+            return dinput, bs
+        else:
+            return dinput
 
 class GamessLogParser(object):
 
-    '''Object holding tools for parsing gmaess-us log file.'''
+    '''Class holding tools for parsing gamess-us log file.'''
 
     def __init__(self, log):
-        self.logfile    = log
-        i = self.logfile.index("log")
-        self.filebase   = self.logfile[:i-1]
-        self.inputfile  = self.filebase + ".inp"
+        self.logfile = log
         self.logexists()
-        self.datfile    = self.filebase + ".dat"
-        self.twoeaofile = self.filebase + ".F08"
-        self.twoemofile = self.filebase + ".F09"
-        self.dictionary = self.filebase + ".F10"
-        self.rdm2file   = self.filebase + ".F15"
 
     def logexists(self):
 
@@ -414,7 +464,7 @@ class GamessReader(object):
         self.twoemofile = self.filebase + ".F09"
         self.dictionary = self.filebase + ".F10"
         self.rdm2file   = self.filebase + ".F15"
-        self.gp         = GamessParser(log=self.logfile)
+        self.gp         = GamessLogParser(log=self.logfile)
 
     def get_onee_size(self, aos=True):
         '''
@@ -617,7 +667,7 @@ class GamessDatParser(object):
         with open(self.datfile, 'r') as dat:
             data = dat.read()
 
-        no_patt = re.compile(r'NO.*\$VEC(.*?)\$END', flags=re.DOTALL)
+        no_patt = re.compile(r'NO.*\$VEC\s+\n(.*?)\$END', flags=re.DOTALL)
         match = no_patt.search(data)
         if match:
             return match.group(1)
@@ -631,6 +681,30 @@ class GamessDatParser(object):
         '''
         pass
 
+    def parse_orbitals(orbstr, naos, nmos):
+        '''
+        parse gamess orbitals from a string obtained from dat file
+        '''
+
+        orblines = orbstr.lstrip("\n").split("\n")
+
+        if naos % 5 == 0:
+            nlines = naos/5
+        else:
+            nlines = naos/5+1
+        ij = 0
+        temp = []
+        orbs =[]
+        for i in range(0, nmos):
+            coeffs = []
+            for j in range(0, nlines):
+                temp = []
+                ij = ij + 1
+                for k in range(0,5):
+                    temp.append(orblines[ij][5+15*k:5+15*k+15])
+                coeffs.extend(float(item) for item in temp if len(item) == 15 )
+            orbs.extend([coeffs])
+        return orbs
 
 def take(seq, num):
     '''
