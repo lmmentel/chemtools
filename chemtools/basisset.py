@@ -9,11 +9,8 @@ from itertools import groupby, chain
 
 _shells = ["S", "P", "D", "F", "G", "H", "I"]
 
-class Basis(object):
+class BasisRepo(object):
     '''A class for handling basis sets and parising basis sets from files.'''
-
-
-    _angular = {"S" : 0, "P" : 1, "D" : 2, "F" : 3, "G" :  4, "H" : 5, "I" : 6}
 
     def __init__(self, path, name):
         '''To initialize just pass the path under which there is the basis set repository.'''

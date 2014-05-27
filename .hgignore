@@ -5,6 +5,7 @@ example/**
 doc/_build/**
 dist/**
 build/**
+tests/**
 *.x
 *.a
 *.so

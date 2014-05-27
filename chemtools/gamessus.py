@@ -1,10 +1,11 @@
 
 '''
 Module for handling Gamess-US related jobs,:
-    Gamess       : running and submitting jobs, writing inputs,
-    GamessParser : parsing the log file,
-    GamessReader : reading gamess bianry files.
+    Gamess          : running and submitting jobs, writing inputs,
+    GamessInpParser : parsing the input file,
+    GamessLogParser : parsing the output file,
     GamessDatParser : parsing data from the gamess PUNCH (*.dat) file
+    GamessReader    : reading gamess bianry files.
 '''
 
 from code import Code
@@ -30,37 +31,47 @@ class Gamess(Code):
     def __init__(self, **kwargs):
         super(Gamess, self).__init__(**kwargs)
 
-        if "version" in kwargs.items():
-            self.version = kwargs["version"]
+        _versions = []
 
-    def run_single(self, inpfile, remove_dat=True):
+        for item in os.listdir(self.execpath):
+            match = re.match(r'[a-z]+\.([0-9]+)\.x', item)
+            if match:
+                _versions.append(match.group(1))
 
-        '''Run a single gamess job interactively - without submitting to the
-        queue.'''
+        if "version" in kwargs.keys():
+            if kwargs["version"] in _versions:
+                self.version = kwargs["version"]
+            else:
+                sys.exit('gamess version {0:s} not found in {1:s}'.format(kwargs["version"], self.execpath))
+        else:
+            self.version = _versions[0]
 
-        datfile = os.path.splitext(inpfile)[0] + ".dat"
+        if os.path.isfile(os.path.join(self.execpath, 'ddikick.x')):
+            self.ddikick = os.path.join(self.execpath, 'ddikick.x')
+
+        if os.path.isfile(os.path.join(self.execpath, 'rungms')):
+            self.rungms = os.path.join(self.execpath, 'rungms')
+        else:
+            sys.exit('Could not find "rungms" under {0:s}'.format(self.execpath))
+
+    def run_single(self, inp, nproc=1, remove_dat=True):
+        '''
+        Run a single gamess job interactively - without submitting to the
+        queue.
+        '''
+
+        basfile = os.path.splitext(inp)[0]
+        datfile = basfile + ".dat"
+        logfile = basfile + ".log"
         if remove_dat:
             if os.path.exists(os.path.join(self.scratch, datfile)):
                 os.remove(os.path.join(self.scratch, datfile))
 
-        out = open(self.logfile, 'w')
-        process = Popen([executable, self.inputfile, version, nproc], stdout=out, stderr=out)
+        out = open(logfile, 'w')
+        process = Popen([self.rungms, inp, self.version, str(nproc)], stdout=out, stderr=out)
         process.wait()
         out.close()
 
-    def run_startno(self, executable, version="00", nproc="1"):
-
-        '''Run gamess calculation starting from the orbitals in the dat file.'''
-
-        # should add checking for the existance of the .dat file before running
-
-        startnoinput = self.write_startno_input()
-        startnooutput = os.path.splitext(startnoinput)[0] + ".log"
-
-        out = open(startnooutput, 'w')
-        process = Popen([executable, startnoinput, version, nproc], stdout=out, stderr=out)
-        process.wait()
-        out.close()
 
     def submit(self):
 
@@ -68,73 +79,27 @@ class Gamess(Code):
 
         pass
 
-    def write_input(self, spherical=False, core=0):
-
-        '''Write gamess input file based on information on molecule and basis set.'''
-
-        with open(os.path.join(self.workdir,self.template), 'r') as tmp:
-            contents = tmp.read()
-        contents = re.sub(r'icharg=(\d+)?', r'icharg={0:s}'.format(str(self.molecule.charge)), contents, flags=re.I)
-# write also ispher variable
-        contents = re.sub(r'nact=(\d+)?', r'nact={0:<d}'.format(self.norbitals(spherical)-core), contents, flags=re.I)
-        contents = re.sub(r'nels=(\d+)?', r'nels={0:<d}'.format(self.molecule.nele()-core*2), contents, flags=re.I)
-        contents = re.sub(r'ncore=(\d+)?', r'ncore={0:<d}'.format(core), contents, flags=re.I)
-        contents = re.sub("atomsandbasis", self.get_atoms_and_basis(), contents, flags=re.I)
-        inp = open(self.inputfile, 'w')
-        inp.write(contents)
-        inp.close()
-
-    def write_startno_input(self, inp=None):
-
-        '''Write gamess input file with starting orbitals from a previous run,
-            stored in the self.datname file.'''
-
-        #  TODO
-        # dopisac opcjonalny parametr norb zeby moc pisac tylko podzbior
-        # orbitali zamiast wszystkich
-
-        with open(inp, 'r') as finp:
-            inpcontent = finp.read()
-        inpcontent = re.sub(r'scftyp=[A-Za-z]*', r'scftyp=none', inpcontent, flags=re.I)
-
-        base = os.path.splitext(inp)[0]
-        log  = base + ".log"
-        dat  = base + ".dat"
-        newinpfile = base + "_NO.inp"
-
-        glp = GamessLogParser(log)
-
-        newinp = open(newinpfile, "w")
-
-        newinp.write(inpcontent)
-        newinp.write(" $GUESS guess=moread norb={:<d} $END\n\n".format(glp.get_number_of_mos()))
-        newinp.write(" $VEC\n")
-        gdp = GamessDatParser(dat)
-        newinp.write(gdp.get_nos())
-        newinp.write(" $END\n")
-        newinp.close()
-        return newinpfile
-
-    def __repr__(self):
-        return "Gamess-US job object:\n\tMolecule  : {0:s}\n\tBasis     : {1:s}\n\tInput file: {2:s}".format(self.molecule.name, self.basis.name, self.inputfile)
 
 class GamessInpParser(object):
     '''
-    A class for larsing and writing gamess-us input files.
+    A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self, inp):
+    def __init__(self):
         '''
         Initialize the class.
         '''
-        self.inpfile = inp
 
-    def parse_gamess_input(contents):
+        self.end = " $end"
+        # not nested group of input (not parsed into a dict of dicts)
+        self._notnested = ["$data", "$vec"]
+
+    def parse(self, inp):
         '''
         Parse gamess input file into a dictionary of dictionaries, where the
         highest level entries are gamess namelist fileds and that contain
-        dictionaries of options. All key are converted to lowercase. For example if
-        the following input was parsed:
+        dictionaries of options. All key are converted to lowercase. For
+        example if the following input was parsed:
 
         " $CONTRL scftyp=rhf units=bohr
             runtyp=energy   cityp=ormas $END
@@ -153,33 +118,185 @@ class GamessInpParser(object):
         }
         '''
 
-        dontparse = ["$data", "$vec", ]
+        with open(inp, 'r') as finp:
+            contents = finp.read()
 
-        pat = re.compile(r'(?P<group>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.S)
+        pat = re.compile(r'(?P<block>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.S)
 
         dinput = {}
 
         iterator = pat.finditer(contents)
-
         for match in iterator:
-            if match.group("group").lower() not in dontparse:
-                dinput[match.group("group").lower()] = {}
+            if match.group("block").lower() not in self._notnested:
+                dinput[match.group("block").lower()] = {}
                 fields = [s.strip() for s in match.group("entries").split("\n")]
                 for field in fields:
                     if not field.startswith("!"):
                         for line in field.split():
                             key, value = line.split("=")
-                            dinput[match.group("group").lower()][key.lower()] = value
-            elif match.group("group").lower() == "$data":
-                bs = parse_basis(match.group("entries").split("\n"))
-        if "$data" in [match.group("group").lower() for match in iterator]:
-            return dinput, bs
+                            dinput[match.group("block").lower()][key.lower()] = value
+            elif match.group("block").lower() == "$data":
+                dinput["$data"] = match.group("entries")
+        return dinput
+
+    def parse_data(self, inpdict):
+        '''
+        Parse $DATA block specified in the gamess input file. The parser
+        assumes that in $DATA input the atom positions are specified using
+        cartesian coordiantes and returns a list of dictionaries with parsed
+        information about each specified atom.
+
+        Input
+        =====
+            inpdict (dict)
+                dictionary with parsed input contents
+
+        Output
+        ======
+            atoms (list of dicts)
+                list of dictionaries holding parsed data about each atom
+                specified in the $data block
+            title (str)
+                title as specified in the $data block
+            group (str)
+                point group symmetry as specified in the $data group
+        '''
+
+        block = re.compile(r'(?P<label>[a-zA-Z]{1,2}[0-9]{0,2})\s*'
+                  +r'(?P<atomic>\d+\.\d+)'
+                  +'(?P<xyz>(\s+\-?\d+\.\d+){3})\s*'
+                  +'(?P<basis>.*?)\n\s*\n', flags=re.S)
+
+        title = inpdict['$data'].split('\n')[0]
+        group = inpdict['$data'].split('\n')[1]
+
+        atoms = []
+        itfound = block.finditer(inpdict['$data'])
+        for m in itfound:
+            atoms.append({'label'  : m.group('label'),
+             'atomic' : m.group('atomic'),
+             'xyz'    : m.group('xyz'),
+             'basis'  : m.group('basis'),})
+        return atoms, title, group
+
+
+    def write(self, inpfile, inpdict):
+        '''
+        Write a gamess input file under the name <inpfile> based on the
+        information fstored in the dictionary <inpdict>.
+
+        Input:
+            inpfile : name of the file to be written,
+            inpdict : dictionary with the gamess input specification.
+        '''
+
+        if not isinstance(inpdict, dict):
+            raise TypeError("expected a dictionary but got {0:s}".format(type(inpdict)))
+        inp = open(inpfile, 'w')
+
+        # write nested namelist groups
+        for key, value in sorted(inpdict.items()):
+            if key not in  self._notnested:
+                inp.write(" {0:<s}\n".format(key))
+                for kkey, vvalue in sorted(value.items()):
+                    inp.write("    {k:s}={v:s}\n".format(k=kkey, v=str(vvalue)))
+                inp.write(self.end + '\n')
+        #write $data card
+        inp.write(" $data\n")
+        inp.write(inpdict['$data'])
+        inp.write(self.end + '\n')
+        inp.close()
+
+    def set_gamess_input(dinp, mol, bs, code, core):
+
+        if "$contrl" in dinp.keys():
+            dinp["$contrl"]["icharg"] = mol.charge
+            dinp["$contrl"]["mult"]   = mol.multiplicity
+            if mol.multiplicity == 1:
+                dinp["$contrl"]["scftyp"] = "rhf"
+            elif mol.multiplicity > 1:
+                dinp["$contrl"]["scftyp"] = "rohf"
+            if code["method"].lower() == "hf":
+                dinp["$contrl"] = {key:value for key, value in dinp["$contrl"].items() if key != "cityp"}
         else:
-            return dinput
+            sys.exit("no $contrl group in the gamess input string")
+        if "$cidet" in dinp.keys():
+            dinp["$cidet"]["nact"]  = bas.get_no_functions(bs) - core
+            dinp["$cidet"]["ncore"] = core
+            dinp["$cidet"]["nels"]  = mol.electrons - core*2
+        if "$ormas" not in dinp.keys():
+            dinp["$ormas"] = {}
+        if code["method"] == "cisd":
+            # sum of singly and doubly occupied  orbitals
+            noccupied = mol.multiplicity - 1 + (mol.electrons-(mol.multiplicity - 1))/2
+            dinp["$ormas"]["nspace"] = 2
+            dinp["$ormas"]["mstart(1)"] = ','.join([str(core+1),str(noccupied+1)])
+            dinp["$ormas"]["mine(1)"] = ",".join([str((mol.electrons-core*2)-2), str(0)])
+            dinp["$ormas"]["maxe(1)"] = ",".join([str(mol.electrons-core*2), str(2)])
+        elif code["method"] == "mrcisd":
+            dinp["$ormas"]["nspace"] = 3
+            dinp["$ormas"]["mstart(1)"] = ','.join([str(core+1),str(mol.electrons-core+1)])
+            dinp["$ormas"]["mine(1)"] = ",".join([str(mol.electrons-2), str(0)])
+            dinp["$ormas"]["maxe(1)"] = ",".join([str(mol.electrons), str(2)])
+
+        return dinp
+
+    def write_with_vec(self, inpfile, inpdict, datfile):
+        '''
+        Write new gamess input based on exisiting input and natural orbitals
+        from $VEC section in PUNCH file.
+
+
+        Write a new input file for gamess based on previously prased and/or
+        constructed dictionary containing input specification and append
+        orbitals from a previous run as starting orbitals. The starting
+        orbitals should be stored in an ASCII PUNCH file whose name is given
+        under "datfile" variable.
+
+        Input
+        =====
+            inpfile (string)
+                name of the input file to be created,
+            inpdict (dictionary)
+                dict containing the inpu specification, either parsed from
+                using "GamessInpParser.parse" or constructed by hand,
+            datfile (string)
+                name of the PUNCH file that stores the orbitals genereated in a
+                previous run,
+        '''
+
+        gdp = GamessDatParser(datfile)
+        vecstr = gdp.get_nos()
+
+        inpdict['$contrl']['scftyp'] = 'none'
+        inpdict['$guess'] = {}
+        inpdict['$guess']['guess'] = 'moread'
+        inpdict['$guess']['norb'] = str(gdp.get_naos_nmos(vecstr)[1])
+
+        self.write(inpfile, inpdict)
+
+        inp = open(inpfile, "a")
+        inp.write("\n $vec\n")
+        inp.write(gdp.get_nos())
+        inp.write(" $end\n")
+        inp.close()
+
+    def print_inpdict(self, inpdict):
+        '''
+        Neat print of the dictionary with parsed input
+        '''
+
+        for key, value in sorted(inpdict.items()):
+            if isinstance(value, dict):
+                print key
+                for kkey, vvalue in sorted(value.items()):
+                    print "\t{0:<10s} : {1:}".format(kkey, vvalue)
+            else:
+                print key, '\n', value
 
 class GamessLogParser(object):
 
-    '''Class holding tools for parsing gamess-us log file.'''
+    '''methods for parsing gamess-us log file'''
 
     def __init__(self, log):
         self.logfile = log
@@ -195,29 +312,46 @@ class GamessLogParser(object):
             sys.exit("Gamess log file: {0:s} doesn't exist in {1:s}".format(
                      self.logfile, os.getcwd()))
 
+    def parse(self, regex):
+        '''
+        Parsing function based on querries in the form of regular expressions that
+        return the match object.
+        '''
+
+        cpatt = re.compile(regex)
+        with open(self.logfile, 'r') as log:
+            content = log.read()
+        return cpatt.search(content)
+
     def terminatedOK(self):
 
         '''Check if a job teminated normally.'''
 
-        patt = r'TERMINATED NORMALLY'
-        compatt = re.compile(patt)
-        with open(self.logfile, 'r') as log:
-            lines = log.read()
-        match = compatt.search(lines)
+        regex = r'TERMINATED NORMALLY'
+        match = self.parse(regex)
         if match:
             return True
         else:
             return False
 
+    def get_version(self):
+        '''
+        Get the version of the GAMESS(US) package.
+        '''
+
+        regex = r'.*\s+GAMESS VERSION =\s*(.*?)\s*\*'
+        match = self.parse(regex)
+        if match:
+            return match.group(1)
+        else:
+            return None
+
     def get_charge(self):
 
         '''Get total charge.'''
 
-        patt = r'CHARGE OF MOLECULE\s+=\s*(?P<charge>\d+)'
-        compatt = re.compile(patt)
-        with open(self.logfile, 'r') as log:
-            lines = log.read()
-        match = compatt.search(lines)
+        regex = r'CHARGE OF MOLECULE\s+=\s*(?P<charge>\d+)'
+        match = self.parse(regex)
         if match:
             return int(match.group("charge"))
 
@@ -225,11 +359,8 @@ class GamessLogParser(object):
 
         '''Get number of electrons.'''
 
-        patt = r'NUMBER OF ELECTRONS\s+=\s*(?P<nele>\d+)'
-        compatt = re.compile(patt)
-        with open(self.logfile, 'r') as f:
-            lines = f.read()
-        match = compatt.search(lines)
+        regex = r'NUMBER OF ELECTRONS\s+=\s*(?P<nele>\d+)'
+        match = self.parse(regex)
         if match:
             return int(match.group("nele"))
 
@@ -246,12 +377,8 @@ class GamessLogParser(object):
 
         '''Get total number of atoms from gamess log file.'''
 
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-
-        nat_re = r'TOTAL NUMBER OF ATOMS\s+=\s*(?P<nat>\d+)'
-        compre   = re.compile(nat_re)
-        match    = compre.search(data)
+        regex = r'TOTAL NUMBER OF ATOMS\s+=\s*(?P<nat>\d+)'
+        match = self.parse(regex)
         if match:
             return int(match.group("nat"))
 
@@ -260,11 +387,8 @@ class GamessLogParser(object):
         '''Get the number of primitive cartesian gaussian basis functions from
         Gamess log file'''
 
-        patt    = r'NUMBER OF CARTESIAN GAUSSIAN BASIS FUNCTIONS =\s*(?P<nao>\d+)'
-        compatt = re.compile(patt)
-        with open(self.logfile, 'r') as f:
-            lines = f.read()
-        match = compatt.search(lines)
+        regex = r'NUMBER OF CARTESIAN GAUSSIAN BASIS FUNCTIONS =\s*(?P<nao>\d+)'
+        match = self.parse(regex)
         if match:
             return int(match.group("nao"))
 
@@ -298,12 +422,8 @@ class GamessLogParser(object):
 
         '''Get number of linearly dependent combinations dropped.'''
 
-        with open(self.logfile, 'r') as log:
-            lines = log.read()
-
-        linre = re.compile(r'NUMBER OF LINEARLY DEPENDENT MOS DROPPED=\s*(\d+)')
-
-        match = linre.search(lines)
+        regex = r'NUMBER OF LINEARLY DEPENDENT MOS DROPPED=\s*(\d+)'
+        match = self.parse(regex)
         if match:
             return match.group(1)
 
@@ -311,12 +431,8 @@ class GamessLogParser(object):
 
         '''Get the information on SCFTYP used in the gamess job.'''
 
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-
-        scftyp_re = r'.*SCFTYP=(?P<scftyp>[A-Z]+)'
-        compre   = re.compile(scftyp_re)
-        match    = compre.search(data)
+        regex = r'.*SCFTYP=(?P<scftyp>[A-Z]+)'
+        match = self.parse(regex)
         if match:
             return match.group("scftyp")
 
@@ -324,12 +440,8 @@ class GamessLogParser(object):
 
         '''Get the information on CCTYP used in the gamess job.'''
 
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-
-        cctyp_re = r'.*CCTYP =(?P<cctyp>[A-Z]+)'
-        compre   = re.compile(cctyp_re)
-        match    = compre.search(data)
+        regex = r'.*CCTYP =(?P<cctyp>[A-Z]+)'
+        match = self.parse(regex)
         if match:
             return match.group("cctyp")
 
@@ -337,12 +449,8 @@ class GamessLogParser(object):
 
         '''Get the information on CITYP used in the gamess job.'''
 
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-
-        cityp_re = r'.*CITYP =(?P<cityp>[A-Z]+)'
-        compre   = re.compile(cityp_re)
-        match    = compre.search(data)
+        regex = r'.*CITYP =(?P<cityp>[A-Z]+)'
+        match = self.parse(regex)
         if match:
             return match.group("cityp")
 
@@ -353,8 +461,8 @@ class GamessLogParser(object):
         with open(self.logfile, 'r') as log:
             data = log.read()
 
-        hfre = re.compile(r'FINAL R[O]*HF ENERGY IS\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = hfre.search(data)
+        regex = r'FINAL R[O]*HF ENERGY IS\s+(?P<energy>\-?\d+\.\d+)'
+        match = self.parse(regex)
         if match:
             return float(match.group("energy"))
 
@@ -643,7 +751,7 @@ class GamessDatParser(object):
 
     def get_occupations(self):
         '''
-        Parse the occupation numbers from the ASCII $JOB.dat gamess-us punch file.
+        Parse the occupation numbers from the ascii PUNCH file (*.dat).
         '''
 
         with open(self.datfile, 'r') as dat:
@@ -661,7 +769,7 @@ class GamessDatParser(object):
 
     def get_nos(self):
         '''
-        Parse the natural orbitals from the ASCII $JOB.dat gamess-us punch file.
+        Parse the natural orbitals from the ascii PUNCH file (*.dat).
         '''
 
         with open(self.datfile, 'r') as dat:
@@ -679,32 +787,83 @@ class GamessDatParser(object):
         Parse the orbitals read from the $JOB.dat file in the ASCII format into
         an 2 dimensional array.
         '''
-        pass
 
-    def parse_orbitals(orbstr, naos, nmos):
+        return self.parse_orbitals(self.get_nos())
+
+    def parse_orbitals(self, vecstr, clength=15):
         '''
-        parse gamess orbitals from a string obtained from dat file
+        Parse dat orbitals into numpy array of the shape (naos, nmos)
+
+        Parse orbitals given a string obtained from the $VEC section of the
+        PUNCH file (*.dat) into a numpy array of the shape (naos, nmos) where
+        "naos" and "nmos" are the number of atomic orbitals and number of
+        molecular orbitals respectively. The shape is deduced from the last
+        line of the string.
+
+        Input
+        =====
+            vecstr (str)
+                string with the contents fo the gamess $VEC block
+            clength (int)
+                total length of the coefficient string as stored by the gamess
+                format, by default gamess stores orbital coefficients in
+                'e15.8' fortran format so the total length is 15.
+
+        Output
+        ======
+            orbs (numpy.array)
+                2D numpy array of shape (naos, nmos) containing ortbials
+                expansion coefficients
         '''
 
-        orblines = orbstr.lstrip("\n").split("\n")
+        naos, nmosi, nlines = self.get_naos_nmos(vecstr)
 
-        if naos % 5 == 0:
-            nlines = naos/5
-        else:
-            nlines = naos/5+1
-        ij = 0
-        temp = []
-        orbs =[]
+        orblines = orbstr.split('\n')[:-1]
+
+        orbs = np.zeros((naos, nmos), dtype=float)
+
+        counter = -1
         for i in range(0, nmos):
-            coeffs = []
             for j in range(0, nlines):
-                temp = []
-                ij = ij + 1
-                for k in range(0,5):
-                    temp.append(orblines[ij][5+15*k:5+15*k+15])
-                coeffs.extend(float(item) for item in temp if len(item) == 15 )
-            orbs.extend([coeffs])
+                counter += 1
+                nitems = int(len(orblines[counter][5:]))/clength
+                orbs[5*j:5*(j+1), i] = [float(orblines[counter][5+15*n:5+15*(n+1)]) for n in range(nitems)]
         return orbs
+
+    def get_naos_nmos(self, vecstr, clength=15):
+        '''
+        Get the number of AO's and MO's from the $VEC string.
+
+        Input
+        =====
+            vecstr (str)
+                string with the contents fo the gamess $VEC block
+            clength (int)
+                total length of the coefficient string as stored by the gamess
+                format, by default gamess stores orbital coefficients in
+                'e15.8' fortran format so the total length is 15.
+
+        Output
+        ======
+            naos (int)
+                number of atomic orbitals
+            naos (int)
+                number of moelcular orbitals
+            nlines (int)
+                number of lines permolecular orbital
+        '''
+
+        veclines = len(vecstr.split('\n')) - 1
+
+        vecit = iter(vecstr.split('\n'))
+        nlines = 0
+        while vecit.next()[:2] == ' 1':
+            nlines += 1
+
+        naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])/clength
+        nmos = veclines/nlines
+        return naos, nmos, nlines
+
 
 def take(seq, num):
     '''

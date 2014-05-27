@@ -1,6 +1,6 @@
 
 from code import Code
-from gamessus import GamessParser
+from gamessus import GamessLogParser
 from subprocess import Popen
 
 import os
@@ -50,11 +50,12 @@ class Dmft(Code):
         inp.close()
 
     def parse_gamess(self):
+        '''
+        Parse gamess-us log file to get the neccessary data to write dmft input
+        and set defaults.
+        '''
 
-        '''Parse gamess-us log file to get the neccessary data to write dmft input
-            and set defaults.'''
-
-        gp = GamessParser(self.logfile)
+        gp = GamessLogParser(self.logfile)
 
         inputdata = {
             "a1"             : 0.0,

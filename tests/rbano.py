@@ -673,7 +673,7 @@ F   1
 
 
 
-import basisset as bs
+import chemtools.basisset as bs
 
 heano = bs.parse_gamess_basis(heanoraw)
 #print bs.write_molpro_basis(heano)

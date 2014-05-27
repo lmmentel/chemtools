@@ -2,7 +2,7 @@
 
 class Code(object):
 
-    def __init__(self, name=None, execpath=None, runopts=None, scratch=None):
+    def __init__(self, name=None, execpath=None, runopts=None, scratch=None, **kwargs):
         self.name = name
         self.execpath = execpath
         self.runopts = runopts
