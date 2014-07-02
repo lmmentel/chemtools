@@ -7,6 +7,8 @@ import os
 
 class Dmft(Code):
 
+    '''dmft class'''
+
     def __init__(self, logfile):
 
         '''

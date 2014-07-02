@@ -9,51 +9,6 @@ from itertools import groupby, chain
 
 _shells = ["S", "P", "D", "F", "G", "H", "I"]
 
-class BasisRepo(object):
-    '''A class for handling basis sets and parising basis sets from files.'''
-
-    def __init__(self, path, name):
-        '''To initialize just pass the path under which there is the basis set repository.'''
-        self.path = path
-        self.name = name
-        self.exists()
-
-    def __repr__(self):
-        return "Basis set repository is located in: {}".format(self.path)
-
-    def exists(self):
-        '''Check if the basis set repository exists.'''
-        if os.path.exists(self.path):
-            return True
-        else:
-            sys.exit("Basis set repository doesn't exist under '{}'".format(self.path))
-
-    def get_basis(self, atomic):
-        '''Retrieve the basis set from the basis set repository file. The location of
-           the repository is give when the basis object is initialized.
-
-            The repository file can be simply downloaded from EMSL and saved
-            as text file for further processing.
-        '''
-
-        with open(os.path.join(self.path, Basis._basisfiles[self.name]), 'r') as f:
-            lines  = f.readlines()
-        start = 0
-        for i, line in enumerate(lines):
-            if Basis._elements[abs(atomic)] in line:
-                start = i + 1
-                break
-
-        if start == 0:
-            sys.exit("No {0:s} basis for {1:s} found in the reposository, exiting...".format(self.name, Basis._elements[abs(atomic)]))
-
-        for i, line in enumerate(lines[start::]):
-            if line == '\n':
-                stop = i
-                break
-        basisout = lines[start:start + stop]
-        return "".join(basisout)
-
 def uncontract(bs):
     '''
     Uncontract the contracted basis set
@@ -320,18 +275,17 @@ def parse_gamess_basis(basisset):
     gamess format.
     '''
 
-    pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9])')
+    pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
 
     bs = []
-    for atomic, rawbs in basisset.items():
-        bslines = rawbs.split("\n")
+    bslines = rawbs.split("\n")
 
-        for i, line in enumerate(bslines):
-            match = pat.search(line)
-            if match:
-                bs.extend(parse_function(match.group("shell"),
-                                         atomic,
-                                         bslines[i+1:i+int(match.group("nf"))+1]))
+    for i, line in enumerate(bslines):
+        match = pat.search(line)
+        if match:
+            bs.extend(parse_function(match.group("shell"),
+                                    atomic,
+                                    bslines[i+1:i+int(match.group("nf"))+1]))
     return bs
 
 def parse_function(shell, atomic, los):

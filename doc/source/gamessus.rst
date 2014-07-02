@@ -4,12 +4,10 @@ gamessus module
 ``chemtools.gamessus`` module contains four classes for handling various tasks while
 working with **GAMESS(US)**:
 
-*chemtools.gamessus.Gamess*
-    basis class
+.. automodule:: gamessus
+   :members:
 
-*chemtools.gamessus.GamessLogParser*
-    a class holding methods for parsing the **GAMESS(US)** output file, usually
-    \*.log (**GMAESS(US)** unit 7 \"standard output\")
+
 
 *chemtools.gamessus.GamessReader*
     holding methods for reading gamess binary files:

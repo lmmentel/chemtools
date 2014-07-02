@@ -1,7 +1,6 @@
-
+import basisset as bas
 from code import Code
 from subprocess import Popen, PIPE
-import basisset as bas
 import os
 import re
 
@@ -25,7 +24,7 @@ class Molpro(Code):
         with open(inpfile, 'w') as inp:
             inp.write(inpdata)
 
-    def run_single(self, inpfile):
+    def run(self, inpfile):
         '''
         Run a single molpro job interactively - without submitting to the queue.
         '''

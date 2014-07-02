@@ -9,7 +9,6 @@ Module for handling Gamess-US related jobs,:
 '''
 
 from code import Code
-from basisset import Basis
 from molecule import Molecule
 from subprocess import Popen
 import numpy as np
@@ -54,13 +53,13 @@ class Gamess(Code):
         else:
             sys.exit('Could not find "rungms" under {0:s}'.format(self.execpath))
 
-    def run_single(self, inp, nproc=1, remove_dat=True):
+    def run(self, inpfile, nproc=1, remove_dat=True):
         '''
         Run a single gamess job interactively - without submitting to the
         queue.
         '''
 
-        basfile = os.path.splitext(inp)[0]
+        basfile = os.path.splitext(inpfile)[0]
         datfile = basfile + ".dat"
         logfile = basfile + ".log"
         if remove_dat:
@@ -68,10 +67,12 @@ class Gamess(Code):
                 os.remove(os.path.join(self.scratch, datfile))
 
         out = open(logfile, 'w')
-        process = Popen([self.rungms, inp, self.version, str(nproc)], stdout=out, stderr=out)
+        process = Popen([self.rungms, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
         process.wait()
         out.close()
 
+    def run_multiple(self, inputs):
+        pass
 
     def submit(self):
 
@@ -94,38 +95,38 @@ class GamessInpParser(object):
         # not nested group of input (not parsed into a dict of dicts)
         self._notnested = ["$data", "$vec"]
 
-    def parse(self, inp):
+    def parse_inp(inpfile):
+        '''parse the input file'''
+
+        with open(inpfile, 'r') as finp:
+            contents = finp.read()
+        return self.parse(contents)
+
+    def parse(self, inpstr):
         '''
         Parse gamess input file into a dictionary of dictionaries, where the
         highest level entries are gamess namelist fileds and that contain
         dictionaries of options. All key are converted to lowercase. For
         example if the following input was parsed:
 
-        " $CONTRL scftyp=rhf units=bohr
-            runtyp=energy   cityp=ormas $END
-        $SYSTEM TIMLIM=1000 mwords=500 $END
-        ..."
-
-        the follwoing dictionary will be produced:
-
+        >>> from gamessus import GamessInpParser as GIP
+        >>> gip = GIP()
+        >>> gip.parse(""" $CONTRL scftyp=rhf units=bohr\
+            runtyp=energy   cityp=ormas $END\
+            $SYSTEM TIMLIM=1000 mwords=500 $END""")
         {"$contrl" : {"scftyp" : "rhf",
                     "units"  : "bohr",
                     "runtyp" : "energy",
                     "cityp"  : "ormas"},
         "$system" : {"timlim" : "1000",
-                    "mwords" : "500"},
-        ...
-        }
+                    "mwords" : "500"},}
         '''
-
-        with open(inp, 'r') as finp:
-            contents = finp.read()
 
         pat = re.compile(r'(?P<block>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.S)
 
         dinput = {}
 
-        iterator = pat.finditer(contents)
+        iterator = pat.finditer(inpstr)
         for match in iterator:
             if match.group("block").lower() not in self._notnested:
                 dinput[match.group("block").lower()] = {}
@@ -146,13 +147,11 @@ class GamessInpParser(object):
         cartesian coordiantes and returns a list of dictionaries with parsed
         information about each specified atom.
 
-        Input
-        =====
+        Args:
             inpdict (dict)
                 dictionary with parsed input contents
 
-        Output
-        ======
+        Returns:
             atoms (list of dicts)
                 list of dictionaries holding parsed data about each atom
                 specified in the $data block
@@ -185,9 +184,9 @@ class GamessInpParser(object):
         Write a gamess input file under the name <inpfile> based on the
         information fstored in the dictionary <inpdict>.
 
-        Input:
-            inpfile : name of the file to be written,
-            inpdict : dictionary with the gamess input specification.
+        Args:
+            inpfile (str): name of the file to be written,
+            inpdict (dict): dictionary with the gamess input specification.
         '''
 
         if not isinstance(inpdict, dict):
@@ -253,8 +252,7 @@ class GamessInpParser(object):
         orbitals should be stored in an ASCII PUNCH file whose name is given
         under "datfile" variable.
 
-        Input
-        =====
+        Args:
             inpfile (string)
                 name of the input file to be created,
             inpdict (dictionary)
@@ -800,8 +798,7 @@ class GamessDatParser(object):
         molecular orbitals respectively. The shape is deduced from the last
         line of the string.
 
-        Input
-        =====
+        Args:
             vecstr (str)
                 string with the contents fo the gamess $VEC block
             clength (int)
@@ -809,8 +806,7 @@ class GamessDatParser(object):
                 format, by default gamess stores orbital coefficients in
                 'e15.8' fortran format so the total length is 15.
 
-        Output
-        ======
+        Returns:
             orbs (numpy.array)
                 2D numpy array of shape (naos, nmos) containing ortbials
                 expansion coefficients
@@ -834,8 +830,7 @@ class GamessDatParser(object):
         '''
         Get the number of AO's and MO's from the $VEC string.
 
-        Input
-        =====
+        Args:
             vecstr (str)
                 string with the contents fo the gamess $VEC block
             clength (int)
@@ -843,8 +838,7 @@ class GamessDatParser(object):
                 format, by default gamess stores orbital coefficients in
                 'e15.8' fortran format so the total length is 15.
 
-        Output
-        ======
+        Returns:
             naos (int)
                 number of atomic orbitals
             naos (int)

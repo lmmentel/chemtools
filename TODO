@@ -5,4 +5,13 @@
     4. basis set conversion tool, convert basis set from one format to another
 
 gamessus
-    add a parser for the CI coefficients and determinant/CSF compositions
+    * add a parser for the CI coefficients and determinant/CSF compositions
+    * change the interfaces of the parsing functions to accept strings and not
+    filenames and add a driver to call all the parsing routines
+    * add scripts for frequently used CLI functionality such as making NO input
+
+seqfile
+    * finish writing the reader for the fortran unformatted binary file
+    * write also a reader for gamess dictionary file 
+
+WRITE UNITTESTS and DOCTESTS !!!

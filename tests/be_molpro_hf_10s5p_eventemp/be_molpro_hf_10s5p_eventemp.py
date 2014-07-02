@@ -1,7 +1,7 @@
 
-from basisopt import driver
-from molecule import Atom, Molecule
-from molpro import Molpro
+from chemtools.basisopt import driver
+from chemtools.molecule import Atom, Molecule
+from chemtools.molpro import Molpro
 
 be = Molecule(name="Be", atoms=[Atom(at=4)], charge=0, multiplicity=1)
 

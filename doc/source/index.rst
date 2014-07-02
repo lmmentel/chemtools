@@ -15,33 +15,28 @@ MolPro_ program packages but other codes can be easily interfaced.
 Current Modules
 ---------------
 
-* basisopt: module for optimizing one electron basis function exponents
-* basisset: module for handling basis set in different formats and obtaining
+* :mod:`basisopt`: module for optimizing one electron basis function exponents
+* :mod:`basisset`: module for handling basis set in different formats and obtaining
   exponents from series like: even tempered, well tempered, Legendre expansion,
-* dmft: utility functions for running DMFT calculations,
-* gamessus: utility function for parsing input and log files from Gamess-US
+* :mod:`dmft`: utility functions for running DMFT calculations,
+* :mod:`gamessus`: utility function for parsing input and log files from Gamess-US
   calculations, wrappers for running the code from python
-* molpro: parser for the output file
-* molecule: general purpose module intorducing molecule class for handling
+* :mod:`molpro`: parser for the output file
+* :mod:`molecule`: general purpose module intorducing molecule class for handling
   molecules
 
-License
-=======
-ChemTools are released under GPLv3.0.
 
 .. toctree::
    :maxdepth: 2
-   :hidden:
 
+   basisopt
+   basisset
+   code
+   dmft
    gamessus
+   molecule
+   molpro
    license
-
-
-
-Help
-====
-
-If you have some questions, remarks or requests email me at `<lmmentel@gmail.com> <mailto:lmmentel@gmail.com>`_.
 
 Download and Installation
 =========================
@@ -110,16 +105,18 @@ To install chemtools using ``easy_install`` just type::
 
     $ [sudo] easy_install https://bitbucket.org/lukaszmentel/chemtools/get/tip.tar.gz
 
+Help
+====
+
+If you have some questions, remarks or requests email me at `<lmmentel@gmail.com> <mailto:lmmentel@gmail.com>`_.
 
 Similar projects
 ================
 
 `cclib <http://cclib.github.io/>`_, `pygamess <https://github.com/kzfm/pygamess>`_
 
-
-.. Indices and tables
-   ==================
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
-
+Indices and tables
+==================
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

@@ -89,8 +89,7 @@ def run_total_energy(x0, *args):
     Funtion for running a single point calculation and parsing the resulting
     energy (or property) as specified by the objective function.
 
-    Input
-    =====
+    Args:
         x0: list/numpy 1d array
             contains a list of parameters to be optimized, may be
             explicit exponents or parametrized exponents in terms
@@ -98,8 +97,7 @@ def run_total_energy(x0, *args):
         args: tuple of dictionaries
             bsopt, bsnoopt, code, job, mol, opt, needed for writing
             input and parsing output
-    Output
-    ======
+    Returns:
         parsed result of the single point calculation as speficied by the
         objective function in the "job" dictionary
 
@@ -119,7 +117,7 @@ def run_total_energy(x0, *args):
     bs2opt = bas.get_basis(x0, bsopt)
 
     code.write_input(job["inpname"], job["core"], bs=bsnoopt+bs2opt, mol=mol, inpdata=job["inpdata"])
-    code.run_single(job["inpname"])
+    code.run(job["inpname"])
     if code.isok():
         objective = code.parse(job["method"], job["objective"], job.get("regexp", None))
         if job["verbose"]:
@@ -140,8 +138,7 @@ def run_core_energy(x0, *args):
     energy (or property) as specified by the objective function, primarily
     designed to extract core energy.
 
-    Input:
-    ======
+    Args:
         x0: list/numpy 1d array
             contains a list of parameters to be optimized, may be
             explicit exponents or parametrized exponents in terms
@@ -149,8 +146,7 @@ def run_core_energy(x0, *args):
         args: tuple of dictionaries
             bsopt, bsnoopt, code, job, mol, opt, needed for writing
             input and parsing output
-    Output:
-    =======
+    Returns:
         parsed result of the single point calculation as speficied by the
         objective function in the "job" dictionary
     '''
