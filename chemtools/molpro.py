@@ -1,8 +1,8 @@
-import basisset as bas
 from code import Code
 from subprocess import Popen, PIPE
 import os
 import re
+import sys
 
 class Molpro(Code):
     '''
@@ -14,8 +14,12 @@ class Molpro(Code):
 
     def write_input(self, inpfile=None, core=None, bs=None, inpdata=None, mol=None):
 
+        if isinstance(bs, list):
+            basstr = "".join(x.write_molpro() for x in bs)
+        else:
+            basstr = bs.write_molpro()
         inpdata = re.sub('geometry', mol.molpro_rep(), inpdata, flags=re.I)
-        inpdata = re.sub('basis', bas.write_molpro_basis(bs), inpdata, flags=re.I)
+        inpdata = re.sub('basis', "basis={\n"+basstr+"\n}\n", inpdata, flags=re.I)
         if core:
             inpdata = re.sub("core","core,{0:s}\n".format(",".join([str(x) for x in core])), inpdata, flags=re.I)
         else:
@@ -89,12 +93,12 @@ class Molpro(Code):
         parser = MolproOutputParser(outfile)
         return parser.get_cisd_total_energy()
 
-    def isok(self, outfile=None):
+    def accomplished(self, outfile=None):
         '''
-        Check if molpro job finished without errors.
+        Return True if Molpro job finished without errors.
         '''
 
-        if outfile:
+        if outfile is not None:
             parser = MolproOutputParser(outfile)
         else:
             parser = MolproOutputParser(self.outfile)
@@ -167,3 +171,147 @@ class MolproOutputParser(object):
         else:
             return True
 
+def parse_basis(string):
+    '''
+    Parse basis set from a string in Molpro format.
+    '''
+
+    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL|re.IGNORECASE)
+
+    m = bas_re.search(string)
+    if m:
+        lines = m.group(1).split("\n")
+    else:
+        raise ValueError("basis string not found")
+
+    start = []
+    for i, line in enumerate(lines):
+        if line.split(",")[0].lower() in ["s","p", "d", "f", "g", "h", "i"]:
+            start.append(i)
+    if len(start) == 0:
+        return None
+
+    startstop = []
+    for i in range(len(start)-1):
+        startstop.append((start[i], start[i+1]))
+    startstop.append((start[-1], len(lines)))
+
+    bs = {}
+    for i in startstop:
+        at_symbol, shell = parse_shell(lines[i[0]], lines[i[0]+1:i[1]])
+        if at_symbol in bs.keys():
+            bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
+        else:
+            bs[at_symbol] = shell
+    return bs
+
+def parse_shell(expsline, coeffs):
+    '''
+    Parse functions of one shell in molpro format.
+    '''
+
+    fs = {}
+
+    shell  = expsline.split(",")[0]
+    at_symbol = expsline.split(",")[1].strip().capitalize()
+    exps   = [float(x) for x in expsline.rstrip(";").split(",")[2:]]
+
+    fs[shell.lower()] = {'exponents' : exps, 'contractedfs' : []}
+    for line in coeffs:
+        lsp = line.rstrip(";").split(",")
+        if lsp[0] == "c":
+            i, j = [int(x) for x in lsp[1].split(".")]
+            coeffs = [float(x) for x in lsp[2:]]
+            fs[shell.lower()]['contractedfs'].append({'indices' : list(range(i-1, j)), 'coefficients' : coeffs})
+    return at_symbol, fs
+
+def parse_ecp(ecpstring):
+
+    ecp_re = re.compile(r'\!\s*Effective core Potentials.*-{25}\s*\n(.*?)\n\s*\n', flags=re.DOTALL)
+
+    lines = ecpstring.split("\n")
+
+    start = []
+    for i, line in enumerate(lines):
+        if line.split(",")[0].lower() == 'ecp':
+            start.append(i)
+
+    if len(start) == 0:
+        return None
+
+    startstop = []
+    for i in range(len(start)-1):
+        startstop.append((start[i], start[i+1]))
+    startstop.append((start[-1], len(lines)))
+
+    ecp = {}
+    for i in startstop:
+        ecp = dict(list(ecp.items()) + list(parse_coeffs(lines[i[0] : i[1]]).items()))
+    return ecp
+
+def parse_coeffs(lines):
+
+    firstl = lines[0].replace(';', '').split(',')
+    element = firstl[1].strip().capitalize()
+    nele = firstl[2]
+    lmax = firstl[3]
+
+    liter = iter(x for x in lines[1:] if x != '')
+
+    ecp = {element : {"nele" : nele, "lmax" : lmax, "shells" : []}}
+
+    while True:
+        try:
+            temp = next(liter)
+        except StopIteration as err:
+            break
+        nlmax = int(temp.split(";")[0])
+        comment = temp.split(";")[1].replace("!", "")
+        tt = {'comment' : comment, 'parameters' : []}
+        for i in range(nlmax):
+            param = next(liter).replace(";", "").split(",")
+            tt['parameters'].append({'m' : float(param[0]), 'gamma' : float(param[1]),'c' : float(param[2])})
+        ecp[element]['shells'].append(tt)
+    return ecp
+
+def write_molpro_basis(basisset):
+    '''
+    Write basis set in molpro format
+
+    This little function is quite dirty and would benefit from  rewriting!
+    '''
+
+    newd = []
+
+    for atom, atomgroup in groupby(basisset, lambda x: x["atomic"]):
+        for shell, shellgroup in groupby(atomgroup, lambda x: x["shell"]):
+            exps    = []
+            indices = []
+            coeffs  = []
+            for function in shellgroup:
+                for zeta in function["exps"]:
+                    if zeta not in exps:
+                        exps.append(zeta)
+                istart = exps.index(function["exps"][0]) + 1
+                istop  = exps.index(function["exps"][-1]) + 1
+                indices.append((istart, istop))
+                coeffs.append(function["coeffs"])
+            newd.append({"atomic" : atom,
+                            "shell"  : shell,
+                            "exps"   : exps,
+                            "indices": indices,
+                            "coeffs" : coeffs})
+    outstring = "basis={\n"
+    for f in sorted(newd, key=itemgetter("atomic", "shell")):
+        elem = periodic.element(f["atomic"])
+        outstring = outstring + "{0}, {1}, {2}\n".format(
+                _shells[f["shell"]].lower(),
+                elem.symbol,
+                ", ".join([str(x) for x in f["exps"]]))
+        for i, item in enumerate(f["coeffs"]):
+            outstring = outstring + "{0}, {1}, {2}\n".format(
+                "c",
+                ".".join([str(x) for x in f["indices"][i]]),
+                ", ".join([str(x) for x in item]))
+    outstring = outstring + "}\n"
+    return outstring

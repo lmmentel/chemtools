@@ -8,8 +8,7 @@ Module for handling Gamess-US related jobs,:
     GamessReader    : reading gamess bianry files.
 '''
 
-from code import Code
-from molecule import Molecule
+from chemtools.code import Code
 from subprocess import Popen
 import numpy as np
 import os
@@ -80,6 +79,22 @@ class Gamess(Code):
 
         pass
 
+    def accomplished(self, outfile=None):
+        '''
+        Return True if Gamess(US) job finished without errors.
+        '''
+
+        if outfile is not None:
+            parser = GamessLogParser(outfile)
+        else:
+            parser = GamessLogParser(self.logfile)
+        return parser.accomplished()
+
+    def parse(self):
+        pass
+
+    def write_input(self):
+        pass
 
 class GamessInpParser(object):
     '''
@@ -93,36 +108,28 @@ class GamessInpParser(object):
 
         self.end = " $end"
         # not nested group of input (not parsed into a dict of dicts)
-        self._notnested = ["$data", "$vec"]
+        self._notnested = ["$data", "$vec", "$ecp"]
 
-    def parse_inp(inpfile):
-        '''parse the input file'''
+    def parse(self, inpfile):
+        '''
+        Parse gamess input file into a dictionary of dictionaries, where the
+        highest level entries are gamess namelist fileds and that contain
+        dictionaries of options. All key are converted to lowercase.
+        '''
 
         with open(inpfile, 'r') as finp:
             contents = finp.read()
-        return self.parse(contents)
+        return self.parse_from_string(contents)
 
-    def parse(self, inpstr):
+    def parse_from_string(self, inpstr):
         '''
         Parse gamess input file into a dictionary of dictionaries, where the
         highest level entries are gamess namelist fileds and that contain
         dictionaries of options. All key are converted to lowercase. For
         example if the following input was parsed:
-
-        >>> from gamessus import GamessInpParser as GIP
-        >>> gip = GIP()
-        >>> gip.parse(""" $CONTRL scftyp=rhf units=bohr\
-            runtyp=energy   cityp=ormas $END\
-            $SYSTEM TIMLIM=1000 mwords=500 $END""")
-        {"$contrl" : {"scftyp" : "rhf",
-                    "units"  : "bohr",
-                    "runtyp" : "energy",
-                    "cityp"  : "ormas"},
-        "$system" : {"timlim" : "1000",
-                    "mwords" : "500"},}
         '''
 
-        pat = re.compile(r'(?P<block>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.S)
+        pat = re.compile(r'(?P<block>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.DOTALL)
 
         dinput = {}
 
@@ -137,10 +144,12 @@ class GamessInpParser(object):
                             key, value = line.split("=")
                             dinput[match.group("block").lower()][key.lower()] = value
             elif match.group("block").lower() == "$data":
-                dinput["$data"] = match.group("entries")
+                dinput["$data"] = self.parse_data(match.group("entries"))
+            elif match.group("block").lower() in ["$vec", "$ecp"]:
+                dinput[match.group("block").lower()] = match.group("entries")
         return dinput
 
-    def parse_data(self, inpdict):
+    def parse_data(self, datastr, parse_basis=False):
         '''
         Parse $DATA block specified in the gamess input file. The parser
         assumes that in $DATA input the atom positions are specified using
@@ -148,8 +157,8 @@ class GamessInpParser(object):
         information about each specified atom.
 
         Args:
-            inpdict (dict)
-                dictionary with parsed input contents
+            datastr (str)
+                string with the contents of the $data block
 
         Returns:
             atoms (list of dicts)
@@ -166,20 +175,22 @@ class GamessInpParser(object):
                   +'(?P<xyz>(\s+\-?\d+\.\d+){3})\s*'
                   +'(?P<basis>.*?)\n\s*\n', flags=re.S)
 
-        title = inpdict['$data'].split('\n')[0]
-        group = inpdict['$data'].split('\n')[1]
+        datadict = dict()
 
-        atoms = []
-        itfound = block.finditer(inpdict['$data'])
+        datadict["title"] = datastr.split('\n')[0]
+        datadict["group"] = datastr.split('\n')[1]
+        datadict["atoms"] = list()
+
+        itfound = block.finditer(datastr)
         for m in itfound:
-            atoms.append({'label'  : m.group('label'),
+            datadict["atoms"].append({'label'  : m.group('label'),
              'atomic' : m.group('atomic'),
-             'xyz'    : m.group('xyz'),
+             'xyz'    : tuple(float(x) for x in m.group('xyz').split()),
              'basis'  : m.group('basis'),})
-        return atoms, title, group
+        return datadict
 
 
-    def write(self, inpfile, inpdict):
+    def write_input(self, inpfile, inpdict):
         '''
         Write a gamess input file under the name <inpfile> based on the
         information fstored in the dictionary <inpdict>.
@@ -292,6 +303,40 @@ class GamessInpParser(object):
             else:
                 print key, '\n', value
 
+    def parse_gamess_basis(self, basisset):
+        '''
+        Parse the basis set into a list of dictionaries from a string in
+        gamess format.
+        '''
+
+        pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
+
+        bs = []
+        bslines = rawbs.split("\n")
+
+        for i, line in enumerate(bslines):
+            match = pat.search(line)
+            if match:
+                bs.extend(self.parse_function(match.group("shell"),
+                                        atomic,
+                                        bslines[i+1:i+int(match.group("nf"))+1]))
+        return bs
+
+    def parse_function(self, shell, atomic, los):
+
+        '''Parse basis info from list of strings'''
+
+        exps   = [float(item.split()[1]) for item in los]
+        coeffs = [float(item.split()[2]) for item in los]
+
+        bs =[{"shell"  : _shells.index(shell.upper()),
+            "typ"    : "",
+            "exps"   : exps,
+            "coeffs" : coeffs,
+            "atomic" : atomic,
+            }]
+        return bs
+
 class GamessLogParser(object):
 
     '''methods for parsing gamess-us log file'''
@@ -321,7 +366,7 @@ class GamessLogParser(object):
             content = log.read()
         return cpatt.search(content)
 
-    def terminatedOK(self):
+    def accomplished(self):
 
         '''Check if a job teminated normally.'''
 
@@ -442,6 +487,8 @@ class GamessLogParser(object):
         match = self.parse(regex)
         if match:
             return match.group("cctyp")
+        else:
+            return None
 
     def get_ci_type(self):
 
@@ -451,6 +498,15 @@ class GamessLogParser(object):
         match = self.parse(regex)
         if match:
             return match.group("cityp")
+
+    def get_mplevel(self):
+
+        '''Get the information on MPLEVL used in the gamess job.'''
+
+        regex = r'.*MPLEVL=\s*(?P<mplevl>\d+)'
+        match = self.parse(regex)
+        if match:
+            return int(match.group("mplevl"))
 
     def get_hf_total_energy(self):
 
@@ -476,16 +532,6 @@ class GamessLogParser(object):
         if match:
             return float(match.group("energy"))
 
-    def get_ci_total_energy(self):
-
-        '''Return the total CI energy.'''
-
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-        energies = re.findall(r'^\s+TOTAL ENERGY =\s*(\-?\d+\.\d+)', data,
-                              re.MULTILINE)
-        return float(energies[-1])
-
     def get_ccsd_total_energy(self):
 
         '''Return total CCSD energy.'''
@@ -510,24 +556,6 @@ class GamessLogParser(object):
         if match:
             return float(match.group(1))
 
-    def get_ci_ee_energy(self):
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-        energies = re.findall(r'^\s+TWO ELECTRON ENERGY =\s*(\-?\d+\.\d+)', data, re.MULTILINE)
-        return float(energies[-1])
-
-    def get_ci_oe_energy(self):
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-        energies = re.findall(r'^\s+ONE ELECTRON ENERGY =\s*(\-?\d+\.\d+)', data, re.MULTILINE)
-        return float(energies[-1])
-
-    def get_ci_nucrep_energy(self):
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-        energies = re.findall(r'^\s+NUCLEAR REPULSION ENERGY =\s*(\-?\d+\.\d+)', data, re.MULTILINE)
-        return float(energies[-1])
-
     def get_energy_components(self, method):
         '''
         Read the summary of the energies printed in the gamess log file at the
@@ -548,7 +576,30 @@ class GamessLogParser(object):
         with open(self.logfile, 'r') as log:
             data = log.readlines()
 
-        return parse_pairs(slice_after(data, header, 22))
+        return self.parse_pairs(self.slice_after(data, header, 22))
+
+    @staticmethod
+    def parse_pairs(los, sep="="):
+        '''
+        Parse a given list of strings "los" into a dictionary based on separation
+        by "sep" character and return the dictionary.
+        '''
+        out = []
+        for line in los:
+            if sep in line:
+                (name, value) = line.split(sep)
+                out.append((name.strip(), float(value)))
+        return dict(out)
+
+    @staticmethod
+    def slice_after(seq, item, num):
+        '''
+        Return "num" elements of a sequence "seq" present after the item "item".
+        '''
+        it = iter(seq)
+        for element in it:
+            if item in element:
+                return [next(it) for i in range(num)]
 
 class GamessReader(object):
 
@@ -755,11 +806,11 @@ class GamessDatParser(object):
         with open(self.datfile, 'r') as dat:
             data = dat.read()
 
-        no_patt = re.compile(r'\$OCC(.*?)\$END', flags=re.DOTALL)
+        no_patt = re.compile(r'\$OCC(NO)?(?P<occ>.*?)\$END', flags=re.DOTALL)
         match = no_patt.search(data)
-        nooc = []
+        nooc = list()
         if match:
-            for line in match.group(1).split('\n'):
+            for line in match.group("occ").split('\n'):
                 nooc.extend([float(x) for x in line.split()])
             return np.asarray(nooc)
         else:
@@ -812,9 +863,9 @@ class GamessDatParser(object):
                 expansion coefficients
         '''
 
-        naos, nmosi, nlines = self.get_naos_nmos(vecstr)
+        naos, nmos, nlines = self.get_naos_nmos(vecstr)
 
-        orblines = orbstr.split('\n')[:-1]
+        orblines = vecstr.split('\n')[:-1]
 
         orbs = np.zeros((naos, nmos), dtype=float)
 
@@ -866,24 +917,5 @@ def take(seq, num):
     '''
     return [next(seq) for i in range(num)]
 
-def parse_pairs(los, sep="="):
-    '''
-    Parse a given list of strings "los" into a dictionary based on separation
-    by "sep" character and return the dictionary.
-    '''
-    out = []
-    for line in los:
-        if sep in line:
-            (name, value) = line.split(sep)
-            out.append((name.strip(), float(value)))
-    return dict(out)
 
-def slice_after(seq, item, num):
-    '''
-    Return "num" elements of a sequence "seq" present after the item "item".
-    '''
-    it = iter(seq)
-    for element in it:
-        if item in element:
-            return [next(it) for i in range(num)]
 

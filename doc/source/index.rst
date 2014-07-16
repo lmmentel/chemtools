@@ -115,6 +115,12 @@ Similar projects
 
 `cclib <http://cclib.github.io/>`_, `pygamess <https://github.com/kzfm/pygamess>`_
 
+License
+=======
+
+.. include:: ../../LICENSE.rst
+
+
 Indices and tables
 ==================
 * :ref:`genindex`

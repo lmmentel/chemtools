@@ -4,6 +4,9 @@ import os
 
 class Code():
     __metaclass__ = ABCMeta
+    '''
+    Abstract class that should be subclassed when adding a new code interace.
+    '''
 
     def __init__(self, name=None, execpath=None, runopts=None, scratch=None, **kwargs):
         self.name = name
@@ -24,9 +27,21 @@ class Code():
             raise ValueError("File: '{}' does not exists".format(value))
 
     @abstractmethod
+    def parse():
+        pass
+
+    @abstractmethod
     def run():
         pass
 
     @abstractmethod
     def run_multiple():
+        pass
+
+    @abstractmethod
+    def accomplished():
+        pass
+
+    @abstractmethod
+    def write_input():
         pass
