@@ -161,13 +161,7 @@ class GamessInpParser(object):
                 string with the contents of the $data block
 
         Returns:
-            atoms (list of dicts)
-                list of dictionaries holding parsed data about each atom
-                specified in the $data block
-            title (str)
-                title as specified in the $data block
-            group (str)
-                point group symmetry as specified in the $data group
+            datadict (dict)
         '''
 
         block = re.compile(r'(?P<label>[a-zA-Z]{1,2}[0-9]{0,2})\s*'
@@ -177,8 +171,8 @@ class GamessInpParser(object):
 
         datadict = dict()
 
-        datadict["title"] = datastr.split('\n')[0]
-        datadict["group"] = datastr.split('\n')[1]
+        datadict["title"] = datastr.split('\n')[0].strip()
+        datadict["group"] = datastr.split('\n')[1].strip()
         datadict["atoms"] = list()
 
         itfound = block.finditer(datastr)
@@ -343,7 +337,17 @@ class GamessLogParser(object):
 
     def __init__(self, log):
         self.logfile = log
-        self.logexists()
+
+    @property
+    def logfile(self):
+        return self._logfile
+
+    @logfile.setter
+    def logfile(self, value):
+        if os.path.exists(value):
+            self._logfile = value
+        else:
+            raise ValueError("File: {} does not exist".format(value))
 
     def logexists(self):
 
@@ -483,7 +487,7 @@ class GamessLogParser(object):
 
         '''Get the information on CCTYP used in the gamess job.'''
 
-        regex = r'.*CCTYP =(?P<cctyp>[A-Z]+)'
+        regex = r'.*CCTYP =(?P<cctyp>[A-Z\(\)\-]+)'
         match = self.parse(regex)
         if match:
             return match.group("cctyp")
@@ -527,34 +531,22 @@ class GamessLogParser(object):
         with open(self.logfile, 'r') as log:
             data = log.read()
 
-        orcire = re.compile(r'ORMAS CI PROPERTIES.*TOTAL ENERGY \=\s*(?P<energy>\-?\d+\.\d+).*END OF', flags=re.S)
+        orcire = re.compile(r'ORMAS CI PROPERTIES.*TOTAL ENERGY \=\s*(?P<energy>\-?\d+\.\d+).*?END OF', flags=re.S)
         match = orcire.search(data)
         if match:
             return float(match.group("energy"))
 
-    def get_ccsd_total_energy(self):
+    def get_cc_total_energy(self):
+        '''
+        Independently of CCTYP value return the "HIGHEST LEVEL RESULT" total energy.
+        '''
 
-        '''Return total CCSD energy.'''
-
-        with open(self.logfile, 'r') as log:
+        with open(self.logfile, 'rb') as log:
             data = log.read()
-        ccsdt_re = r'CCSD\s{1,4}ENERGY:\s*(\-?\d+\.\d+)'
-        compre = re.compile(ccsdt_re)
-        match = compre.search(data, re.MULTILINE)
+        regex = r'COUPLED-CLUSTER ENERGY E(.*?)\s*=\s*(?P<energy>\-?\d+\.\d+)'
+        match = self.parse(regex)
         if match:
-            return float(match.group(1))
-
-    def get_ccsdt_total_energy(self):
-
-        '''Return total CCSD(T) energy.'''
-
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-        ccsdt_re = r'CCSD\(T\) ENERGY:\s*(\-?\d+\.\d+)'
-        compre = re.compile(ccsdt_re)
-        match = compre.search(data, re.MULTILINE)
-        if match:
-            return float(match.group(1))
+            return float(match.group("energy"))
 
     def get_energy_components(self, method):
         '''
@@ -767,7 +759,7 @@ class GamessReader(object):
             fijkl = 8.0
         return fijkl
 
-# this function should be moved somewhere else
+    # this function should be moved somewhere else
 
     def ijkl(self, i,j,k,l):
         '''
@@ -798,6 +790,17 @@ class GamessDatParser(object):
     def __init__(self, datfile):
         self.datfile = datfile
 
+    @property
+    def datfile(self):
+        return self._datfile
+
+    @datfile.setter
+    def datfile(self, value):
+        if os.path.exists(value):
+            self._datfile = value
+        else:
+            raise ValueError("File: {} does not exist".format(value))
+
     def get_occupations(self):
         '''
         Parse the occupation numbers from the ascii PUNCH file (*.dat).
@@ -814,45 +817,63 @@ class GamessDatParser(object):
                 nooc.extend([float(x) for x in line.split()])
             return np.asarray(nooc)
         else:
-            sys.exit('No section with occupation numbers found.')
+            raise ValueError('No section with occupation numbers found.')
+
+    def parse_data(self):
+        '''
+        Parse $DATA block from the dat file.
+        '''
+
+        with open(self.datfile, 'r') as dat:
+            datastr = self.find_between(dat.read(), '$DATA', '$END')
+        gip = GamessInpParser()
+        return gip.parse_data(datastr.lstrip(' \n'))
 
     def get_orbitals(self, method):
         '''
         Parse the natural orbitals from the ascii PUNCH file (*.dat).
         Args:
             method (str)
-                scf, mcscf, ci
+                acceptable values are:
+                    for scf orbitals: "scf", "hf", "rhf", "rohf", "uhf", "gvb"
+                    for mcscf orbitals: "mcscfmos", "mcscfnos"
+                    for ci orbitals: "ci", "aldet", "fsoci", "guga", "genci", "ormas""
+        Returns:
+            orbs (numpy.array)
+                2D numpy array of shape (naos, nmos) containing ortbials
+                expansion coefficients
         '''
-
-        scf_re = re.compile(r'---\s*(?P<orbtype>.*)\s+ORBITALS ---.*\n.*E\((?P<scftype>\w+)\)=.*?\n\s*\$VEC\s*\n(?P<vecstr>.*?)\s*\$END', re.DOTALL)
-        ci_re = re.compile(r'.*NO-S OF|FOR STATE.*\$VEC\s*\n(?P<vecstr>.*?)\s*\$END', re.DOTALL)
 
         with open(self.datfile, 'r') as dat:
             data = dat.read()
 
         if method.lower() in ['scf', 'hf', 'rhf', 'rohf', 'uhf', 'gvb']:
-            m = scf_re.search(data)
-            if m:
-                orbtype, scftype, vecstr = m.group('orbtype', 'scftype', 'vecstr')
-                return self.parse_orbitals(vecstr)
-            else:
-                raise ValueError("No $VEC section found for method: '{0:s}'".format(method))
-        elif method.lower() == 'mcscf':
-            pass
+            try:
+                orbi = data.index('ORBITALS ---')
+            except:
+                raise ValueError('SCF orbitals header not found, check dat file')
         elif method.lower() in ['ci', 'aldet', 'fsoci', 'guga', 'genci', 'ormas']:
-            m = ci_re.search(data)
-            if m:
-                vecstr = m.group('vecstr')
-                return self.parse_orbitals(vecstr)
-            else:
-                raise ValueError("No $VEC section found for method: '{0:s}'".format(method))
+            try:
+                orbi = data.index('NO-S')
+            except:
+                raise ValueError('CI orbitals header not found, check dat file')
+        elif method.lower() == 'mcscfmos':
+            try:
+                orbi = data.index('OPTIMIZED MCSCF MO-S')
+            except:
+                raise ValueError('MCSCF orbitals header not found, check dat file')
+        elif method.lower() == 'mcscfnos':
+            try:
+                orbi = data.index('NATURAL ORBITALS OF MCSCF')
+            except:
+                raise ValueError('MCSCF orbitals header not found, check dat file')
         else:
             raise ValueError("Don't know what to do with: '{0:s}'".format(method))
-
-        #mcscf_aldet = "--- OPTIMIZED MCSCF MO-S --- GENERATED AT Thu Jul 17 00:22:13 2014"
-        #mcscf_guga  = "--- OPTIMIZED MCSCF MO-S --- GENERATED AT Thu Jul 17 00:25:19 2014"
-        #mcscf_guganos = "--- NATURAL ORBITALS OF MCSCF --- GENERATED AT Thu Jul 17 00:25:19 2014"
-        #mcscf_aldetno = "--- NATURAL ORBITALS OF MCSCF --- GENERATED AT Thu Jul 17 00:22:13 2014"
+        vecstr = self.find_between(data[orbi:], '$VEC', '$END').strip(" \n\t\r")
+        if vecstr == "":
+            raise ValueError("No $VEC section found for method: '{0:s}'".format(method))
+        # add a single whitespace to account for the removed space in strip
+        return self.parse_orbitals(" "+vecstr)
 
     def parse_orbitals(self, vecstr, clength=15):
         '''
@@ -891,7 +912,7 @@ class GamessDatParser(object):
 
     def get_naos_nmos(self, vecstr, clength=15):
         '''
-        Get the number of AO's and MO's from the $VEC string.
+        Get the number of AO's and MO's from a string in $VEC block.
 
         Args:
             vecstr (str)
@@ -913,12 +934,22 @@ class GamessDatParser(object):
         veclines = len(vecstr.split('\n'))
         lineit = iter(vecstr.split('\n'))
         nlines = 0
-        while lineit.next()[:2] == ' 1':
+        while lineit.next()[:2].strip() == '1':
             nlines += 1
+        if nlines == 0:
+            raise ValueError("'nlines' cannot be zero, check vecstr in 'get_naos_nmos'")
         naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])/clength
         nmos = veclines/nlines
         return naos, nmos, nlines
 
+    @staticmethod
+    def find_between(s, first, last):
+        try:
+            start = s.index(first) + len(first)
+            end = s.index(last, start)
+            return s[start:end]
+        except ValueError:
+            return ""
 
 def take(seq, num):
     '''
