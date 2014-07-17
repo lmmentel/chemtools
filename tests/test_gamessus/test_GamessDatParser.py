@@ -405,5 +405,8 @@ H            1.00030  -0.00030   1.00228  -0.00228
                           0.0000004253, 0.0000000042])
         self.assertTrue(np.allclose(occ, self.gdp.get_occupations(), rtol=1.0e-10, atol=1.0e-10))
 
+    def test_get_orbitals_hf(self):
+    def test_get_orbitals_ci(self):
+
 if __name__ == "__main__":
     unittest.main()

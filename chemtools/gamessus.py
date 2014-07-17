@@ -816,28 +816,43 @@ class GamessDatParser(object):
         else:
             sys.exit('No section with occupation numbers found.')
 
-    def get_nos(self):
+    def get_orbitals(self, method):
         '''
         Parse the natural orbitals from the ascii PUNCH file (*.dat).
+        Args:
+            method (str)
+                scf, mcscf, ci
         '''
+
+        scf_re = re.compile(r'---\s*(?P<orbtype>.*)\s+ORBITALS ---.*\n.*E\((?P<scftype>\w+)\)=.*?\n\s*\$VEC\s*\n(?P<vecstr>.*?)\s*\$END', re.DOTALL)
+        ci_re = re.compile(r'.*NO-S OF|FOR STATE.*\$VEC\s*\n(?P<vecstr>.*?)\s*\$END', re.DOTALL)
 
         with open(self.datfile, 'r') as dat:
             data = dat.read()
 
-        no_patt = re.compile(r'NO.*\$VEC\s+\n(.*?)\$END', flags=re.DOTALL)
-        match = no_patt.search(data)
-        if match:
-            return match.group(1)
+        if method.lower() in ['scf', 'hf', 'rhf', 'rohf', 'uhf', 'gvb']:
+            m = scf_re.search(data)
+            if m:
+                orbtype, scftype, vecstr = m.group('orbtype', 'scftype', 'vecstr')
+                return self.parse_orbitals(vecstr)
+            else:
+                raise ValueError("No $VEC section found for method: '{0:s}'".format(method))
+        elif method.lower() == 'mcscf':
+            pass
+        elif method.lower() in ['ci', 'aldet', 'fsoci', 'guga', 'genci', 'ormas']:
+            m = ci_re.search(data)
+            if m:
+                vecstr = m.group('vecstr')
+                return self.parse_orbitals(vecstr)
+            else:
+                raise ValueError("No $VEC section found for method: '{0:s}'".format(method))
         else:
-            sys.exit('No section with natural orbitals found.')
+            raise ValueError("Don't know what to do with: '{0:s}'".format(method))
 
-    def parse_nos(self):
-        '''
-        Parse the orbitals read from the $JOB.dat file in the ASCII format into
-        an 2 dimensional array.
-        '''
-
-        return self.parse_orbitals(self.get_nos())
+        #mcscf_aldet = "--- OPTIMIZED MCSCF MO-S --- GENERATED AT Thu Jul 17 00:22:13 2014"
+        #mcscf_guga  = "--- OPTIMIZED MCSCF MO-S --- GENERATED AT Thu Jul 17 00:25:19 2014"
+        #mcscf_guganos = "--- NATURAL ORBITALS OF MCSCF --- GENERATED AT Thu Jul 17 00:25:19 2014"
+        #mcscf_aldetno = "--- NATURAL ORBITALS OF MCSCF --- GENERATED AT Thu Jul 17 00:22:13 2014"
 
     def parse_orbitals(self, vecstr, clength=15):
         '''
@@ -864,11 +879,8 @@ class GamessDatParser(object):
         '''
 
         naos, nmos, nlines = self.get_naos_nmos(vecstr)
-
-        orblines = vecstr.split('\n')[:-1]
-
+        orblines = vecstr.split('\n')
         orbs = np.zeros((naos, nmos), dtype=float)
-
         counter = -1
         for i in range(0, nmos):
             for j in range(0, nlines):
@@ -895,16 +907,14 @@ class GamessDatParser(object):
             naos (int)
                 number of moelcular orbitals
             nlines (int)
-                number of lines permolecular orbital
+                number of lines per molecular orbital
         '''
 
-        veclines = len(vecstr.split('\n')) - 1
-
-        vecit = iter(vecstr.split('\n'))
+        veclines = len(vecstr.split('\n'))
+        lineit = iter(vecstr.split('\n'))
         nlines = 0
-        while vecit.next()[:2] == ' 1':
+        while lineit.next()[:2] == ' 1':
             nlines += 1
-
         naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])/clength
         nmos = veclines/nlines
         return naos, nmos, nlines
