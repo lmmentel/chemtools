@@ -50,12 +50,23 @@ legendre = {"typ"      : "legendre",
          "type"     : "hf",
         }
 
+lege_sp = {"typ"     : "legendre",
+          "name"     : "cc-pV6Z tight sp",
+          "params"   : [(2.9623643, 1.39661345, 0.5), (3.04754371, 1.55118609, 0.2),],
+          "nfpshell" : [5, 5,],
+          "element"  : "He",
+          "type"     : "tight",
+         }
+
 def main():
 
     # Energy from numberical HF solution:
     # total energy:   -2.861680026576101
 
-    res = driver(code=mp, job=job, mol=he, bsopt=legendre, opt=optimization)
+    print(lege_sp["params"][0])
+    print(lege_sp["params"][1])
+
+    res = driver(code=mp, job=job, mol=he, bsopt=lege_sp, opt=optimization)
     print res.success
     print res.x
     print res.fun

@@ -53,6 +53,7 @@ class BasisSet:
                 pars = x0[icount:icount+npar]
                 exps = legendre(nf, pars)
                 functions[_shells[lqn]]['exponents'] = exps
+                icount += npar
         bs = cls()
         setattr(bs, 'functions', cls.add_coeffs(functions))
         setattr(bs, 'element', bsoptdict['element'])
