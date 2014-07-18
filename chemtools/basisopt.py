@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import time
+import pprint
 # chemtools packages
 from basisset import BasisSet, get_x0
 
@@ -56,6 +57,21 @@ def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
 
     if not mol:
         sys.exit("<driver>: no molecule object specified")
+
+    # print input data
+    print('code:\n')
+    pprint.pprint(code)
+    print('job:\n')
+    pprint.pprint(job)
+    print('mol:\n')
+    pprint.pprint(mol)
+    print('bsnoopt:\n')
+    pprint.pprint(bsnoopt)
+    print('bsopt:\n')
+    pprint.pprint(bsopt)
+    print('opt:\n')
+    pprint.pprint(opt)
+    print("*"*80)
 
     x0 = get_x0(bsopt)
     res = minimize(function, x0,

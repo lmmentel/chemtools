@@ -104,6 +104,9 @@ class Molpro(Code):
             parser = MolproOutputParser(self.outfile)
         return parser.terminatedOK()
 
+    def __repr__(self):
+        return "<Molpro(\n\tname='{n}',\n\texecpath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.execpath, r=self.runopts) 
+
 class MolproOutputParser(object):
 
     '''Class for parsing molro output files'''

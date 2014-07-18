@@ -414,14 +414,14 @@ class BasisSet:
         c = np.asarray([1.0]*kmax, dtype=float)
 
         leg = np.polynomial.Legendre(c)
-        a = np.zeros((len(etzetas), kmax))
+        a = np.zeros((len(zetas), kmax))
 
-        for j in range(len(etzetas)):
+        for j in range(len(zetas)):
             for k in range(kmax):
-                arg = (2.0*(j+1.0)-2.0)/(len(etzetas)-1.0)-1.0
+                arg = (2.0*(j+1.0)-2.0)/(len(zetas)-1.0)-1.0
                 a[j, k] = leg.basis(k)(arg)
 
-        return np.linalg.lstsq(a, np.log(etzetas))[0]
+        return np.linalg.lstsq(a, np.log(zetas))[0]
 
 def eventemp(nf, params):
     '''
