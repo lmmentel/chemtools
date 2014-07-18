@@ -36,7 +36,6 @@ Current Modules
    gamessus
    molecule
    molpro
-   license
 
 Download and Installation
 =========================

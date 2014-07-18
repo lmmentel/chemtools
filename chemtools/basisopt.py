@@ -101,6 +101,8 @@ def run_total_energy(x0, *args):
 
     bslist = []
     bs2opt = BasisSet.from_optdict(x0, bsopt)
+    print("Current exponents")
+    bs2opt.print_exponents()
     if isinstance(bsnoopt, list):
         for bs in bsnoopt:
             if bs2opt.element == bs.element:
@@ -117,8 +119,6 @@ def run_total_energy(x0, *args):
         objective = code.parse(job["method"], job["objective"], job.get("regexp", None))
         if job["verbose"]:
             print("{0:<s}".format("Job Terminated without errors"))
-            print("Current exponents")
-            bs2opt.print_exponents()
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("\n{0:<20s} : {1:>30s}".format("Output", code.outfile))
             print("{0:<20s} : {1:>30.10f}".format("Objective", objective + opt["lambda"]*penalty))
@@ -158,6 +158,8 @@ def run_core_energy(x0, *args):
         penalty = 0.0
 
     bs2opt = BasisSet.from_optdict(x0, bsopt)
+    print("Current exponents")
+    bs2opt.print_exponents()
 
     citote = []
     stats  = []
@@ -179,8 +181,6 @@ def run_core_energy(x0, *args):
 
     if stats[0] and stats[1]:
         if job["verbose"]:
-            print("Current exponents")
-            bs2opt.print_exponents()
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK", str(stats[0]), str(stats[1])))
             print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format("CI total energy", citote[0], citote[1]))
