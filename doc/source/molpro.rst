@@ -1,5 +1,5 @@
 molpro module documentation
 ===========================
 
-.. automodule:: molpro
+.. automodule:: chemtools.molpro
    :members:
