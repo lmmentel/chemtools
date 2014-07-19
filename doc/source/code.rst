@@ -1,5 +1,5 @@
 code module documentation
 =========================
 
-.. automodule:: code
+.. automodule:: chemtools.code
    :members:
