@@ -133,7 +133,7 @@ class BinaryFile(object):
         return self.file.tell()
 
 
-def readseq(filename, buffSize=15000, intSize=8, largeLabels=False, skipFirst=False):
+def readseq(filename, buff_size=15000, int_size=8, large_labels=False, skip_first=False):
     '''
 
     Input
@@ -144,12 +144,12 @@ def readseq(filename, buffSize=15000, intSize=8, largeLabels=False, skipFirst=Fa
             size of the buffer holding values to be read, in gamess(us) it is
             stored under "NINTMX" variable and in Linux version is equal to
             15000 which is the default value,
-        largeLabels (bool)
+        large_labels (bool)
             a flag indicating if large labels should were used, if largest
-            label "i" (of the MO) is i<255 then largeLabels should be False
+            label "i" (of the MO) is i<255 then large_labels should be False
             (case "LABSIZ=1" in gamess(us)), otherwise set to True (case
             "LABSIZ=2" in gamess(us),
-        skipFirst (bool)
+        skip_first (bool)
             skips the first record of the file is set to True,
 
     Output
@@ -157,47 +157,78 @@ def readseq(filename, buffSize=15000, intSize=8, largeLabels=False, skipFirst=Fa
         numpy 1D array holding the values
     '''
 
-    if intSize == 4:
-        if largeLabels:
-            indexBuffSize = 2*buffSize
+    if int_size == 4:
+        if large_labels:
+            indexBuffSize = 2*buff_size
         else:
-            indexBuffSize = buffSize
-    elif intSize == 8:
-        if largeLabels:
-            indexBuffSize = buffSize
+            indexBuffSize = buff_size
+    elif int_size == 8:
+        if large_labels:
+            indexBuffSize = buff_size
         else:
-            indexBuffSize = (buffSize + 1)/2
+            indexBuffSize = (buff_size + 1)/2
     else:
         raise ValueError
 
-    intType = np.dtype('i'+str(intSize))
-    indexBuffer = np.zeros(indexBuffSize, dtype=intType, order='F')
-    valueBuffer = np.zeros(buffSize, dtype=float, order='F')
+    int_type = np.dtype('i'+str(int_size))
+    index_buffer = np.zeros(indexBuffSize, dtype=int_type, order='F')
+    value_buffer = np.zeros(buff_size, dtype=float, order='F')
 
     seqf = BinaryFile(filename)
 
-    if skipFirst:
-        seqf.seek(92)  # this works for now but should be tested on other platforms and for other values of intsize
-    n = seqf.read(intType)
-    print n
-    print seqf.tell()
-    indexBuffer = seqf.read(intType, shape=(indexBuffSize))
-    print indexBuffer[:31]
-    print seqf.tell()
-    valueBuffer = seqf.read('f8', shape=(buffSize))
-    print valueBuffer[:32]
+    # rewind
 
-    for i in range(abs(n)):
-        if intSize == 4:
-            if largeLabels:
-                pass
-            else:
-                pass
-        elif intSize == 8:
-            if largeLabels:
-                pass
-            else:
-                pass
+    #if skipFirst:
+    #    seqf.seek(92)  # this works for now but should be tested on other platforms and for other values of intsize
+    n = 1
+    while n > 0:
+        pos = seqf.tell()
+        seqf.seek(pos+4)
+        n = seqf.read(int_type)
+        index_buffer = seqf.read(int_type, shape=(indexBuffSize))
+        value_buffer = seqf.read('f8', shape=(buff_size))
+
+        pos = seqf.tell()
+        seqf.seek(pos+4)
+        if n > buff_size:
+            raise ValueError('the read record length: {0:10d} greater that the buffer size {1:10d}'.format(length, buff_size))
+
+        for m in range(1, abs(n)+1):
+            if int_size == 4:
+                if large_labels:
+                    label1 = int(index_buffer[2*m-1])
+                    label2 = int(index_buffer[2*m])
+                    i = label1 >> 16
+                    j = label1 & 65535
+                    k = label2 >> 16
+                    l = label2 & 65535
+                else:
+                    label = int(index_buffer[m-1])
+                    i = label >> 24
+                    j = label >> 16 & 255
+                    k = label >>  8 & 255
+                    l = label       & 255
+            elif int_size == 8:
+                if large_labels:
+                    label = int(index_buffer[m-1])
+                    i = label >> 48
+                    j = label >> 32 & 65535
+                    k = label >> 16 & 65535
+                    j = label       & 65535
+                else:
+                    if m % 2 == 0:
+                        label = int(index_buffer[m/2-1])
+                        i = label >> 24 & 255
+                        j = label >> 16 & 255
+                        k = label >>  8 & 255
+                        l = label       & 255
+                    else:
+                        label = int(index_buffer[m/2])
+                        i = label >> 56 & 255
+                        j = label >> 48 & 255
+                        k = label >> 40 & 255
+                        l = label >> 32 & 255
+                    print(i,j,k,l)
 
 
 def main():
@@ -210,7 +241,7 @@ def main():
 
     args = docopt.docopt(main.__doc__, help=True)
 
-    readseq(args['<file>'], skipFirst=True)
+    readseq(args['<file>'], skip_first=False)
 
 if __name__ == "__main__":
     main()

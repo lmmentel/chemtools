@@ -56,18 +56,23 @@ class BasisSet:
                 icount += npar
         bs = cls()
         setattr(bs, 'functions', cls.add_coeffs(functions))
-        setattr(bs, 'element', bsoptdict['element'])
+        for key in bsoptdict.keys():
+            if key != "functions":
+                setattr(bs, key, bsoptdict[key])
         return bs
 
     @staticmethod
     def add_coeffs(functions):
+        '''
+        for every exponent in the "exponents" list add a 1 function with
+        contraction coefficient equal to 1.0
+        '''
 
         for shell, fs in functions.items():
             fs['contractedfs'] = list()
             for i, expt in enumerate(fs['exponents']):
                 fs['contractedfs'].append({'indices' : [i], 'coefficients' : [1.0]})
         return functions
-
 
     def __repr__(self):
         res = "<BasisSet(\n"

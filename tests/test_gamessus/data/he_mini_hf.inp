@@ -1,0 +1,21 @@
+ $CONTRL
+    scftyp=rhf
+    runtyp=energy
+    maxit=30  
+    mult=1 
+    ispher=1 
+    units=bohr   
+    exetyp=run
+    nprint=4  
+ $END
+ $SYSTEM 
+    timlim=525600 
+    mwords=200
+ $END
+ $BASIS gbasis=mini $END
+ $DATA 
+He dimer VDW equilibrium
+dnh 2
+
+He     2.0     0.00000     0.00000      0.00000
+ $END

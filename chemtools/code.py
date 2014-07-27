@@ -1,3 +1,9 @@
+'''
+An abstract class that should be subclassed when addding a new code interface.
+
+All the methods should be implemented for the basisopt module to work with the
+new code.
+'''
 
 from abc import ABCMeta, abstractmethod
 import os
@@ -32,6 +38,9 @@ class Code():
 
     @abstractmethod
     def run():
+        '''
+        run s single job
+        '''
         pass
 
     @abstractmethod
@@ -40,8 +49,14 @@ class Code():
 
     @abstractmethod
     def accomplished():
+        '''
+        return True if the job completed without errors
+        '''
         pass
 
     @abstractmethod
     def write_input():
+        '''
+        write the input file in the format of the code used
+        '''
         pass

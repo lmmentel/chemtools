@@ -1,6 +1,7 @@
 syntax: glob
 # do not keep build directory created by foray under version control
 chemtools.egg-info/**
+.ipynb_checkpoints/**
 doc/_build/**
 dist/**
 build/**

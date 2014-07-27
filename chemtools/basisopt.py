@@ -130,9 +130,9 @@ def run_total_energy(x0, *args):
         bs2opt.add(bsnoopt)
         bslist.append(bs2opt)
     code.write_input(job["inpname"], job["core"], bs=bslist, mol=mol, inpdata=job["inpdata"])
-    code.run(job["inpname"])
+    output = code.run(job["inpname"])
     if code.accomplished():
-        objective = code.parse(job["method"], job["objective"], job.get("regexp", None))
+        objective = code.parse(output, job["method"], job["objective"], job.get("regexp", None))
         if job["verbose"]:
             print("{0:<s}".format("Job Terminated without errors"))
             print("x0 : ", ", ".join([str(x) for x in x0]))
@@ -190,10 +190,10 @@ def run_core_energy(x0, *args):
     for inpname, core in zip(inputs, job["core"]):
         code.write_input(inpname, core=core, bs=bs2opt, mol=mol, inpdata=job["inpdata"])
 
-    outs = code.run_multiple(inputs)
-    for out in outs:
-        citote.append(code.parse_tote(out))
-        stats.append(code.accomplished(out))
+    outputs = code.run_multiple(inputs)
+    for output in outputs:
+        citote.append(code.parse(output, job["method"], job["objective"], job.get("regexp", None)))
+        stats.append(code.accomplished(output))
 
     if stats[0] and stats[1]:
         if job["verbose"]:
@@ -209,4 +209,4 @@ def run_core_energy(x0, *args):
         return coreenergy
     else:
         print("Job terminated with ERRORS, check output.")
-        sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outs)))
+        sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outputs)))

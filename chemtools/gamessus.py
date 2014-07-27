@@ -52,18 +52,25 @@ class Gamess(Code):
         else:
             sys.exit('Could not find "rungms" under {0:s}'.format(self.execpath))
 
-    def run(self, inpfile, nproc=1, remove_dat=True):
+    def remove_dat(inpfile):
+        '''
+        Remove the gamess dat file if it exists in the scratch directory.
+        '''
+
+        datfile = os.path.splitext(inpfile)[0] + ".dat"
+        if remove_dat:
+            if os.path.exists(os.path.join(self.scratch, datfile)):
+                os.remove(os.path.join(self.scratch, datfile))
+
+
+    def run(self, inpfile, logfile, nproc=1, remove_dat=True):
         '''
         Run a single gamess job interactively - without submitting to the
         queue.
         '''
 
-        basfile = os.path.splitext(inpfile)[0]
-        datfile = basfile + ".dat"
-        logfile = basfile + ".log"
         if remove_dat:
-            if os.path.exists(os.path.join(self.scratch, datfile)):
-                os.remove(os.path.join(self.scratch, datfile))
+            self.remove_dat(inpfile)
 
         out = open(logfile, 'w')
         process = Popen([self.rungms, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
@@ -107,7 +114,7 @@ class GamessInpParser(object):
         '''
 
         self.end = " $end"
-        # not nested group of input (not parsed into a dict of dicts)
+        # not nested groups of input blocks (not parsed into a dict of dicts)
         self._notnested = ["$data", "$vec", "$ecp"]
 
     def parse(self, inpfile):
@@ -516,23 +523,8 @@ class GamessLogParser(object):
 
         '''Return the total HF energy.'''
 
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-
         regex = r'FINAL R[O]*HF ENERGY IS\s+(?P<energy>\-?\d+\.\d+)'
         match = self.parse(regex)
-        if match:
-            return float(match.group("energy"))
-
-    def get_ormas_total_energy(self):
-
-        '''Return the total ORMAS CI energy.'''
-
-        with open(self.logfile, 'r') as log:
-            data = log.read()
-
-        orcire = re.compile(r'ORMAS CI PROPERTIES.*TOTAL ENERGY \=\s*(?P<energy>\-?\d+\.\d+).*?END OF', flags=re.S)
-        match = orcire.search(data)
         if match:
             return float(match.group("energy"))
 
@@ -541,8 +533,6 @@ class GamessLogParser(object):
         Independently of CCTYP value return the "HIGHEST LEVEL RESULT" total energy.
         '''
 
-        with open(self.logfile, 'rb') as log:
-            data = log.read()
         regex = r'COUPLED-CLUSTER ENERGY E(.*?)\s*=\s*(?P<energy>\-?\d+\.\d+)'
         match = self.parse(regex)
         if match:
@@ -602,7 +592,7 @@ class GamessReader(object):
         $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
 
         TODO:
-        CI coefficients, and CI hamiltonian amtrix elements.'''
+        CI coefficients, and CI hamiltonian matrix elements.'''
 
     def __init__(self, log):
         self.logfile    = log
@@ -657,6 +647,14 @@ class GamessReader(object):
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.rdm2file))
 
     def read_twoemo(self, filename=None, nmo=None):
+
+        '''Read the two electron integrals from the gamess-us file'''
+
+        ints = np.zeros(self.get_twoe_size(), dtype=float)
+
+
+
+    def read_twoemo_fortran(self, filename=None, nmo=None):
 
         '''Read the two electron integrals from the gamess-us file'''
 
@@ -959,4 +957,651 @@ def take(seq, num):
     return [next(seq) for i in range(num)]
 
 
+#"""
+#BinaryFile: A class for accessing data to/from large binary files
+#=================================================================
+#
+#The data is meant to be read/write sequentially from/to a binary file.
+#One can request to read a piece of data with a specific type and shape
+#from it.  Also, it supports the notion of Fortran and C ordered data,
+#so that the returned data is always well-behaved (C-contiguous and
+#aligned).
+#
+#This is also seeking capable.
+#
+#:Author:   Francesc Alted
+#:Contact:  faltet@pytables.org
+#:Created:  2010-03-18
+#:Acknowledgment: Funding for the development of this code is provided
+#through the Norwegian Research Council VAUUAV project #184724, 2010
+#
+#"""
 
+class BinaryFile(object):
+
+    """Class representing a binary file (C or Fortran ordered)."""
+
+    def __init__(self, filename, mode="r", order="fortran"):
+        """Open the `filename` for write/read binary files.
+
+        The `mode` can be 'r', 'w' or 'a' for reading (default),
+        writing or appending.  The file will be created if it doesn't
+        exist when opened for writing or appending; it will be
+        truncated when opened for writing.  Add a '+' to the mode to
+        allow simultaneous reading and writing.
+
+        `order` specifies whether the file is is written in 'fortran'
+        or 'c' order.
+        """
+        self.mode = mode + "b"
+        self.file = open(filename, mode=self.mode, buffering=1)
+        """The file handler."""
+        if order not in ['fortran', 'c']:
+            raise ValueError, "order should be either 'fortran' or 'c'."
+        self.order = order
+        """The order for file ('c' or 'fortran')."""
+
+
+    def read(self, dtype, shape=(1,)):
+        """Read an array of `dtype` and `shape` from current position.
+
+        `shape` must be any tuple made of integers or even () for scalars.
+
+        The current position will be updated to point to the end of
+        read data.
+        """
+        if not hasattr(dtype, "itemsize"):
+            dtype = np.dtype(dtype)
+        if type(shape) is int:
+            shape = (shape,)
+        if type(shape) is not tuple:
+            raise ValueError, "shape must be a tuple"
+        length = dtype.itemsize
+        if shape is not ():
+            length *= np.array(shape).prod()
+
+        # Correct the shape in case dtype is multi-dimensional
+        shape = shape + dtype.shape
+
+        if shape in (1, (1,)):
+            order = "c"
+        else:
+            order = self.order
+
+        # Read the data from file
+        data = self.file.read(length)
+        if len(data) < length:
+            raise EOFError, "Asking for more data than available in file."
+        # Convert string into a regular array
+        data = np.ndarray(shape=shape, buffer=data, dtype=dtype.base)
+
+        # If original data file is in fortran order, reverse the shape first
+        if order == "fortran":
+            shape = [i for i in shape[::-1]]
+        data = data.reshape(shape)
+
+        if shape == ():
+            # Retrieve the scalar out of the 0-dim array
+            data = data[()]
+        else:
+            # If original data file is in fortran order, do a transpose.
+            # As the shape was reversed previously, we get the original
+            # shape again.
+            if order == "fortran":
+                data = data.transpose().copy()
+            # Do an additional copy just in case the array is not
+            # wel-behaved (i.e., it is not aligned or not contiguous).
+            elif not data.flags.behaved:
+                data = data.copy()
+        return data
+
+
+    def write(self, arr):
+        """Write an `arr` to current position.
+
+        The current position will be updated to point to the end of
+        written data.
+        """
+        # Transpose data if case we need to
+        if (self.order == "fortran") != (arr.flags.fortran):
+            arr = arr.transpose().copy()
+        # Write the data to file
+        self.file.write(arr.data)
+
+
+    def seek(self, offset, whence=0):
+        """Move to new file position.
+
+        Argument offset is a byte count.  Optional argument whence
+        defaults to 0 (offset from start of file, offset should be >=
+        0); other values are 1 (move relative to current position,
+        positive or negative), and 2 (move relative to end of file,
+        usually negative, although many platforms allow seeking beyond
+        the end of a file).  If the file is opened in text mode, only
+        offsets returned by tell() are legal.  Use of other offsets
+        causes undefined behavior.
+        """
+        self.file.seek(offset, whence)
+
+
+    def tell(self):
+        "Returns current file position, an integer (may be a long integer)."
+        return self.file.tell()
+
+class SequentialFile(BinaryFile):
+
+    def __init__(self, filename):
+        '''
+        Initialize the class with the superclass method.
+        '''
+        super(SequrntialFile, self).__init__(filename)
+        log = os.path.splitext(filename)[0] + ".log"
+        glp = GamessLogParser(log=log)
+        self.nmo = glp.get_number_of_mos()
+        if self.nmo < 255:
+            self.large_labels = 1
+        else:
+            self.large_labels = 2
+
+
+    def readseq(self, buff_size=15000, int_size=8, mos=False):
+        '''
+        Read FORTRAN sequential unformatted file with two-electron quantities:
+            * two electron integrals over AO's: .F08 file
+            * two electron integrals over MO's: .F09 file
+            * elements of the two particle density matrix: .F15 file
+
+        Input
+        =====
+            filename (str)
+                name of the file to read,
+            buffSize (int)
+                size of the buffer holding values to be read, in gamess(us) it is
+                stored under "NINTMX" variable and in Linux version is equal to
+                15000 which is the default value,
+            large_labels (bool)
+                a flag indicating if large labels should were used, if largest
+                label "i" (of the MO) is i<255 then large_labels should be False
+                (case "LABSIZ=1" in gamess(us)), otherwise set to True (case
+                "LABSIZ=2" in gamess(us),
+            skip_first (bool)
+                skips the first record of the file is set to True,
+
+        Output
+        ======
+            numpy 1D array holding the values
+        '''
+
+        if int_size == 4:
+            if self.large_labels:
+                indexBuffSize = 2*buff_size
+            else:
+                indexBuffSize = buff_size
+        elif int_size == 8:
+            if self.large_labels:
+                indexBuffSize = buff_size
+            else:
+                indexBuffSize = (buff_size + 1)/2
+        else:
+            raise ValueError
+
+        if mos:
+            self.seek(4)
+            hmo = self.read('f8', shape=(self.nmo*(self.nmo+1)/2))
+            pos = self.tell()
+            self.seek(pos+4)
+
+        int_type = np.dtype('i'+str(int_size))
+        index_buffer = np.zeros(indexBuffSize, dtype=int_type, order='F')
+        value_buffer = np.zeros(buff_size, dtype=float, order='F')
+
+        length = 1
+        while length > 0:
+            pos = self.tell()
+            print pos
+            self.seek(pos+4)
+            length = self.read(int_type)
+            if length > buff_size:
+                raise ValueError('the read record length: {0:10d} greater that the buffer size {1:10d}'.format(length, buff_size))
+            print length
+            index_buffer = self.read(int_type, shape=(indexBuffSize))
+            value_buffer = self.read('f8', shape=(buff_size))
+
+            pos = self.tell()
+            self.seek(pos+4)
+
+            for m in range(1, abs(length)+1):
+                if int_size == 4:
+                    if self.large_labels:
+                        label1 = int(index_buffer[2*m-1])
+                        label2 = int(index_buffer[2*m])
+                        i = label1 >> 16
+                        j = label1 & 65535
+                        k = label2 >> 16
+                        l = label2 & 65535
+                    else:
+                        label = int(index_buffer[m-1])
+                        i = label >> 24
+                        j = label >> 16 & 255
+                        k = label >>  8 & 255
+                        l = label       & 255
+                elif int_size == 8:
+                    if self.large_labels:
+                        label = int(index_buffer[m-1])
+                        i = label >> 48
+                        j = label >> 32 & 65535
+                        k = label >> 16 & 65535
+                        j = label       & 65535
+                    else:
+                        if m % 2 == 0:
+                            label = int(index_buffer[m/2-1])
+                            i = label >> 24 & 255
+                            j = label >> 16 & 255
+                            k = label >>  8 & 255
+                            l = label       & 255
+                        else:
+                            label = int(index_buffer[m/2])
+                            i = label >> 56 & 255
+                            j = label >> 48 & 255
+                            k = label >> 40 & 255
+                            l = label >> 32 & 255
+                #print(i,j,k,l)
+
+        #print values
+        return hmo
+
+from collections import namedtuple
+
+rec = namedtuple('record', ['name', 'dtype'])
+records = [
+    rec("atomic coordinates", "f8"),
+    rec("enrgys", "f8"),
+    rec("gradient vector", "f8"),
+    rec("hessian matrix", "f8"),
+    rec("not used", ""),
+    rec("not used", ""),
+    rec("ptr", "f8"),
+    rec("dtr", "f8"),
+    rec("ftr", "f8"),
+    rec("gtr", "f8"),
+    rec("bare nucleus", "f8"),
+    rec("overlap", "f8"),
+    rec("kinetic energy", "f8"),
+    rec("alpha fock matrix", "f8"),
+    rec("alpha orbitals", "f8"),
+    rec("alpha density matrix", "f8"),
+    rec("alpha energies or occupation numbers", "f8"),
+    rec("beta fock matrix", "f8"),
+    rec("beta orbitals", "f8"),
+    rec("beta density matrix", "f8"),
+    rec("beta energies or occupation numbers", "f8"),
+    rec("error function interpolation table", "f8"),
+    rec("old alpha fock matrix", "f8"),
+    rec("older alpha fock matrix", "f8"),
+    rec("oldest alpha fock matrix", "f8"),
+    rec("old beta fock matrix", "f8"),
+    rec("older beta fock matrix", "f8"),
+    rec("odest beta fock matrix", "f8"),
+    rec("vib 0 gradient in FORCE", "f8"),
+    rec("vib 0 alpha orbitals in FORCE", "f8"),
+    rec("Vib 0 beta  orbitals in FORCE", "f8"),
+    rec("Vib 0 alpha density matrix in FORCE", "f8"),
+    rec("Vib 0 beta  density matrix in FORCE", "f8"),
+    rec("dipole derivative tensor in FORCE", "f8"),
+    rec("frozen core Fock operator", "f8"),
+    rec("RHF/UHF/ROHF Lagrangian", "f8"),
+    rec("floating point part of common block /OPTGRD/", "f8"),
+    rec("integer part of common block /OPTGRD/", "i8"),
+    rec("ZMAT of input internal coords", "f8"),
+]
+
+
+    #int 40. IZMAT of input internal coords
+    #    41. B matrix of redundant internal coords
+    #    42. pristine core Fock matrix in MO basis (see 87)
+    #    43. Force constant matrix in internal coordinates.
+    #    44. SALC transformation
+    #    45. symmetry adapted Q matrix
+    #    46. S matrix for symmetry coordinates
+    #    47. ZMAT for symmetry internal coords
+    #int 48. IZMAT for symmetry internal coords
+    #    49. B matrix
+    #    50. B inverse matrix
+    #    51. overlap matrix in Lowdin basis,
+    #        temp Fock matrix storage for ROHF
+    #    52. genuine MOPAC overlap matrix
+    #    53. MOPAC repulsion integrals
+    #    54. exchange integrals for screening
+    #    55. orbital gradient during SOSCF MCSCF
+    #    56. orbital displacement during SOSCF MCSCF
+    #    57. orbital hessian during SOSCF MCSCF
+    #    58. reserved for Pradipta
+    #    59. Coulomb integrals in Ruedenberg localizations
+    #    60. exchange integrals in Ruedenberg localizations
+    #    61. temp MO storage for GVB and ROHF-MP2
+    #    62. temp density for GVB
+    #    63. dS/dx matrix for hessians
+    #    64. dS/dy matrix for hessians
+    #    65. dS/dz matrix for hessians
+    #    66. derivative hamiltonian for OS-TCSCF hessians
+    #    67. partially formed EG and EH for hessians
+    #    68. MCSCF first order density in MO basis
+    #    69. alpha Lowdin populations
+    #    70. beta Lowdin populations
+    #    71. alpha orbitals during localization
+    #    72. beta orbitals during localization
+    #    73. alpha localization transformation
+    #    74. beta localization transformation
+    #    75. fitted EFP interfragment repulsion values
+    #    76. model core potential information
+    #    77. model core potential information
+    #    78. "Erep derivative" matrix associated with F-a terms
+    #    79. "Erep derivative" matrix associated with S-a terms
+    #    80. EFP 1-e Fock matrix including induced dipole terms
+    #    81. interfragment dispersion values
+    #    82. MO-based Fock matrix without any EFP contributions
+    #    83. LMO centroids of charge
+    #    84. d/dx dipole velocity integrals
+    #    85. d/dy dipole velocity integrals
+    #    86. d/dz dipole velocity integrals
+    #    87. unmodified h matrix during SCRF or EFP, AO basis
+    #    88. PCM solvent operator contribution to Fock
+    #    89. EFP multipole contribution to one e- Fock matrix
+    #    90. ECP coefficients
+    #int 91. ECP labels
+    #    92. ECP coefficients
+    #int 93. ECP labels
+    #    94. bare nucleus Hamiltonian during FFIELD runs
+    #    95. x dipole integrals, in AO basis
+    #    96. y dipole integrals, in AO basis
+    #    97. z dipole integrals, in AO basis
+    #    98. former coords for Schlegel geometry search
+    #    99. former gradients for Schlegel geometry search
+    #   100. dispersion contribution to EFP gradient
+    #
+    #     records 101-248 are used for NLO properties
+    #
+    #101. U'x(0)       149. U''xx(-2w;w,w)   200. UM''xx(-w;w,0)
+    #102.   y          150.    xy            201.    xy
+    #103.   z          151.    xz            202.    xz
+    #104. G'x(0)       152.    yy            203.    yz
+    #105.   y          153.    yz            204.    yy
+    #106.   z          154.    zz            205.    yz
+    #107. U'x(w)       155. G''xx(-2w;w,w)   206.    zx
+    #108.   y          156.    xy            207.    zy
+    #109.   z          157.    xz            208.    zz
+    #110. G'x(w)       158.    yy            209. U''xx(0;w,-w)
+    #111.   y          159.    yz            210.    xy
+    #112.   z          160.    zz            211.    xz
+    #113. U'x(2w)      161. e''xx(-2w;w,w)   212.    yz
+    #114.   y          162.    xy            213.    yy
+    #115.   z          163.    xz            214.    yz
+    #116. G'x(2w)      164.    yy            215.    zx
+    #117.   y          165.    yz            216.    zy
+    #118.   z          166.    zz            217.    zz
+    #119. U'x(3w)      167. UM''xx(-2w;w,w)  218. G''xx(0;w,-w)
+    #120.   y          168.     xy           219.    xy
+    #121.   z          169.     xz           220.    xz
+    #122. G'x(3w)      170.     yy           221.    yz
+    #123.   y          171.     yz           222.    yy
+    #124.   z          172.     zz           223.    yz
+    #125. U''xx(0)     173. U''xx(-w;w,0)    224.    zx
+    #126.    xy        174.    xy            225.    zy
+    #127.    xz        175.    xz            226.    zz
+    #128.    yy        176.    yz            227. e''xx(0;w,-w)
+    #129.    yz        177.    yy            228.    xy
+    #130.    zz        178.    yz            229.    xz
+    #131. G''xx(0)     179.    zx            230.    yz
+    #132.    xy        180.    zy            231.    yy
+    #133.    xz        181.    zz            232.    yz
+    #134.    yy        182. G''xx(-w;w,0)    233.    zx
+    #135.    yz        183.    xy            234.    zy
+    #136.    zz        184.    xz            235.    zz
+    #137. e''xx(0)     185.    yz            236. UM''xx(0;w,-w) 
+    #138.    xy        186.    yy            237.     xy
+    #139.    xz        187.    yz            238.     xz
+    #140.    yy        188.    zx            239.     yz
+    #141.    yz        189.    zy            240.     yy
+    #142.    zz        190.    zz            241.     yz
+    #143. UM''xx(0)    191. e''xx(-w;w,0)    242.     zx
+    #144.     xy       192.    xy            243.     zy
+    #145.     xz       193.    xz            244.     zz
+    #146.     yy       194.    yz
+    #147.     yz       195.    yy
+    #148.     zz       196.    yz
+    #                  197.    zx
+    #                  198.    zy
+    #                  199.    zz
+    #
+    #    245. old NLO Fock matrix
+    #    246. older NLO Fock matrix
+    #    247. oldest NLO Fock matrix
+    #    249. polarizability derivative tensor for Raman
+    #    250. transition density matrix in AO basis
+    #    251. static polarizability tensor alpha
+    #    252. X dipole integrals in MO basis
+    #    253. Y dipole integrals in MO basis
+    #    254. Z dipole integrals in MO basis
+    #    255. alpha MO symmetry labels
+    #    256. beta MO symmetry labels
+    #    257. not used
+    #    258. Vnn gradient during MCSCF hessian
+    #    259. core Hamiltonian from der.ints in MCSCF hessian
+    #260-261. reserved for Dan
+    #    262. MO symmetry integers during determinant CI
+    #    263. PCM nuclei/induced nuclear Charge operator
+    #    264. PCM electron/induced nuclear Charge operator
+    #    265. pristine alpha guess (MOREAD or Huckel+INSORB)
+    #    266. EFP/PCM IFR sphere information
+    #    267. fragment LMO expansions, for EFP Pauli
+    #    268. fragment Fock operators, for EFP Pauli
+    #    269. fragment CMO expansions, for EFP charge transfer
+    #    270. not used
+    #    271. orbital density matrix in divide and conquer
+    #int 272. subsystem data during divide and conquer
+    #    273. old alpha Fock matrix for D&C Anderson-like DIIS
+    #    274. old  beta Fock matrix for D&C Anderson-like DIIS
+    #    275. not used
+    #    276. Vib 0 Q matrix    in FORCE
+    #    277. Vib 0 h integrals in FORCE
+    #    278. Vib 0 S integrals in FORCE
+    #    279. Vib 0 T integrals in FORCE
+    #    280. Zero field LMOs during numerical polarizability
+    #    281. Alpha zero field dens. during num. polarizability
+    #    282. Beta zero field dens. during num. polarizability
+    #    283. zero field Fock matrix. during num. polarizability
+    #    284. Fock eigenvalues for multireference PT
+    #    285. density matrix or Fock matrix over LMOs
+    #    286. oriented localized molecular orbitals
+    #    287. density matrix of oriented LMOs
+    #290-299. not used
+    #    301. Pocc during MP2 (RHF or ZAPT) or CIS grad
+    #    302. Pvir during MP2 gradient (UMP2= 411-429)
+    #    303. Wai during MP2 gradient
+    #    304. Lagrangian Lai during MP2 gradient
+    #    305. Wocc during MP2 gradient
+    #    306. Wvir during MP2 gradient
+    #    307. P(MP2/CIS)-P(RHF) during MP2 or CIS gradient
+    #    308. SCF density during MP2 or CIS gradient
+    #    309. energy weighted density in MP2 or CIS gradient
+    #    311. Supermolecule h during Morokuma
+    #    312. Supermolecule S during Morokuma
+    #    313. Monomer 1 orbitals during Morokuma
+    #    314. Monomer 2 orbitals during Morokuma
+    #    315. combined monomer orbitals during Morokuma
+    #    316. RHF density in CI grad; nonorthog. MOs in SCF-MI
+    #    317. unzeroed Fock matrix when MOs are frozen
+    #    318. MOREAD orbitals when MOs are frozen
+    #    319. bare Hamiltonian without EFP contribution
+    #    320. MCSCF active orbital density
+    #    321. MCSCF DIIS error matrix
+    #    322. MCSCF orbital rotation indices
+    #    323. Hamiltonian matrix during QUAD MCSCF
+    #    324. MO symmetry labels during MCSCF
+    #    325. final uncanonicalized MCSCF orbitals
+    #326-329. not used
+    #    330. CEL matrix during PCM
+    #    331. VEF matrix during PCM
+    #    332. QEFF matrix during PCM
+    #    333. ELD matrix during PCM
+    #    334. PVE tesselation info during PCM
+    #335-339. not used
+    #    340. DFT alpha Fock matrix
+    #    341. DFT beta Fock matrix
+    #    342. DFT screening integrals
+    #    343. DFT: V aux basis only
+    #    344. DFT density gradient d/dx integrals
+    #    345. DFT density gradient d/dy integrals
+    #    346. DFT density gradient d/dz integrals
+    #    347. DFT M[D] alpha density resolution in aux basis
+    #    348. DFT M[D] beta density resolution in aux basis
+    #    349. DFT orbital description
+    #    350. overlap of true and auxiliary DFT basis
+    #    351. previous iteration DFT alpha density
+    #    352. previous iteration DFT beta density
+    #    353. DFT screening matrix (true and aux basis)
+    #    354. DFT screening integrals (aux basis only)
+    #    355. h in MO basis during DDI integral transformation
+    #    356. alpha symmetry MO irrep numbers if UHF/ROHF
+    #    357. beta  symmetry MO irrep numbers if UHF/ROHF
+    #358-369. not used
+    #    370. left transformation for pVp
+    #    371. right transformation for pVp
+    #    370. basis A (large component) during NESC
+    #    371. basis B (small component) during NESC
+    #    372. difference basis set A-B1 during NESC
+    #    373. basis N (rel. normalized large component)
+    #    374. basis B1 (small component) during NESC
+    #    375. charges of non-relativistic atoms in NESC
+    #    376. common nuclear charges for all NESC basis
+    #    377. common coordinates for all NESC basis
+    #    378. common exponent values for all NESC basis
+    #    372. left transformation for V  during RESC
+    #    373. right transformation for V during RESC
+    #    374. 2T, T is kinetic energy integrals during RESC
+    #    375. pVp integrals during RESC
+    #    376. V integrals during RESC
+    #    377. Sd, overlap eigenvalues during RESC
+    #    378. V, overlap eigenvectors during RESC
+    #    379. Lz integrals
+    #    380. reserved for Ly integrals.
+    #    381. reserved for Lx integrals.
+    #    382. X, AO orthogonalisation matrix during RESC
+    #    383. Td, eigenvalues of 2T during RESC
+    #    384. U, eigenvectors of kinetic energy during RESC
+    #    385. exponents and contraction for the original basis
+    #int 386. shell integer arrays for the original basis
+    #    387. exponents and contraction for uncontracted basis
+    #int 388. shell integer arrays for the uncontracted basis
+    #    389. Transformation to contracted basis
+    #    390. S integrals in the internally uncontracted basis
+    #    391. charges of non-relativistic atoms in RESC
+    #    392. copy of one e- integrals in MO basis in SO-MCQDPT
+    #    393. Density average over all $MCQD groups in SO-MCQDPT
+    #    394. overlap integrals in 128 bit precision
+    #    395. kinetic ints in 128 bit precision, for relativity
+    #396-400. not used
+    #    401. dynamic polarizability tensors
+    #    402. GVB Lagrangian
+    #    403. MCSCF Lagrangian
+    #    404. GUGA CI Lagrangian (see 308 for CIS)
+    #    405. not used
+    #    406. MEX search state 1 alpha orbitals
+    #    407. MEX search state 1 beta orbitals
+    #    408. MEX search state 2 alpha orbitals
+    #    409. MEX search state 2 beta orbitals
+    #    410. not used
+    #    411. alpha Pocc during UMP2 gradient (see 301-309)
+    #    412. alpha Pvir during UMP2 gradient
+    #    413. alpha Wai during UMP2 gradient
+    #    414. alpha Lagrangian Lai during UMP2 gradient
+    #    415. alpha Wocc during UMP2 gradient
+    #    416. alpha Wvir during UMP2 gradient
+    #    417. alpha P(MP2/CIS)-P(RHF) during UMP2/USFTDDFT grad
+    #    418. alpha SCF density during UMP2/USFTDDFT gradient
+    #    419. alpha energy wghted density in UMP2/USFTDDFT grad
+    #    420. not used
+    #421-429. same as 411-419, for beta orbitals
+    #    430. not used
+    #440-469. reserved for NEO
+    #    470. QUAMBO expansion matrix
+    #    471. excitation vectors for FMO-TDDFT
+    #    472. X+Y in MO basis during TD-DFT gradient
+    #    473. X-Y in MO basis during TD-DFT gradient
+    #    474. X+Y in AO basis during TD-DFT gradient
+    #    475. X-Y in AO basis during TD-DFT gradient
+    #    476. excited state density during TD-DFT gradient
+    #    477. energy-weighted density in AO basis for TD-DFT
+    #478-489. not used
+    #    490. transition Lagrangian right hand side during NACME
+    #    491. gradients vectors during NACME
+    #    492. NACME vectors during NACME
+    #    493. difference gradient in conical intersection search
+    #    494. derivative coupling vector in CI search
+    #    495. mean energy gradient in CI search
+    #    496. unused
+    #    497. temp storage of gradient of 1st state in CI search
+    #498-500. not used
+    #    501. A2 cavity data in COSMO
+    #    502. A3 cavity data in COSMO
+    #    503. AMTSAV cavity data in COSMO
+    #504-510. not used
+    #    511. effective polarizability in LRD
+    #    512. C6 coefficients in LRD
+    #    513. C8 coefficients in LRD
+    #    514. C10 coefficients in LRD
+    #    515. atomic pair LRD energy
+    #    520. Malmqvist factorized orb transformation (wrt 325)
+    #    521. SVD localized orthogonal orbitals
+    #    522. SVD localized nonorthogonal orbitals
+    #    523. initial-to-SVD LMO nonorthogonal transformatio
+    #    524. SVD LMO nonorthogonal-to-orthogonal transformation
+    #    525. initial-to-SVD LMO orthog transformation (wrt 15)
+    #    526. 1st order density for orthogonal SVD localized MOs
+    #    527. collective orbital reordering for Malmqvist
+    #    528. atom-to-orbital assignment for SVD orbitals
+    #    529. Malmqvist re-ordered set of SVD LMOs
+    #    530. oriented SVD density in the order of record 527
+    #    531. oriented or SVD atom-to-orbital assignment for CT
+    #    532. block zapped 'standard Fock operator' in AO basis
+    #    533. overlap of stored atom's MBS with current basis
+    #534-540. not used
+    #    541. pristine MCSCF orbs during diabatization
+    #    542. reference geometry orbs during diabatization
+    #    543. PT2 state rotation during diabatization
+    #    544. PT2 state energies during diabatization
+    #    545. PT2's CAS-CI largest CI coefs, in diabatization
+    #    532-950. not used
+
+class DictionaryFile(BinaryFile):
+    '''
+    Handler for teh gamess(us) dictionary file.
+    '''
+
+    def __init__(self, filename, irecl=4090):
+        self.irecl = irecl
+        super(DictionaryFile, self).__init__(filename)
+
+        # read the first record with the information about the
+        # structure of the dictionary file
+        self.irecst = self.read(np.dtype('i8'))
+        self.ioda   = self.read(np.dtype('i8'), shape=(950,))
+        self.ifilen = self.read(np.dtype('i8'), shape=(950,))
+        self.iss    = self.read(np.dtype('i8'))
+        self.ipk    = self.read(np.dtype('i8'))
+
+    def read_record(self, nrec, dtype=None):
+        '''
+        Read a logical record 'rec' from the dictionary file and return a numpy
+        array of type defined in the 'records' list, and size defined through
+        'self.ifilen' array.
+        '''
+
+        if self.ioda[nrec-1] < 0:
+            raise ValueError("Record {0} was not previously written, IODA[{0}]={1}".format(nrec, self.ioda[nrec-1]))
+
+        self.seek(8*4090*(int(self.ioda[nrec-1])-1))
+        if dtype is not None:
+            return self.read(dtype, shape=(self.ifilen[nrec-1],))
+        else:
+            return self.read(records[nrec-1].dtype, shape=(self.ifilen[nrec-1],))

@@ -7,9 +7,11 @@ gamessus
     * change the interfaces of the parsing functions to accept strings and not
     filenames and add a driver to call all the parsing routines
     * add scripts for frequently used CLI functionality such as making NO input
+    * add parser for the symmetry labels, lz values orbitals, orbital energies  and orbital info in the LogParser
 
 seqfile
     * finish writing the reader for the fortran unformatted binary file
-    * write also a reader for gamess dictionary file 
+    * write also a reader for gamess dictionary file
+    * add support for reading file produced in parallel runs
 
 WRITE UNITTESTS and DOCTESTS !!!

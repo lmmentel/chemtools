@@ -49,7 +49,7 @@ class Molpro(Code):
         ferr.write(err)
         ferr.close()
 
-        self.outfile = outfile
+        return outfile
 
     def run_multiple(self, inputs):
         '''
@@ -70,12 +70,12 @@ class Molpro(Code):
 
         return outputs
 
-    def parse(self, method, objective, regexp=None):
+    def parse(self, output, method, objective, regexp=None):
         '''
         Parser molpro output file to get the objective.
         '''
 
-        parser = MolproOutputParser(self.outfile)
+        parser = MolproOutputParser(output)
 
         if objective == "total energy":
             if method == "hf":
@@ -84,14 +84,13 @@ class Molpro(Code):
                 return parser.get_cisd_total_energy()
         elif objective == "correlation energy":
                 return parser.get_cisd_total_energy() - parser.get_hf_total_energy()
+        elif objective == "core energy":
+            if method == "cisd":
+                return parser.get_cisd_total_energy()
         elif objective == "regexp":
             return parser.get_variable(regexp)
         else:
             sys.exit("<parse>: unknown objective {0:s}".format(objective))
-
-    def parse_tote(self, outfile):
-        parser = MolproOutputParser(outfile)
-        return parser.get_cisd_total_energy()
 
     def accomplished(self, outfile=None):
         '''
