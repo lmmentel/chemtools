@@ -5,7 +5,7 @@
     mult=1 
     ispher=1 
     units=bohr   
-    exetyp=run
+    exetyp=debug
     nprint=4  
  $END
  $SYSTEM 

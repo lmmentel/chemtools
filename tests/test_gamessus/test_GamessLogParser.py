@@ -1189,9 +1189,6 @@ nie, 11 maj 2014, 14:57:35 CEST
     def test_get_hf_total_energy(self):
         self.assertAlmostEqual(self.glp.get_hf_total_energy(), -3.9842266066)
 
-    def test_get_ormas_total_energy(self):
-        self.assertAlmostEqual(self.glp.get_ormas_total_energy(), -4.0544723546)
-
     def test_get_energy_components_hf(self):
         d = {"WAVEFUNCTION NORMALIZATION" : 1.0000000000,
              "ONE ELECTRON ENERGY" : -7.6711052217,

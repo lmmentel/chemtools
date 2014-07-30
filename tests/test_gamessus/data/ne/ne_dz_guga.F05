@@ -9,6 +9,7 @@
     ITOL=20
     QMTTOL=1.E-8
     ICHARG=0
+    exetyp=debug
  $END
  $SYSTEM TIMLIM=14400 MWORDS=100 MEMDDI=0 $END
  $SCF
