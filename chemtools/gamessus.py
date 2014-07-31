@@ -10,6 +10,7 @@ Module for handling Gamess-US related jobs,:
 
 from chemtools.code import Code
 from subprocess import Popen
+from collections import OrderedDict
 import numpy as np
 import os
 import re
@@ -300,39 +301,42 @@ class GamessInpParser(object):
             else:
                 print key, '\n', value
 
-#    def parse_gamess_basis(self, basisset):
-#        '''
-#        Parse the basis set into a list of dictionaries from a string in
-#        gamess format.
-#        '''
-#
-#        pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
-#
-#        bs = []
-#        bslines = rawbs.split("\n")
-#
-#        for i, line in enumerate(bslines):
-#            match = pat.search(line)
-#            if match:
-#                bs.extend(self.parse_function(match.group("shell"),
-#                                        atomic,
-#                                        bslines[i+1:i+int(match.group("nf"))+1]))
-#        return bs
-#
-#    def parse_function(self, shell, atomic, los):
-#
-#        '''Parse basis info from list of strings'''
-#
-#        exps   = [float(item.split()[1]) for item in los]
-#        coeffs = [float(item.split()[2]) for item in los]
-#
-#        bs =[{"shell"  : _shells.index(shell.upper()),
-#            "typ"    : "",
-#            "exps"   : exps,
-#            "coeffs" : coeffs,
-#            "atomic" : atomic,
-#            }]
-#        return bs
+    def parse_gamess_basis(self, basis_str):
+        '''
+        Parse the basis set into a list of dictionaries from a string in
+        gamess format.
+        '''
+
+        pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
+
+        bs = []
+        bslines = basis_str.split("\n")
+
+        functions = OrderedDict()
+
+        for i, line in enumerate(bslines):
+            match = pat.search(line)
+            if match:
+                shell = match.group("shell")
+                if shell in functions.keys():
+                    pass
+                else:
+                    functions[shell] = OrderedDict()
+                    functions[shell]["exponents"] = list()
+                    functions[shell]["contractedfs"] = list()
+
+                exps, indxs, coeffs = self.parse_function(bslines[i+1:i+int(match.group("nf"))+1])
+        return bs
+
+    def parse_function(self, los):
+
+        '''Parse basis info from list of strings'''
+
+        indxs  = [int(item.split()[0]) for item in los]
+        exps   = [float(item.split()[1]) for item in los]
+        coeffs = [float(item.split()[2]) for item in los]
+
+        return exps, indxs, coeffs
 
 class GamessLogParser(object):
 
@@ -442,6 +446,15 @@ class GamessLogParser(object):
         if match:
             return int(match.group("nao"))
 
+    def get_number_of_core_mos(self):
+
+        '''Get the number of core molecular orbitals from the Gamess log file'''
+
+        regex = r'NUMBER OF CORE MOLECULAR ORBITALS\s*=\s*(?P<ncore>\d+)'
+        match = self.parse(regex)
+        if match:
+            return int(match.group("ncore"))
+
     def get_number_of_mos(self):
 
         '''Get the number of molecular orbitals from Gammess log file.'''
@@ -472,10 +485,10 @@ class GamessLogParser(object):
 
         '''Get number of linearly dependent combinations dropped.'''
 
-        regex = r'NUMBER OF LINEARLY DEPENDENT MOS DROPPED=\s*(\d+)'
+        regex = r'NUMBER OF LINEARLY DEPENDENT MOS DROPPED=\s*(?P<lindep>\d+)'
         match = self.parse(regex)
         if match:
-            return match.group(1)
+            return int(match.group('lindep'))
 
     def get_scf_type(self):
 
@@ -580,16 +593,21 @@ class GamessLogParser(object):
                 return [next(it) for i in range(num)]
 
 class GamessReader(object):
-
-    '''Class for holding method for reading gamess binary files:
+    '''
+    Class for holding method for reading gamess binary files:
         $JOB.F08 : two electron integrals over AO's,
         $JOB.F09 : two electron integrals over MO's,
         $JOB.F10 : the dictionary file with one electron integrals, orbitals etc.,
         $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
 
-        TODO:
-        CI coefficients, and CI hamiltonian matrix elements.'''
-
+    TODO:
+        CI coefficients, and CI hamiltonian matrix elements.
+    '''
+    # add an option to choose which reader should be used for dictionary file
+    # and sequential files, the options are:
+    # - wrapped fortran code that need to be compiled and installed or
+    # - native reader written in python using DictionaryFile and SequentialFile
+    # classes
     def __init__(self, log):
         self.logfile    = log
         i = self.logfile.index("log")
@@ -1088,6 +1106,7 @@ class SequentialFile(BinaryFile):
         glp = GamessLogParser(log=log)
         self.nao = glp.get_number_of_aos()
         self.nmo = glp.get_number_of_mos()
+        self.core = glp.get_number_of_core_mos()
         if self.nmo < 255:
             self.large_labels = False
         else:
@@ -1102,7 +1121,7 @@ class SequentialFile(BinaryFile):
         kl = max(k, l)*(max(k, l) - 1)/2 + min(k, l)
         return max(ij, kl)*(max(ij, kl) - 1)/2 + min(ij, kl) - 1
 
-    def readseq(self, buff_size=15000, int_size=8, mos=False):
+    def readseq(self, buff_size=15000, int_size=8, mos=False, skip_first=False):
         '''
         Read FORTRAN sequential unformatted file with two-electron quantities:
             * two electron integrals over AO's: .F08 file
@@ -1144,10 +1163,13 @@ class SequentialFile(BinaryFile):
             raise ValueError
 
         if mos:
-            self.seek(4)
-            hmo = self.read('f8', shape=(self.nmo*(self.nmo+1)/2))
-            pos = self.tell()
-            self.seek(pos+4)
+            if skip_first:
+                nmo = self.nmo-self.core
+                n1 = nmo*(nmo+1)/2
+                self.seek(8+8*n1)
+                #hmo = self.read('f8', shape=(nmo*(nmo+1)/2))
+                #pos = self.tell()
+                #self.seek(pos+4)
 
             nt = self.nmo*(self.nmo+1)/2
             ints = np.zeros(nt*(nt+1)/2, dtype=float, order='F')
@@ -1170,7 +1192,6 @@ class SequentialFile(BinaryFile):
                 raise ValueError('the read record length: {0:10d} greater that the buffer size {1:10d}'.format(int(length), buff_size))
             index_buffer = self.read(int_type, shape=(indexBuffSize, ))
             value_buffer = self.read('f8', shape=(buff_size, ))
-
 
             for m in range(1, abs(length)+1):
                 if int_size == 4:
@@ -1210,10 +1231,7 @@ class SequentialFile(BinaryFile):
                 ints[self.ijkl(i, j, k, l)] = value_buffer[m-1]
             pos = self.tell()
             self.seek(pos+4)
-        if mos:
-            return hmo, ints
-        else:
-            return ints
+        return ints
 
 from collections import namedtuple
 

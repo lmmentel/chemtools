@@ -1,0 +1,18 @@
+ $DATA  
+He dimer VDW equilibrium                                                        
+DNH      2
+
+HE          2.0      0.0000000000      0.0000000000      0.0000000000
+   MINI    0
+        
+ $END      
+--- CLOSED SHELL ORBITALS --- GENERATED AT Wed Jul 30 02:19:03 2014
+He dimer VDW equilibrium                                                        
+E(RHF)=       -2.8356798736, E(NUC)=    0.0000000000,    2 ITERS
+ $VEC   
+ 1  1 1.00000000E+00
+ $END   
+ POPULATION ANALYSIS
+HE           2.00000  -0.00000   2.00000   0.00000
+ MOMENTS AT POINT    1 X,Y,Z=  0.000000  0.000000  0.000000
+ DIPOLE       0.000000  0.000000  0.000000

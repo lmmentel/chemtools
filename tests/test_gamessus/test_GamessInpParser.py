@@ -1,81 +1,14 @@
+import os
 import unittest
 
 from chemtools.gamessus import GamessInpParser
 
 class TestGIPonHeH2(unittest.TestCase):
-    he_h2_ormas_inp =''' $CONTRL
-    scftyp=rhf
-    cityp=ormas
-    runtyp=energy
-    maxit=30
-    mult=1
-    icut=30
-    itol=30
-    ispher=1
-    units=bohr
-!    exetyp=check
- $END
- $SYSTEM timlim=525600 mwords=100 $END
- $SCF    conv=1.0d-8    $END
- $TRANS  cuttrf=1.0d-10 $END
- $CIDET
-    ncore=0
-    nact=27
-    nels=4
-    sz=0
-    analys=.true.
-    group=c2v
-    stsym=a1
-!    nstate=1
-!    itermx=100
-!    cvgtol=1.0d-6
-!    nflgdm=1
- $END
- $ORMAS
-    nspace=2
-    mstart(1)=1,3
-    mine(1)=0,0
-    maxe(1)=4,4
-    qcorr=.false.
- $END
-! R_e(H-H) = 1.448 736 a_0
- $DATA
-He-H2 FCI
-cnv 2
-
-He     2.0     0.00000     0.000000     -3.000000
-S   3
-  1     38.3600000              0.0238090
-  2      5.7700000              0.1548910
-  3      1.2400000              0.4699870
-S   1
-  1      0.2976000              1.0000000
-S   1
-  1      0.0725500              1.0000000
-P   1
-  1      1.2750000              1.0000000
-P   1
-  1      0.2473000              1.0000000
-
-H      1.0     0.00000     0.724368    3.000000
-S   3
-  1     13.0100000              0.0196850
-  2      1.9620000              0.1379770
-  3      0.4446000              0.4781480
-S   1
-  1      0.1220000              1.0000000
-S   1
-  1      0.0297400              1.0000000
-P   1
-  1      0.7270000              1.0000000
-P   1
-  1      0.1410000              1.0000000
-
- $END'''
 
     def setUp(self):
+        inpfile = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data/heh2/he-h2_avdz_ormas.inp')
         self.gip = GamessInpParser()
-        self.inpd = self.gip.parse_from_string(TestGIPonHeH2.he_h2_ormas_inp)
+        self.inpd = self.gip.parse(inpfile)
 
     def test_inpdict(self):
         self.assertIsInstance(self.inpd, dict)
