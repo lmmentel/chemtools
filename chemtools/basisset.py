@@ -443,6 +443,11 @@ def eventemp(nf, params):
         res (list)
             list of generated exponents (floats)
     '''
+    if not isinstance(nf, int):
+        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
+    if len(params) !=  2:
+        raise ValueError('"params" tuple should have exactly 2 entries, got {}'.format(len(params)))
+
     alpha, beta = params
     return [alpha * np.power(beta, i) for i in range(nf)]
 
@@ -461,6 +466,10 @@ def welltemp(nf, params):
         res (list)
             list of generated exponents (floats)
     '''
+    if not isinstance(nf, int):
+        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
+    if len(params) !=  4:
+        raise ValueError('"params" tuple should have exactly 4 entries, got {}'.format(len(params)))
 
     alpha, beta, gamma, delta = params
     return [alpha*np.power(beta, i)*(1+gamma*np.power((i+1)/nf, delta)) for i in range(nf)]
@@ -471,6 +480,10 @@ def legendre(nf, coeffs):
     legendre polynomials as described in:
     Peterson, G. A. et.al J. Chem. Phys., Vol. 118, No. 3 (2003).
     '''
+    if not isinstance(nf, int):
+        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
+    if len(coeffs) <  1:
+        raise ValueError('"coeffs" tuple should have at least 1 entry, got {}'.format(len(coeffs)))
 
     poly = np.polynomial.legendre.Legendre(coeffs)
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]

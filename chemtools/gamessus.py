@@ -569,6 +569,46 @@ class GamessLogParser(object):
 
         return self.parse_pairs(self.slice_after(data, header, 22))
 
+    def get_lz_values(self):
+        '''
+        Get values of Lz operator for every orbital and translate them into labels of orbotals
+            input:  lines    - contents of a file as a list of lines,
+        '''
+
+        lz_patt = re.compile(r'\s*MO\s*(?P<index>\d*)\s*\(\s*(?P<shell>\d+)\s*\)\s*HAS LZ\(WEIGHT\)=\s*(?P<lz>-?\d*\.\d+)')
+        with open(self.logfile, 'r') as log:
+            lz_string = self.slice_between(log.read(), 'LZ VALUE ANALYSIS FOR THE MOS', 'EIGENVECTORS')
+
+        res = list()
+        for line in lz_string.split('\n'):
+            match = lz_patt.search(line)
+            if match:
+                index = int(match.group('index')) - 1
+                shell = int(match.group('shell'))
+                lz   = int(abs(float(match.group('lz'))))
+                res.append({"index" : index, "shell" : shell, "lz" : lz})
+        return res
+
+    def get_ao_labels(self, orbitals=None):
+        '''
+        Retrieve the information about atomic basis set
+        '''
+
+        with open(self.logfile, 'r') as log:
+            orb_string = self.slice_between(log.read(), 'EIGENVECTORS', 'END OF RHF CALCULATION')
+
+        ao_patt = re.compile(r'\s*(?P<index>\d+)\s{2}(?P<symbol>[a-zA-Z]{1,2})\s*(?P<center>\d+)\s*(?P<component>[A-Z]{1,})')
+        res = list()
+        for line in orb_string.split('\n'):
+            match = ao_patt.search(line)
+            if match:
+                index = int(match.group('index')) - 1
+                symbol = match.group('symbol')
+                center = int(match.group('center'))
+                component = match.group('component')
+                res.append({"index" : index, "symbol" : symbol, "center" : center, "component" : component})
+        return res
+
     @staticmethod
     def parse_pairs(los, sep="="):
         '''
@@ -591,6 +631,12 @@ class GamessLogParser(object):
         for element in it:
             if item in element:
                 return [next(it) for i in range(num)]
+
+    @staticmethod
+    def slice_between(string, start, end):
+        istart = string.index(start)
+        iend = string.index(end)
+        return string[istart+len(start):iend]
 
 class GamessReader(object):
     '''

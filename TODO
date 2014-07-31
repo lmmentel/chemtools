@@ -8,10 +8,9 @@ gamessus
     filenames and add a driver to call all the parsing routines
     * add scripts for frequently used CLI functionality such as making NO input
     * add parser for the symmetry labels, lz values orbitals, orbital energies  and orbital info in the LogParser
+    * add a method to merge orbitals for 2 atoms/molecules, similar to molpro
 
 seqfile
-    * finish writing the reader for the fortran unformatted binary file
-    * write also a reader for gamess dictionary file
     * add support for reading file produced in parallel runs
 
 WRITE UNITTESTS and DOCTESTS !!!

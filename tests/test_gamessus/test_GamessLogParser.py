@@ -72,6 +72,15 @@ class TestGLPonHeMini(unittest.TestCase):
              "VIRIAL RATIO (V/T)" : 1.9999839244}
         self.assertDictEqual(d, self.glp.get_energy_components('hf'))
 
+    def test_get_lz_values(self):
+        lz = [{"index" : 0, "shell" : 1, "lz" : 0}]
+        self.assertListEqual(self.glp.get_lz_values(), lz)
+
+    def test_get_ao_labels(self):
+        ao = [{"index" : 0, "symbol" : "HE", "center" : 1, "component" : "S"}]
+        for dtest, dref in zip(self.glp.get_ao_labels(), ao):
+            self.assertDictEqual(dtest, dref)
+
 class TestGLPonHeH2(unittest.TestCase):
 
     def setUp(self):
@@ -237,6 +246,23 @@ class TestGLPonNeDZ(unittest.TestCase):
               "VIRIAL RATIO (V/T)" : 2.0013153359}
         self.maxDiff = None
         self.assertDictEqual(d, self.glp.get_energy_components('ci'))
+
+    def test_get_lz_values_ne(self):
+        lz = [{'index': 0, 'lz': 0, 'shell': 1},
+            {'index': 1, 'lz': 0, 'shell': 2},
+            {'index': 2, 'lz': 0, 'shell': 3},
+            {'index': 3, 'lz': 1, 'shell': 3},
+            {'index': 4, 'lz': 1, 'shell': 3},
+            {'index': 5, 'lz': 1, 'shell': 4},
+            {'index': 6, 'lz': 1, 'shell': 4},
+            {'index': 7, 'lz': 0, 'shell': 4},
+            {'index': 8, 'lz': 0, 'shell': 5},
+            {'index': 9, 'lz': 2, 'shell': 6},
+            {'index': 10, 'lz': 1, 'shell': 6},
+            {'index': 11, 'lz': 0, 'shell': 6},
+            {'index': 12, 'lz': 1, 'shell': 6},
+            {'index': 13, 'lz': 2, 'shell': 6}]
+        self.assertListEqual(self.glp.get_lz_values(), lz)
 
 if __name__ == "__main__":
     unittest.main()
