@@ -117,8 +117,9 @@ def run_total_energy(x0, *args):
 
     bslist = []
     bs2opt = BasisSet.from_optdict(x0, bsopt)
-    print("Current exponents")
-    bs2opt.print_exponents()
+    if job["verbose"]:
+        print("Current exponents")
+        bs2opt.print_exponents()
     if isinstance(bsnoopt, list):
         for bs in bsnoopt:
             if bs2opt.element == bs.element:
@@ -174,8 +175,9 @@ def run_core_energy(x0, *args):
         penalty = 0.0
 
     bs2opt = BasisSet.from_optdict(x0, bsopt)
-    print("Current exponents")
-    bs2opt.print_exponents()
+    if job["verbose"]:
+        print("Current exponents")
+        bs2opt.print_exponents()
 
     citote = []
     stats  = []

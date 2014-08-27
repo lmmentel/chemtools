@@ -1,8 +1,9 @@
-import pymongo
+#import pymongo
 import copy
 import decimal
 import numpy as np
 from itertools import chain
+from collections import OrderedDict
 
 _shells = ["s", "p", "d", "f", "g", "h", "i"]
 
@@ -22,7 +23,10 @@ class BasisSet:
         if isinstance(d, dict):
             bs = cls()
             for key, val in d.items():
-                setattr(bs, key, val)
+                if key == 'functions':
+                    setattr(bs, key, OrderedDict(sorted(val.items(), key=lambda x: _shells.index(x[0]))))
+                else:
+                    setattr(bs, key, val)
         return bs
 
     @classmethod
@@ -400,34 +404,35 @@ class BasisSet:
         if all(all(x == 1 for x in shell) for shell in ppc):
             return "uncontracted 1fps"
 
-    @staticmethod
-    def zetas2legendre(zetas, kmax):
-        '''
-        From a set of exponents "zetas", using least square fit calculate the
-        expansion coefficients into the legendre polynomials of the order "kmax".
+def zetas2legendre(zetas, kmax):
+    '''
+    From a set of exponents "zetas", using least square fit calculate the
+    expansion coefficients into the legendre polynomials of the order "kmax".
 
-        Args:
-            kmax (int)
-                length of the legendre expansion
-            zetas (list)
-                list of exponents (floats) to be fitted
+    Args:
+        kmax (int)
+            length of the legendre expansion
+        zetas (list)
+            list of exponents (floats) to be fitted
 
-        Returns:
-            coeff (np.array)
-                numpy array of legendre expansion coeffcients of length kmax
-        '''
+    Returns:
+        coeff (np.array)
+            numpy array of legendre expansion coeffcients of length kmax
+    '''
 
-        c = np.asarray([1.0]*kmax, dtype=float)
+    # exponents should be sorted in the acsending order
+    zetas = sorted(zetas)
+    c = np.asarray([1.0]*kmax, dtype=float)
 
-        leg = np.polynomial.Legendre(c)
-        a = np.zeros((len(zetas), kmax))
+    leg = np.polynomial.Legendre(c)
+    a = np.zeros((len(zetas), kmax))
 
-        for j in range(len(zetas)):
-            for k in range(kmax):
-                arg = (2.0*(j+1.0)-2.0)/(len(zetas)-1.0)-1.0
-                a[j, k] = leg.basis(k)(arg)
+    for j in range(len(zetas)):
+        for k in range(kmax):
+            arg = (2.0*(j+1.0)-2.0)/(len(zetas)-1.0)-1.0
+            a[j, k] = leg.basis(k)(arg)
 
-        return np.linalg.lstsq(a, np.log(zetas))[0]
+    return np.linalg.lstsq(a, np.log(zetas))[0]
 
 def eventemp(nf, params):
     '''
