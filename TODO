@@ -1,3 +1,5 @@
+TODO
+====
     1. integrate multiprocessing module in order to able able to run multiple jobs at once
     1.1 apply multiprocessing for calculating core energy
     2. explain the input dictionaries in the documentation
@@ -15,5 +17,8 @@ seqfile
 
 basisset
     * add formatters for different file formats: tex, html, xml
+    * write a function to transform the orbital expansion coefficient from
+      cartesian to pure spherial gaussians
 
-WRITE UNITTESTS and DOCTESTS !!!
+DONE
+====
