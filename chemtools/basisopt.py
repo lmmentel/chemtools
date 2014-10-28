@@ -132,17 +132,17 @@ def run_total_energy(x0, *args):
         bslist.append(bs2opt)
     code.write_input(job["inpname"], job["core"], bs=bslist, mol=mol, inpdata=job["inpdata"])
     output = code.run(job["inpname"])
-    if code.accomplished():
+    if code.accomplished(output):
         objective = code.parse(output, job["method"], job["objective"], job.get("regexp", None))
         if job["verbose"]:
             print("{0:<s}".format("Job Terminated without errors"))
             print("x0 : ", ", ".join([str(x) for x in x0]))
-            print("\n{0:<20s} : {1:>30s}".format("Output", code.outfile))
+            print("\n{0:<20s} : {1:>30s}".format("Output", output))
             print("{0:<20s} : {1:>30.10f}".format("Objective", objective + opt["lambda"]*penalty))
             print("="*80)
         return objective +opt["lambda"]*penalty
     else:
-        sys.exit("something went wrong, check output {0:s}".format(code.outfile))
+        sys.exit("something went wrong, check output {0:s}".format(output))
 
 def run_core_energy(x0, *args):
     '''

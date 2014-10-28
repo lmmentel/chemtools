@@ -66,7 +66,7 @@ def main():
     print(lege_sp["params"][0])
     print(lege_sp["params"][1])
 
-    res = driver(code=mp, job=job, mol=he, bsopt=lege_sp, opt=optimization)
+    res = driver(code=mp, job=job, mol=he, bsopt=legendre, opt=optimization)
     print res.success
     print res.x
     print res.fun
