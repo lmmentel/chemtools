@@ -490,6 +490,10 @@ def legendre(nf, coeffs):
     if len(coeffs) <  1:
         raise ValueError('"coeffs" tuple should have at least 1 entry, got {}'.format(len(coeffs)))
 
+    # special case for one function
+    if len(coeffs) == 1:
+        return [np.exp(coeffs[0])] 
+
     poly = np.polynomial.legendre.Legendre(coeffs)
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]
     return [np.exp(x) for x in zetas]
