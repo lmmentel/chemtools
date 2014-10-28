@@ -21,7 +21,7 @@ setup(
     name = 'chemtools',
     packages = ['chemtools'],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
-    version = '0.3.0',
+    version = '0.3.1',
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
