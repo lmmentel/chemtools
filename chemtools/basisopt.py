@@ -215,3 +215,171 @@ def run_core_energy(x0, *args):
     else:
         print("Job terminated with ERRORS, check output.")
         sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
+
+def save_basis(x, bsopt):
+    '''
+    save optimized functions to file
+    '''
+
+    _shells = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
+
+    basis = vars(BasisSet.from_optdict(x, bsopt))
+    shells = "".join([str(n)+s for n, s in zip(bsopt['nfpshell'], _shells) if n != 0])
+    pars = "-".join([str(len(x)) for x in bsopt['params']])
+    fname = "_".join(["optimized", optimization["method"], bsopt["typ"], pars, shells]) + ".bas"
+    print("Saving basis set under the name: '{}'".format(fname))
+    with open(fname, 'wb') as ff:
+        ff.write(str(basis))
+
+def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
+    '''
+    For a given shell optimize the functions until the convergence criterion is reached
+    the energy difference for two consecutive function numbers is less than the threshold
+
+    Kwargs:
+        shell : (string)
+            string label for the shell to be optimized
+
+        nfs : (list of ints)
+            list of integers representing the number of basis functions to be
+            inceremented in the optimization,
+
+        max_params : (int)
+            maximal number of parameters to be used in the legendre expansion,
+            (length of the expansion)
+
+        opt_tol : (float)
+            threshold controlling the termination of the shell optimization,
+            if energy difference between two basis sets with subsequent number
+            of functionsis larger than this threshold, another function is
+            added to this shell and parameters are reoptimized,
+
+        save : (bool)
+            a flag to trigger saving all the optimized basis functions for each
+            shell,
+
+        **kwargs:
+            options for the basis set optimization driver, see driver function
+            from the basisopt module
+
+    Returns:
+        BasisSet object instance with optimized functions for the specified shell
+
+    Raises:
+        ValueError:
+            when `shell` is different from `s`, `p`, `d`, `f`, `g`, `h`, `i`
+            when number of parameters equals 1 and there are more functions
+            when there are more parameters than functions to optimize
+    '''
+
+    _shells = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
+
+    if shell not in _shells:
+        raise ValueError('shell must be one of the following: {}'.format(", ".join(_shells)))
+
+    if len(bsopt['params'][0]) == 1 and min(nfs) != 1:
+        raise ValueError("1 parameter and {0} functions doesn't make sense".format(min(nfs)))
+
+    if min(nfs) < len(bsopt['params'][0]):
+        raise ValueError("more parameters ({0}) than functions to optimize ({1})".format(len(bsopt['params'][0]), min(nfs)))
+
+    bsopt["typ"] = "legendre"
+    e_last = 0.0
+    x_last = bsopt['params'][0]
+
+    for nf in nfs:
+        bsopt['nfpshell'] = [0]*_shells.index(shell) + [nf]
+        res = driver(bsopt=bsopt, **kwargs)
+
+        print "Completed optimization for {0:d} {1}-type functions".format(nf, shell)
+
+        print "{s:<25s} : {v:>20.10f}".format(s="Current Function value", v=res.fun)
+        print "{s:<25s} : {v:>20.10f}".format(s="Previous Function value", v=e_last)
+        print "{s:<25s} : {v:>20.10f}".format(s="Difference", v=abs(res.fun-e_last))
+
+        if abs(res.fun - e_last) < opt_tol:
+            print("Basis saturated with respect to threshold")
+            bsopt['nfpshell'] = nfps_last
+            if save:
+                save_basis(x_last, bsopt)
+            return BasisSet.from_optdict(x_last, bsopt)
+        else:
+            print("Threshold exceeded, continuing optimization.")
+            x_last = res.x.tolist()
+            nfps_last = bsopt['nfpshell']
+            if len(bsopt['params'][0]) < max_params:
+                print "adding more parameters"
+                restup = tuple(res.x)
+                # this assumption should be revised, improved or justified
+                # suggestion: maybe change to average of existing parameters
+                restup += tuple([abs(min(restup)*0.25)])
+                bsopt['params'] = [restup,]
+            else:
+                print "not adding more parameters"
+                bsopt['params'] = [tuple(res.x),]
+            e_last = res.fun
+    else:
+        print "Supplied number of functions exhausted but the required accuracy was not reached"
+        if save:
+            save_basis(res.x.tolist(), bsopt)
+        return BasisSet.from_optdict(res.x.tolist(), bsopt)
+
+def opt_multishell(shells=None, nfps=None, guesses=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
+    '''
+    Optimize a basis set by saturating the function space shell by shell
+
+    Kwargs:
+        shells (list of strings):
+            list of shells to be optimized, in the order the optimization should
+            be performed,
+
+        nfps (list of lists of integers):
+            list specifying a set of function numbers to be scanned per each
+            shell,
+
+        guesses (list of lists of floats):
+            list specifying a set of starting parameters per each shell,
+
+        max_params (int)
+            maximal number of parameters to be used in the legendre expansion,
+            (length of the expansion)
+
+        opt_tol (float):
+            threshold controlling the termination of the shell optimization,
+            if energy difference between two basis sets with subsequent number
+            of functionsis larger than this threshold, another function is
+            added to this shell and parameters are reoptimized
+
+        **kwargs:
+            options for the basis set optimization driver, see driver function
+            from the basisopt module
+    '''
+
+    # bsnoopt needs to exists since it will be appended with optimized
+    # functions after each shell is optimized
+    if kwargs['bsnoopt'] is None:
+        kwargs['bsnoopt'] = BasisSet.from_dict({"element"   : "Be",
+                                      "functions" : {}})
+
+    # begin the main loop over shells, nr f per shell and guesses
+    for shell, nfs, guess in zip(shells, nfps, guesses):
+
+        header = " Beginning optimization for {s:s} shell ".format(s=shell)
+        print "="*100
+        print format(header, '-^100')
+        print "="*100
+
+        bsopt['params'] = [tuple(guess)]
+        # begin the optimization for a given shell and store the optimized
+        # functions under optimized_shell
+        optimized_shell = opt_shell_by_nf(shell, nfs, max_params=max_params,
+                                          opt_tol=opt_tol, save=save,
+                                          bsopt=bsopt, **kwargs)
+        # add the optimized shell to the total basis set
+        kwargs['bsnoopt'].add(optimized_shell)
+
+    # save the final complete basis set
+    basis_dict = vars(kwargs['bsnoopt'])
+    with open("final.bas", 'wb') as ff:
+        ff.write(str(basis_dict))
+
