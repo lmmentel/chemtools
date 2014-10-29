@@ -144,7 +144,7 @@ class MolproOutputParser(object):
         with open(self.output, 'r') as out:
             data = out.read()
 
-        cire = re.compile(r'!CISD total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
+        cire = re.compile(r'!(RHF-R)?CISD\s+(total\s+)?energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
         match = cire.search(data)
         if match:
             return float(match.group("energy"))
