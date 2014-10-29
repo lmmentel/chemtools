@@ -98,6 +98,7 @@ def run_total_energy(x0, *args):
         args: tuple of dictionaries
             bsopt, bsnoopt, code, job, mol, opt, needed for writing
             input and parsing output
+
     Returns:
         parsed result of the single point calculation as speficied by the
         objective function in the "job" dictionary
@@ -134,6 +135,8 @@ def run_total_energy(x0, *args):
     output = code.run(job["inpname"])
     if code.accomplished(output):
         objective = code.parse(output, job["method"], job["objective"], job.get("regexp", None))
+        if objective is None:
+            raise ValueError("Unable to parse the objective, check output")
         if job["verbose"]:
             print("{0:<s}".format("Job Terminated without errors"))
             print("x0 : ", ", ".join([str(x) for x in x0]))
