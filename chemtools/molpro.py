@@ -137,6 +137,42 @@ class MolproOutputParser(object):
         if match:
             return float(match.group("energy"))
 
+    def get_mp2_total_energy(self):
+
+        '''Return the total MP2 energy.'''
+
+        with open(self.output, 'r') as out:
+            data = out.read()
+
+        mpre = re.compile(r'!MP2 total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
+        match = mpre.search(data)
+        if match:
+            return float(match.group("energy"))
+
+    def get_ccsd_total_energy(self):
+
+        '''Return the total CCSD energy.'''
+
+        with open(self.output, 'r') as out:
+            data = out.read()
+
+        ccre = re.compile(r'!CCSD total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
+        match = ccre.search(data)
+        if match:
+            return float(match.group("energy"))
+
+    def get_ccsdt_total_energy(self):
+
+        '''Return the total CCSD(T) energy.'''
+
+        with open(self.output, 'r') as out:
+            data = out.read()
+
+        ccre = re.compile(r'!CCSD\(T\) total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
+        match = ccre.search(data)
+        if match:
+            return float(match.group("energy"))
+
     def get_cisd_total_energy(self):
 
         '''Return the total CISD energy.'''
@@ -146,6 +182,18 @@ class MolproOutputParser(object):
 
         cire = re.compile(r'!(RHF-R)?CISD\s+(total\s+)?energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
         match = cire.search(data)
+        if match:
+            return float(match.group("energy"))
+
+    def get_fci_total_energy(self):
+
+        '''Return the total HF energy.'''
+
+        with open(self.output, 'r') as out:
+            data = out.read()
+
+        fcire = re.compile(r'!FCI STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
+        match = fcire.search(data)
         if match:
             return float(match.group("energy"))
 
