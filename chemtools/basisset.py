@@ -7,6 +7,17 @@ from collections import OrderedDict
 
 _shells = ["s", "p", "d", "f", "g", "h", "i"]
 
+def splitlist(l, n):
+    if len(l) % n == 0:
+        splits = len(l)/n
+    elif len(l) % n != 0 and len(l) > n:
+        splits = len(l)/n+1
+    else:
+        splits = 1
+
+    for i in xrange(splits):
+        yield l[n*i:n*i+n]
+
 class BasisSet:
     '''
     Basis set module supporting basic operation on basis sets and can be used
@@ -202,6 +213,48 @@ class BasisSet:
                 lof.append(addexp)
         return lof, newidx
 
+    def write_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
+        '''
+        Return a string with the basis set in (new) CFOUR format.
+
+        Args:
+            comment (str)
+                comment string
+            efmt (str)
+                string describing output format for the exponents, default:
+                "20.10f"
+            cfmt (str)
+                string describing output format for the contraction
+                coefficients, default: "15.8f"
+
+        Returns:
+            res (str)
+                basis set string
+        '''
+
+        am, ne, cf = [], [], []
+        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
+            am.append(_shells.index(shell))
+            ne.append(len(shellfs["exponents"]))
+            cf.append(len(shellfs["contractedfs"]))
+
+        res = "\n{e}:{s}\n{c}\n\n".format(e=self.element, s=self.name, c=comment)
+        res += "{0:3d}\n".format(len(self.functions.keys()))
+        res += "".join(["{0:5d}".format(x) for x in am]) + "\n"
+        res += "".join(["{0:5d}".format(x) for x in ne]) + "\n"
+        res += "".join(["{0:5d}".format(x) for x in cf]) + "\n"
+        res += "\n"
+
+        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
+            for lst in splitlist(shellfs["exponents"], 5):
+                res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst])  + "\n"
+            res += "\n"
+            for i, expt in enumerate(shellfs["exponents"]):
+                cc = [cfs["coefficients"][cfs["indices"].index(i)] if i in cfs["indices"] else 0.0 for cfs in shellfs["contractedfs"]]
+                for lst in splitlist(cc, 5):
+                    res += "{c}".format(c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in lst])) + "\n"
+            res += "\n"
+        return res
 
     def write_dalton(self, efmt="20.10f", cfmt="15.8f"):
         '''
