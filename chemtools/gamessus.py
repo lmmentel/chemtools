@@ -27,23 +27,10 @@ class Gamess(Code):
 
     '''Container object for Gamess-us jobs.'''
 
-    def __init__(self, **kwargs):
-        super(Gamess, self).__init__(**kwargs)
+    def __init__(self, version="00", **kwargs):
+        super(Gamess, self).__init__(name="GamessUS", **kwargs)
 
-        _versions = []
-
-        for item in os.listdir(self.execpath):
-            match = re.match(r'[a-z]+\.([0-9]+)\.x', item)
-            if match:
-                _versions.append(match.group(1))
-
-        if "version" in kwargs.keys():
-            if kwargs["version"] in _versions:
-                self.version = kwargs["version"]
-            else:
-                sys.exit('gamess version {0:s} not found in {1:s}'.format(kwargs["version"], self.execpath))
-        else:
-            self.version = _versions[0]
+        self.version = version
 
         if os.path.isfile(os.path.join(self.execpath, 'ddikick.x')):
             self.ddikick = os.path.join(self.execpath, 'ddikick.x')
@@ -51,7 +38,31 @@ class Gamess(Code):
         if os.path.isfile(os.path.join(self.execpath, 'rungms')):
             self.rungms = os.path.join(self.execpath, 'rungms')
         else:
-            sys.exit('Could not find "rungms" under {0:s}'.format(self.execpath))
+            raise IOError('Could not find "rungms" under {0:s}'.format(self.execpath))
+
+    @property
+    def version(self):
+        """Return the version."""
+        return self._version
+
+    @version.setter
+    def version(self, value):
+        """Check if the version exist and set it if it does."""
+
+        versions = []
+        for item in os.listdir(self.execpath):
+            match = re.match(r'[a-z]+\.([0-9]+)\.x', item)
+            if match:
+                versions.append(match.group(1))
+
+        if value in versions:
+            self._version = value
+        else:
+            raise IOError('GamessUS version {0:s} not found in {1:s}'.format(value, self.execpath))
+
+    @property
+    def exe(self):
+        return os.path.join(self.execpath, self.executable)
 
     def remove_dat(self, inpfile):
         '''
@@ -63,7 +74,7 @@ class Gamess(Code):
             os.remove(os.path.join(self.scratch, datfile))
 
 
-    def run(self, inpfile, logfile, nproc=1, remove_dat=True):
+    def run(self, inpfile, logfile=None, nproc=1, remove_dat=True):
         '''
         Run a single gamess job interactively - without submitting to the
         queue.
@@ -72,18 +83,16 @@ class Gamess(Code):
         if remove_dat:
             self.remove_dat(inpfile)
 
+        if logfile is None:
+            logfile = os.path.splitext(inpfile)[0] + ".log"
+
         out = open(logfile, 'w')
-        process = Popen([self.rungms, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
+        process = Popen([self.exe, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
         process.wait()
         out.close()
+        return logfile
 
     def run_multiple(self, inputs):
-        pass
-
-    def submit(self):
-
-        '''Submit a single gamess job into the queue.'''
-
         pass
 
     def accomplished(self, outfile):
@@ -1347,10 +1356,25 @@ records = {
 
 class DictionaryFile(BinaryFile):
     '''
-    Handler for the gamess(us) dictionary file.
+    Wrapper for reading GAMESS(US) dictionary file (*.F10).
     '''
 
     def __init__(self, filename, irecln=4090, int_size=8):
+        """
+        Args:
+
+            irecln: int, is the record length that is used by GAMESS(US) when
+                writing the dicitonary file. It is a platform dependent
+                variable that is called IRECLN in the GAMESS(US) code. In
+                GAMESS(US) it is set by the function NRASIZ(UNIT) in iolib.src
+                and for dictionary file (unit=10) and UNX it is equal to 4090,
+                for all other files and UNX it is equal to 2048. If you use
+                GAMESS(US) on a different platform check the NRASIZ(UNIT)
+                function for the proper value and supply it when instantiating
+                the class.
+            int_size: int, is the integer size (in bytes) that the GAMESS(US)
+                was compiled with.
+        """
         super(DictionaryFile, self).__init__(filename)
 
         self.irecln = irecln
@@ -1371,10 +1395,21 @@ class DictionaryFile(BinaryFile):
         '''
 
         if self.ioda[nrec-1] < 0:
-            raise ValueError("Record {0} was not previously written, IODA[{0}]={1}".format(nrec, self.ioda[nrec-1]))
+            raise IOError("Record {0} was not previously written, IODA[{0}]={1}".format(nrec, self.ioda[nrec-1]))
 
         self.seek(8*self.irecln*(int(self.ioda[nrec-1])-1))
         if dtype is not None:
             return self.read(dtype, shape=(self.ifilen[nrec-1],))
         else:
             return self.read(records[nrec].dtype, shape=(self.ifilen[nrec-1],))
+
+def tri2full(vector, shape):
+
+    n, m = shape
+    matrix = np.zeros((n, m), dtype=float, order='F')
+
+    ij = -1
+    for i in range(n):
+        for j in range(m):
+            ij += 1
+            matrix[i, j] = matrix[j, i] = vector[ij]

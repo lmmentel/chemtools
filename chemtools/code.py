@@ -14,12 +14,12 @@ class Code():
     Abstract class that should be subclassed when adding a new code interace.
     '''
 
-    def __init__(self, name=None, execpath=None, runopts=None, scratch=None, **kwargs):
+    def __init__(self, name=None, executable=None, execpath=None, runopts=None, scratch=None):
         self.name = name
         self.execpath = execpath
+        self.executable = executable
         self.runopts = runopts
         self.scratch = scratch
-
 
     @property
     def execpath(self):
@@ -30,7 +30,18 @@ class Code():
         if os.path.exists(value):
             self._execpath = value
         else:
-            raise ValueError("File: '{}' does not exists".format(value))
+            raise ValueError("execpath: '{}' does not exists".format(value))
+
+    @property
+    def executable(self):
+        return self._executable
+
+    @executable.setter
+    def executable(self, value):
+        if os.path.exists(os.path.join(self.execpath, value)):
+            self._executable = value
+        else:
+            raise ValueError("executable: '{0}' does not exists at {1}".format(value, self.execpath))
 
     @abstractmethod
     def parse():

@@ -6,7 +6,7 @@ import sys
 
 class Molpro(Code):
     '''
-    Generic class holding a Molpro object.
+    Wrapper for the Molpro program.
     '''
 
     def __init__(self, **kwargs):
