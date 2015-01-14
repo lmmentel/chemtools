@@ -260,6 +260,9 @@ def parse_shell(expsline, coeffs):
     Parse functions of one shell in molpro format.
     '''
 
+    # remove empty strings and whitespace line breaks and tabs
+    coeffs = [x.strip() for x in coeffs if x.strip() not in ['', '\n', '\t']]
+
     fs = {}
 
     shell  = expsline.split(",")[0]
@@ -267,12 +270,16 @@ def parse_shell(expsline, coeffs):
     exps   = [float(x) for x in expsline.rstrip(";").split(",")[2:]]
 
     fs[shell.lower()] = {'exponents' : exps, 'contractedfs' : []}
-    for line in coeffs:
-        lsp = line.rstrip(";").split(",")
-        if lsp[0] == "c":
-            i, j = [int(x) for x in lsp[1].split(".")]
-            coeffs = [float(x) for x in lsp[2:]]
-            fs[shell.lower()]['contractedfs'].append({'indices' : list(range(i-1, j)), 'coefficients' : coeffs})
+    if len(coeffs) != 0:
+        for line in coeffs:
+            lsp = line.rstrip(";").split(",")
+            if lsp[0] == "c":
+                i, j = [int(x) for x in lsp[1].split(".")]
+                coeffs = [float(x) for x in lsp[2:]]
+                fs[shell.lower()]['contractedfs'].append({'indices' : list(range(i-1, j)), 'coefficients' : coeffs})
+    else:
+        for i in range(len(exps)):
+            fs[shell.lower()]['contractedfs'].append({'indices' : [i], 'coefficients' : [1.0]})
     return at_symbol, fs
 
 def parse_ecp(ecpstring):
@@ -323,45 +330,3 @@ def parse_coeffs(lines):
             tt['parameters'].append({'m' : float(param[0]), 'gamma' : float(param[1]),'c' : float(param[2])})
         ecp[element]['shells'].append(tt)
     return ecp
-
-def write_molpro_basis(basisset):
-    '''
-    Write basis set in molpro format
-
-    This little function is quite dirty and would benefit from  rewriting!
-    '''
-
-    newd = []
-
-    for atom, atomgroup in groupby(basisset, lambda x: x["atomic"]):
-        for shell, shellgroup in groupby(atomgroup, lambda x: x["shell"]):
-            exps    = []
-            indices = []
-            coeffs  = []
-            for function in shellgroup:
-                for zeta in function["exps"]:
-                    if zeta not in exps:
-                        exps.append(zeta)
-                istart = exps.index(function["exps"][0]) + 1
-                istop  = exps.index(function["exps"][-1]) + 1
-                indices.append((istart, istop))
-                coeffs.append(function["coeffs"])
-            newd.append({"atomic" : atom,
-                            "shell"  : shell,
-                            "exps"   : exps,
-                            "indices": indices,
-                            "coeffs" : coeffs})
-    outstring = "basis={\n"
-    for f in sorted(newd, key=itemgetter("atomic", "shell")):
-        elem = periodic.element(f["atomic"])
-        outstring = outstring + "{0}, {1}, {2}\n".format(
-                _shells[f["shell"]].lower(),
-                elem.symbol,
-                ", ".join([str(x) for x in f["exps"]]))
-        for i, item in enumerate(f["coeffs"]):
-            outstring = outstring + "{0}, {1}, {2}\n".format(
-                "c",
-                ".".join([str(x) for x in f["indices"][i]]),
-                ", ".join([str(x) for x in item]))
-    outstring = outstring + "}\n"
-    return outstring

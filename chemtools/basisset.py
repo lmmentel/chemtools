@@ -31,7 +31,11 @@ class BasisSet:
         assumed structure of "functions" entry. This method can be used to
         initialize the BasisSet object directly from mongoDB database.
         '''
+        required = set(['name', 'element', 'functions'])
         if isinstance(d, dict):
+            if not required.issubset(set(d.keys())):
+                missing = list(required.difference(set(d.keys())))
+                raise ValueError('Following keys are required: {0}'.format(", ".join(missing)))
             bs = cls()
             for key, val in d.items():
                 if key == 'functions':
