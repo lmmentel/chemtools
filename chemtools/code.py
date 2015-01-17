@@ -28,7 +28,7 @@ class Code():
     def executable(self, value):
         if os.path.exists(value):
             if os.path.isdir(value):
-                    raise OSError('{0} is a directory not executable'.format(value))
+                    raise OSError('{0} is a directory, not executable'.format(value))
             elif os.path.isfile(value):
                 if os.access(value, os.X_OK):
                     self._executable = value
