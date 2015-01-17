@@ -9,8 +9,11 @@ class Molpro(Code):
     Wrapper for the Molpro program.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, name="Molpro", **kwargs):
+        self.name = name
         super(Molpro, self).__init__(**kwargs)
+
+        self.molpropath = os.path.dirname(self.executable)
 
     def write_input(self, inpfile=None, core=None, bs=None, inpdata=None, mol=None):
 
@@ -39,7 +42,7 @@ class Molpro(Code):
             outfile = os.path.splitext(inpfile)[0] + ".out"
         errfile = os.path.splitext(outfile)[0] + ".err"
         opts = []
-        opts.extend([self.execpath, inpfile] + self.runopts)
+        opts.extend([self.executable, inpfile] + self.runopts)
 
         process = Popen(opts, stdout=PIPE, stderr=PIPE)
         out, err = process.communicate()
@@ -60,7 +63,7 @@ class Molpro(Code):
         outputs = [os.path.splitext(inp)[0] + ".out" for inp in inputs]
         for inpfile, outfile in zip(inputs, outputs):
             opts = []
-            opts.extend([self.execpath, inpfile] + self.runopts)
+            opts.extend([self.executable, inpfile] + self.runopts)
             out = open(outfile, 'w')
             process = Popen(opts, stdout=out, stderr=out)
             out.close()
@@ -104,7 +107,7 @@ class Molpro(Code):
         return parser.terminatedOK()
 
     def __repr__(self):
-        return "<Molpro(\n\tname='{n}',\n\texecpath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.execpath, r=self.runopts) 
+        return "<Molpro(\n\tname='{n}',\n\tmolpropath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.molpropath, r=self.runopts) 
 
 class MolproOutputParser(object):
 

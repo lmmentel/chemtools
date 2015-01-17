@@ -27,18 +27,19 @@ class Gamess(Code):
 
     '''Container object for Gamess-us jobs.'''
 
-    def __init__(self, version="00", **kwargs):
-        super(Gamess, self).__init__(name="GamessUS", **kwargs)
-
+    def __init__(self, name="GamessUS", version="00", **kwargs):
+        super(Gamess, self).__init__(**kwargs)
+        self.name = name
+        self.gamesspath = os.path.dirname(self.executable)
         self.version = version
 
-        if os.path.isfile(os.path.join(self.execpath, 'ddikick.x')):
-            self.ddikick = os.path.join(self.execpath, 'ddikick.x')
+        if os.path.isfile(os.path.join(self.gamesspath, 'ddikick.x')):
+            self.ddikick = os.path.join(self.gamesspath, 'ddikick.x')
 
-        if os.path.isfile(os.path.join(self.execpath, 'rungms')):
-            self.rungms = os.path.join(self.execpath, 'rungms')
+        if os.path.isfile(os.path.join(self.gamesspath, 'rungms')):
+            self.rungms = os.path.join(self.gamesspath, 'rungms')
         else:
-            raise IOError('Could not find "rungms" under {0:s}'.format(self.execpath))
+            raise IOError('Could not find "rungms" under {0:s}'.format(self.gamesspath))
 
     @property
     def version(self):
@@ -50,7 +51,7 @@ class Gamess(Code):
         """Check if the version exist and set it if it does."""
 
         versions = []
-        for item in os.listdir(self.execpath):
+        for item in os.listdir(self.gamesspath):
             match = re.match(r'[a-z]+\.([0-9]+)\.x', item)
             if match:
                 versions.append(match.group(1))
@@ -58,11 +59,7 @@ class Gamess(Code):
         if value in versions:
             self._version = value
         else:
-            raise IOError('GamessUS version {0:s} not found in {1:s}'.format(value, self.execpath))
-
-    @property
-    def exe(self):
-        return os.path.join(self.execpath, self.executable)
+            raise IOError('GamessUS version {0:s} not found in {1:s}'.format(value, self.gamesspath))
 
     def remove_dat(self, inpfile):
         '''
@@ -87,7 +84,7 @@ class Gamess(Code):
             logfile = os.path.splitext(inpfile)[0] + ".log"
 
         out = open(logfile, 'w')
-        process = Popen([self.exe, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
+        process = Popen([self.executable, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
         process.wait()
         out.close()
         return logfile

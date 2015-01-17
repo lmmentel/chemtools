@@ -14,23 +14,11 @@ class Code():
     Abstract class that should be subclassed when adding a new code interace.
     '''
 
-    def __init__(self, name=None, executable=None, execpath=None, runopts=None, scratch=None):
-        self.name = name
-        self.execpath = execpath
+    def __init__(self, executable=None, runopts=None, scratch=None):
+
         self.executable = executable
         self.runopts = runopts
         self.scratch = scratch
-
-    @property
-    def execpath(self):
-        return self._execpath
-
-    @execpath.setter
-    def execpath(self, value):
-        if os.path.exists(value):
-            self._execpath = value
-        else:
-            raise ValueError("execpath: '{}' does not exists".format(value))
 
     @property
     def executable(self):
@@ -38,10 +26,18 @@ class Code():
 
     @executable.setter
     def executable(self, value):
-        if os.path.exists(os.path.join(self.execpath, value)):
-            self._executable = value
+        if os.path.exists(value):
+            if os.path.isdir(value):
+                    raise OSError('{0} is a directory not executable'.format(value))
+            elif os.path.isfile(value):
+                if os.access(value, os.X_OK):
+                    self._executable = value
+                else:
+                    raise OSError('file: {0} is not executable'.format(value))
+            else:
+                raise OSError('unknown type of the executable: {0}'.format(value))
         else:
-            raise ValueError("executable: '{0}' does not exists at {1}".format(value, self.execpath))
+            raise ValueError("executable: '{0}' does not exists".format(value))
 
     @abstractmethod
     def parse():
