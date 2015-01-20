@@ -24,13 +24,13 @@ job = {"method"    : "cisd",
        "verbose"   : True,
        }
 
-ccpvdz = BasisSet.from_dict({"element"   : "Be",
+ccpvdz = BasisSet.from_dict({"element"   : "Be", "name" : "cc-pvdz",
           "functions" : molpro.parse_basis(open("ccpvdz_molpro.bas", "r").read())["Be"],
          })
 
 mp = Molpro(
         name="MOLPRO",
-        execpath="/home/lmentel/Programs/MOLPRO/molprop_2012_1_Linux_x86_64_i8/bin/molpro",
+        executable="/home/lmentel/Programs/MOLPRO/molprop_2012_1_Linux_x86_64_i8/bin/molpro",
         runopts=["-s", "-n", "1", "-d", "/home/lmentel/scratch"],
             )
 

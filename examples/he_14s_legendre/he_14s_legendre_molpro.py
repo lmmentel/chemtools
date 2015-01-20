@@ -38,7 +38,7 @@ job = {"method"    : "hf",
 
 mp = Molpro(
         name="MOLPRO",
-        execpath="/home/lmentel/Programs/MOLPRO/molprop_2012_1_Linux_x86_64_i8/bin/molpro",
+        executable="/home/lmentel/Programs/MOLPRO/molprop_2012_1_Linux_x86_64_i8/bin/molpro",
         runopts=["-s", "-n", "1", "-d", "/home/lmentel/scratch"],
             )
 

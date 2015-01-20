@@ -16,6 +16,10 @@ class Molpro(Code):
         self.molpropath = os.path.dirname(self.executable)
 
     def write_input(self, inpfile=None, core=None, bs=None, inpdata=None, mol=None):
+        '''
+        Write the molpro input to "inpfile" based on the information from the
+        keyword arguments.
+        '''
 
         if isinstance(bs, list):
             basstr = "".join(x.write_molpro() for x in bs)
@@ -223,6 +227,21 @@ class MolproOutputParser(object):
             return False
         else:
             return True
+
+    def get_basis(self):
+
+        with open(self.output, 'r') as fout:
+            for line in fout:
+                if line[1:11] == "BASIS DATA":
+
+                    print "skipped: ", next(fout),
+                    print "skipped: ", next(fout),
+                    print "skipped: ", next(fout),
+
+                    line = "dummy"
+                    while line.strip() != "":
+                        line = next(fout)
+                        print line,
 
 def parse_basis(string):
     '''
