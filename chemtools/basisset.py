@@ -461,6 +461,20 @@ class BasisSet:
         if all(all(x == 1 for x in shell) for shell in ppc):
             return "uncontracted 1fps"
 
+    def partial_wave_expand(self):
+        """
+        From a given basis set with shells spdf... return a list of basis sets that
+        are subsets of the entered basis set with increasing angular momentum functions
+        included [s, sp, spd, spdf, ...]
+        """
+        res = list()
+        shells = self.functions.keys()
+        for i in range(1, len(shells)+1):
+            bscopy = copy.copy(self)
+            bscopy.functions = {k:v for k, v in self.functions.items() if k in shells[:i]}
+            res.append(bscopy)
+        return res
+
 def zetas2legendre(zetas, kmax):
     '''
     From a set of exponents "zetas", using least square fit calculate the
