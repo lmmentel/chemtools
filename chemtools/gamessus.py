@@ -1,4 +1,3 @@
-
 '''
 Module for handling Gamess-US related jobs,:
     Gamess          : running and submitting jobs, writing inputs,
@@ -111,23 +110,25 @@ class GamessInpParser(object):
     A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self):
+    def __init__(self, finput):
         '''
         Initialize the class.
         '''
 
+        self.finput = finput
+        self.inpdata = {}
         self.end = " $end"
         # not nested groups of input blocks (not parsed into a dict of dicts)
         self._notnested = ["$data", "$vec", "$ecp"]
 
-    def parse(self, inpfile):
+    def parse(self):
         '''
         Parse gamess input file into a dictionary of dictionaries, where the
         highest level entries are gamess namelist fileds and that contain
         dictionaries of options. All key are converted to lowercase.
         '''
 
-        with open(inpfile, 'r') as finp:
+        with open(self.finput, 'r') as finp:
             contents = finp.read()
         return self.parse_from_string(contents)
 
@@ -141,23 +142,21 @@ class GamessInpParser(object):
 
         pat = re.compile(r'(?P<block>\$[a-zA-Z]{3,6})\s+(?P<entries>.*?)\$END', flags=re.DOTALL)
 
-        dinput = {}
-
         iterator = pat.finditer(inpstr)
         for match in iterator:
             if match.group("block").lower() not in self._notnested:
-                dinput[match.group("block").lower()] = {}
+                self.inpdata[match.group("block").lower()] = {}
                 fields = [s.strip() for s in match.group("entries").split("\n")]
                 for field in fields:
                     if not field.startswith("!"):
                         for line in field.split():
                             key, value = line.split("=")
-                            dinput[match.group("block").lower()][key.lower()] = value
+                            self.inpdata[match.group("block").lower()][key.lower()] = value
             elif match.group("block").lower() == "$data":
-                dinput["$data"] = self.parse_data(match.group("entries"))
+                self.inpdata["$data"] = self.parse_data(match.group("entries"))
             elif match.group("block").lower() in ["$vec", "$ecp"]:
-                dinput[match.group("block").lower()] = match.group("entries")
-        return dinput
+                self.inpdata[match.group("block").lower()] = match.group("entries")
+        return True
 
     def parse_data(self, datastr, parse_basis=False):
         '''
@@ -192,7 +191,6 @@ class GamessInpParser(object):
              'xyz'    : tuple(float(x) for x in m.group('xyz').split()),
              'basis'  : m.group('basis'),})
         return datadict
-
 
     def write_input(self, inpfile, inpdict):
         '''
@@ -235,9 +233,9 @@ class GamessInpParser(object):
         else:
             sys.exit("no $contrl group in the gamess input string")
         if "$cidet" in dinp.keys():
-            dinp["$cidet"]["nact"]  = bas.get_no_functions(bs) - core
+            dinp["$cidet"]["nact"] = bs.get_no_functions(bs) - core
             dinp["$cidet"]["ncore"] = core
-            dinp["$cidet"]["nels"]  = mol.electrons - core*2
+            dinp["$cidet"]["nels"] = mol.electrons - core*2
         if "$ormas" not in dinp.keys():
             dinp["$ormas"] = {}
         if code["method"] == "cisd":
@@ -255,7 +253,7 @@ class GamessInpParser(object):
 
         return dinp
 
-    def write_with_vec(self, inpfile, inpdict, datfile):
+    def write_with_vec(self, inpfile, inpdict, vecstr):
         '''
         Write new gamess input based on exisiting input and natural orbitals
         from $VEC section in PUNCH file.
@@ -278,15 +276,10 @@ class GamessInpParser(object):
                 previous run,
         '''
 
-        gdp = GamessDatParser(datfile)
-#        vecstr = gdp.get_nos()
-
         inpdict['$contrl']['scftyp'] = 'none'
         inpdict['$guess'] = {}
         inpdict['$guess']['guess'] = 'moread'
-        inpdict['$guess']['norb'] = str(gdp.get_naos_nmos(vecstr)[1])
-
-#        self.write(inpfile, inpdict)
+        inpdict['$guess']['norb'] = str(get_naos_nmos(vecstr)[1])
 
         inp = open(inpfile, "a")
         inp.write("\n $vec\n")
@@ -334,19 +327,22 @@ class GamessInpParser(object):
                 exps, indxs, coeffs = self.parse_function(bslines[i+1:i+int(match.group("nf"))+1])
         return bs
 
-    def parse_function(self, los):
+    @staticmethod
+    def parse_function(los):
+        '''
+        Parse basis info from list of strings.
+        '''
 
-        '''Parse basis info from list of strings'''
-
-        indxs  = [int(item.split()[0]) for item in los]
-        exps   = [float(item.split()[1]) for item in los]
+        indxs = [int(item.split()[0]) for item in los]
+        exps = [float(item.split()[1]) for item in los]
         coeffs = [float(item.split()[2]) for item in los]
 
         return exps, indxs, coeffs
 
 class GamessLogParser(object):
-
-    '''methods for parsing gamess-us log file'''
+    '''
+    Methods for parsing gamess-us log file.
+    '''
 
     def __init__(self, log):
         self.logfile = log
@@ -357,14 +353,18 @@ class GamessLogParser(object):
 
     @logfile.setter
     def logfile(self, value):
+        '''
+        Check if the logfile exists first.
+        '''
         if os.path.exists(value):
             self._logfile = value
         else:
             raise ValueError("File: {} does not exist".format(value))
 
     def logexists(self):
-
-        '''Check if the log file exists.'''
+        '''
+        Check if the log file exists.
+        '''
 
         if os.path.exists(self.logfile):
             return True
@@ -577,8 +577,8 @@ class GamessLogParser(object):
 
     def get_lz_values(self):
         '''
-        Get values of Lz operator for every orbital and translate them into labels of orbotals
-            input:  lines    - contents of a file as a list of lines,
+        Get values of Lz operator for every orbital and translate them into
+        labels of orbitals.
         '''
 
         lz_patt = re.compile(r'\s*MO\s*(?P<index>\d*)\s*\(\s*(?P<shell>\d+)\s*\)\s*HAS LZ\(WEIGHT\)=\s*(?P<lz>-?\d*\.\d+)')
@@ -618,8 +618,8 @@ class GamessLogParser(object):
     @staticmethod
     def parse_pairs(los, sep="="):
         '''
-        Parse a given list of strings "los" into a dictionary based on separation
-        by "sep" character and return the dictionary.
+        Parse a given list of strings "los" into a dictionary based on
+        separation by "sep" character and return the dictionary.
         '''
         out = []
         for line in los:
@@ -649,7 +649,7 @@ class GamessReader(object):
     Class for holding method for reading gamess binary files:
         $JOB.F08 : two electron integrals over AO's,
         $JOB.F09 : two electron integrals over MO's,
-        $JOB.F10 : the dictionary file with one electron integrals, orbitals etc.,
+        $JOB.F10 : the dictionary file with 1-e integrals, orbitals etc.,
         $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
 
     TODO:
@@ -717,8 +717,6 @@ class GamessReader(object):
         '''Read the two electron integrals from the gamess-us file'''
 
         ints = np.zeros(self.get_twoe_size(), dtype=float)
-
-
 
     def read_twoemo_fortran(self, filename=None, nmo=None):
 
@@ -809,9 +807,9 @@ class GamessReader(object):
         return mat
 
     @staticmethod
-    def factor(i,j,k,l):
+    def factor(i, j, k, l):
         '''
-        Based on the orbitals indices return the factor that takes into account 
+        Based on the orbitals indices return the factor that takes into account
         the index permutational symmetry.
         '''
         if i == j and k == l and i == k:
@@ -967,40 +965,12 @@ class GamessDatParser(object):
                 orbs[5*j:5*(j+1), i] = [float(orblines[counter][5+15*n:5+15*(n+1)]) for n in range(nitems)]
         return orbs
 
-    def get_naos_nmos(self, vecstr, clength=15):
-        '''
-        Get the number of AO's and MO's from a string in $VEC block.
-
-        Args:
-            vecstr (str)
-                string with the contents fo the gamess $VEC block
-            clength (int)
-                total length of the coefficient string as stored by the gamess
-                format, by default gamess stores orbital coefficients in
-                'e15.8' fortran format so the total length is 15.
-
-        Returns:
-            naos (int)
-                number of atomic orbitals
-            naos (int)
-                number of moelcular orbitals
-            nlines (int)
-                number of lines per molecular orbital
-        '''
-
-        veclines = len(vecstr.split('\n'))
-        lineit = iter(vecstr.split('\n'))
-        nlines = 0
-        while lineit.next()[:2].strip() == '1':
-            nlines += 1
-        if nlines == 0:
-            raise ValueError("'nlines' cannot be zero, check vecstr in 'get_naos_nmos'")
-        naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])/clength
-        nmos = veclines/nlines
-        return naos, nmos, nlines
 
     @staticmethod
     def find_between(string, first, last):
+        '''
+        return a slice of the `string` between phrases `first` and `last`.
+        '''
         try:
             start = string.index(first) + len(first)
             end = string.index(last, start)
@@ -1008,12 +978,44 @@ class GamessDatParser(object):
         except ValueError:
             return ""
 
+def get_naos_nmos(vecstr, clength=15):
+    '''
+    Get the number of AO's and MO's from a string in $VEC block.
+
+    Args:
+        vecstr (str)
+            string with the contents fo the gamess $VEC block
+        clength (int)
+            total length of the coefficient string as stored by the gamess
+            format, by default gamess stores orbital coefficients in
+            'e15.8' fortran format so the total length is 15.
+
+    Returns:
+        naos (int)
+            number of atomic orbitals
+        naos (int)
+            number of moelcular orbitals
+        nlines (int)
+            number of lines per molecular orbital
+    '''
+
+    veclines = len(vecstr.split('\n'))
+    lineit = iter(vecstr.split('\n'))
+    nlines = 0
+    while lineit.next()[:2].strip() == '1':
+        nlines += 1
+    if nlines == 0:
+        raise ValueError("'nlines' cannot be zero, check vecstr in 'get_naos_nmos'")
+    naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])/clength
+    nmos = veclines/nlines
+    return naos, nmos, nlines
+
 def take(seq, num):
     '''
     Iterate over a sequence "seq" "num" times and return the list of the
     elements iterated over.
     '''
-    return [next(seq) for i in range(num)]
+    return [next(seq) for _ in range(num)]
 
 
 #"""
@@ -1056,7 +1058,7 @@ class BinaryFile(object):
         self.file = open(filename, mode=self.mode, buffering=1)
         """The file handler."""
         if order not in ['fortran', 'c']:
-            raise ValueError, "order should be either 'fortran' or 'c'."
+            raise ValueError("order should be either 'fortran' or 'c'.")
         self.order = order
         """The order for file ('c' or 'fortran')."""
 
@@ -1074,7 +1076,7 @@ class BinaryFile(object):
         if type(shape) is int:
             shape = (shape,)
         if type(shape) is not tuple:
-            raise ValueError, "shape must be a tuple"
+            raise ValueError("shape must be a tuple")
         length = dtype.itemsize
         if shape is not ():
             length *= np.array(shape).prod()
@@ -1090,7 +1092,7 @@ class BinaryFile(object):
         # Read the data from file
         data = self.file.read(length)
         if len(data) < length:
-            raise EOFError, "Asking for more data than available in file."
+            raise EOFError("Asking for more data than available in file.")
         # Convert string into a regular array
         data = np.ndarray(shape=shape, buffer=data, dtype=dtype.base)
 
@@ -1185,13 +1187,13 @@ class SequentialFile(BinaryFile):
             filename (str)
                 name of the file to read,
             buffSize (int)
-                size of the buffer holding values to be read, in gamess(us) it is
+                size of the buffer holding values to be read, in gamessus it is
                 stored under "NINTMX" variable and in Linux version is equal to
                 15000 which is the default value,
             large_labels (bool)
                 a flag indicating if large labels should were used, if largest
                 label "i" (of the MO) is i<255 then large_labels should be False
-                (case "LABSIZ=1" in gamess(us)), otherwise set to True (case
+                (case "LABSIZ=1" in gamessus), otherwise set to True (case
                 "LABSIZ=2" in gamess(us),
             skip_first (bool)
                 skips the first record of the file is set to True,
@@ -1289,66 +1291,66 @@ from collections import namedtuple
 
 rec = namedtuple('record', ['name', 'dtype'])
 records = {
-        1 : rec("atomic coordinates", "f8"),
-        2 : rec("enrgys", "f8"),
-        3 : rec("gradient vector", "f8"),
-        4 : rec("hessian matrix", "f8"),
-        5 : rec("not used", ""),
-        6 : rec("not used", ""),
-        7 : rec("ptr", "f8"),
-        8 : rec("dtr", "f8"),
-        9 : rec("ftr", "f8"),
-       10 : rec("gtr", "f8"),
-       11 : rec("bare nucleus", "f8"),
-       12 : rec("overlap", "f8"),
-       13 : rec("kinetic energy", "f8"),
-       14 : rec("alpha fock matrix", "f8"),
-       15 : rec("alpha orbitals", "f8"),
-       16 : rec("alpha density matrix", "f8"),
-       17 : rec("alpha energies or occupation numbers", "f8"),
-       18 : rec("beta fock matrix", "f8"),
-       19 : rec("beta orbitals", "f8"),
-       20 : rec("beta density matrix", "f8"),
-       21 : rec("beta energies or occupation numbers", "f8"),
-       22 : rec("error function interpolation table", "f8"),
-       23 : rec("old alpha fock matrix", "f8"),
-       24 : rec("older alpha fock matrix", "f8"),
-       25 : rec("oldest alpha fock matrix", "f8"),
-       26 : rec("old beta fock matrix", "f8"),
-       27 : rec("older beta fock matrix", "f8"),
-       28 : rec("odest beta fock matrix", "f8"),
-       29 : rec("vib 0 gradient in FORCE", "f8"),
-       30 : rec("vib 0 alpha orbitals in FORCE", "f8"),
-       31 : rec("Vib 0 beta  orbitals in FORCE", "f8"),
-       32 : rec("Vib 0 alpha density matrix in FORCE", "f8"),
-       33 : rec("Vib 0 beta  density matrix in FORCE", "f8"),
-       34 : rec("dipole derivative tensor in FORCE", "f8"),
-       35 : rec("frozen core Fock operator", "f8"),
-       36 : rec("RHF/UHF/ROHF Lagrangian", "f8"),
-       37 : rec("floating point part of common block /OPTGRD/", "f8"),
-       38 : rec("integer part of common block /OPTGRD/", "i8"),
-       39 : rec("ZMAT of input internal coords", "f8"),
-       40 : rec("IZMAT of input internal coords", "i8"),
-       41 : rec("B matrix of redundant internal coords", "f8"),
-       42 : rec("pristine core Fock matrix in MO basis (see 87)", "f8"),
-       43 : rec("Force constant matrix in internal coordinates", "f8"),
-       44 : rec("SALC transformation", "f8"),
-       45 : rec("symmetry adapted Q matrix", "f8"),
-       46 : rec("S matrix for symmetry coordinates", "f8"),
-       47 : rec("ZMAT for symmetry internal coords", "f8"),
-       48 : rec("IZMAT for symmetry internal coords", "i8"),
-       49 : rec("B matrix", "f8"),
-       50 : rec("B inverse matrix", "f8"),
-       95 : rec("x dipole integrals in AO basis", "f8"),
-       96 : rec("y dipole integrals in AO basis", "f8"),
-       97 : rec("z dipole integrals in AO basis", "f8"),
-      251 : rec("static polarizability tensor alpha", "f8"),
-      252 : rec("X dipole integrals in MO basis", "f8"),
-      253 : rec("Y dipole integrals in MO basis", "f8"),
-      254 : rec("Z dipole integrals in MO basis", "f8"),
-      255 : rec("alpha MO symmetry labels", "S8"),
-      256 : rec("beta MO symmetry labels", "S8"),
-      379 : rec("Lz integrals", "f8"),
+    1 : rec("atomic coordinates", "f8"),
+    2 : rec("enrgys", "f8"),
+    3 : rec("gradient vector", "f8"),
+    4 : rec("hessian matrix", "f8"),
+    5 : rec("not used", ""),
+    6 : rec("not used", ""),
+    7 : rec("ptr", "f8"),
+    8 : rec("dtr", "f8"),
+    9 : rec("ftr", "f8"),
+   10 : rec("gtr", "f8"),
+   11 : rec("bare nucleus", "f8"),
+   12 : rec("overlap", "f8"),
+   13 : rec("kinetic energy", "f8"),
+   14 : rec("alpha fock matrix", "f8"),
+   15 : rec("alpha orbitals", "f8"),
+   16 : rec("alpha density matrix", "f8"),
+   17 : rec("alpha energies or occupation numbers", "f8"),
+   18 : rec("beta fock matrix", "f8"),
+   19 : rec("beta orbitals", "f8"),
+   20 : rec("beta density matrix", "f8"),
+   21 : rec("beta energies or occupation numbers", "f8"),
+   22 : rec("error function interpolation table", "f8"),
+   23 : rec("old alpha fock matrix", "f8"),
+   24 : rec("older alpha fock matrix", "f8"),
+   25 : rec("oldest alpha fock matrix", "f8"),
+   26 : rec("old beta fock matrix", "f8"),
+   27 : rec("older beta fock matrix", "f8"),
+   28 : rec("odest beta fock matrix", "f8"),
+   29 : rec("vib 0 gradient in FORCE", "f8"),
+   30 : rec("vib 0 alpha orbitals in FORCE", "f8"),
+   31 : rec("Vib 0 beta  orbitals in FORCE", "f8"),
+   32 : rec("Vib 0 alpha density matrix in FORCE", "f8"),
+   33 : rec("Vib 0 beta  density matrix in FORCE", "f8"),
+   34 : rec("dipole derivative tensor in FORCE", "f8"),
+   35 : rec("frozen core Fock operator", "f8"),
+   36 : rec("RHF/UHF/ROHF Lagrangian", "f8"),
+   37 : rec("floating point part of common block /OPTGRD/", "f8"),
+   38 : rec("integer part of common block /OPTGRD/", "i8"),
+   39 : rec("ZMAT of input internal coords", "f8"),
+   40 : rec("IZMAT of input internal coords", "i8"),
+   41 : rec("B matrix of redundant internal coords", "f8"),
+   42 : rec("pristine core Fock matrix in MO basis (see 87)", "f8"),
+   43 : rec("Force constant matrix in internal coordinates", "f8"),
+   44 : rec("SALC transformation", "f8"),
+   45 : rec("symmetry adapted Q matrix", "f8"),
+   46 : rec("S matrix for symmetry coordinates", "f8"),
+   47 : rec("ZMAT for symmetry internal coords", "f8"),
+   48 : rec("IZMAT for symmetry internal coords", "i8"),
+   49 : rec("B matrix", "f8"),
+   50 : rec("B inverse matrix", "f8"),
+   95 : rec("x dipole integrals in AO basis", "f8"),
+   96 : rec("y dipole integrals in AO basis", "f8"),
+   97 : rec("z dipole integrals in AO basis", "f8"),
+  251 : rec("static polarizability tensor alpha", "f8"),
+  252 : rec("X dipole integrals in MO basis", "f8"),
+  253 : rec("Y dipole integrals in MO basis", "f8"),
+  254 : rec("Z dipole integrals in MO basis", "f8"),
+  255 : rec("alpha MO symmetry labels", "S8"),
+  256 : rec("beta MO symmetry labels", "S8"),
+  379 : rec("Lz integrals", "f8"),
 }
 
 class DictionaryFile(BinaryFile):
@@ -1401,12 +1403,16 @@ class DictionaryFile(BinaryFile):
             return self.read(records[nrec].dtype, shape=(self.ifilen[nrec-1],))
 
 def tri2full(vector, shape):
+    '''
+    Convert a triagonal matrix whose elements are stored in the `vector` into a 
+    rectangular matrix of the shape given by `shape` tuple.
+    '''
 
-    n, m = shape
-    matrix = np.zeros((n, m), dtype=float, order='F')
+    nrow, ncol = shape
+    matrix = np.zeros((nrow, ncol), dtype=float, order='F')
 
     ij = -1
-    for i in range(n):
-        for j in range(m):
+    for i in range(nrow):
+        for j in range(ncol):
             ij += 1
             matrix[i, j] = matrix[j, i] = vector[ij]

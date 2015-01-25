@@ -18,7 +18,7 @@ class Atom(object):
                 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn',
                 'Sb', 'Te', 'I',  'Xe', 'Cs', 'Ba', ]
 
-    def __init__(self, at, xyz = (0.0, 0.0, 0.0)):
+    def __init__(self, at, xyz=(0.0, 0.0, 0.0), id=None):
         self.atomic = at
         self.symbol = Atom._element[abs(self.atomic)]
         self.xyz    = Atom.coords(xyz[0], xyz[1], xyz[2])
@@ -32,12 +32,12 @@ class Atom(object):
     def gamess_rep(self):
 
         out = "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}\n".format(
-                self.symbol, float(self.atomic), self.xyz.x, self.xyz.y, self.xyz.z)
+              self.symbol, float(self.atomic), self.xyz.x, self.xyz.y, self.xyz.z)
         return out
 
     def __repr__(self):
         outs = "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}".format(
-                self.symbol, float(self.atomic), self.xyz.x, self.xyz.y, self.xyz.z)
+               self.symbol, float(self.atomic), self.xyz.x, self.xyz.y, self.xyz.z)
         return outs
 
 class Molecule(object):

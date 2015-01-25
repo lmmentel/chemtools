@@ -446,7 +446,6 @@ class BasisSet:
         '''
 
         pps = self.primitives_per_shell()
-        cps = self.contractions_per_shell()
         ppc = self.primitives_per_contraction()
 
         if any(x > 1 for x in pps):

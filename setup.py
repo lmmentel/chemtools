@@ -1,13 +1,13 @@
-#!/usr/bin/env python
+''' Chemtools '''
 
 from setuptools import setup
 
 def readme():
-    with open('README.rst') as f:
-        return f.read()
+    '''Return the contents of the README.rst file.'''
+    with open('README.rst') as freadme:
+        return freadme.read()
 
 #    install_requires = [
-#        'periodic >= 2.0',
 #        'scipy >= 0.11',
 #        'numpy >= 1.7',
 #    ],
@@ -33,3 +33,5 @@ setup(
     ],
     keywords = 'basis set optimization quantum chemistry molecular physics',
 )
+
+
