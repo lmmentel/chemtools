@@ -1,3 +1,4 @@
+from __future__ import print_function
 from code import Code
 from subprocess import Popen, PIPE
 import os
@@ -234,14 +235,14 @@ class MolproOutputParser(object):
             for line in fout:
                 if line[1:11] == "BASIS DATA":
 
-                    print "skipped: ", next(fout),
-                    print "skipped: ", next(fout),
-                    print "skipped: ", next(fout),
+                    print("skipped: ", next(fout), end='')
+                    print("skipped: ", next(fout), end='')
+                    print("skipped: ", next(fout), end='')
 
                     line = "dummy"
                     while line.strip() != "":
                         line = next(fout)
-                        print line,
+                        print(line, end='')
 
 def parse_basis(string):
     '''

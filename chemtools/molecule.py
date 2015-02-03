@@ -83,11 +83,11 @@ class Molecule(object):
 
         '''Print formatted molecule data.'''
 
-        print "Molecule: {n:<10s} Charge: {c:<10d} Multiplicty: {m:<10d} Electrons: {e:<10d}\n".format(
-              n=self.name, c=self.charge, m=self.multiplicity, e=self.nele())
-        print "{0:<10s} {1:14s}\t{2:^10s}{3:^10s}{4:^10s}\n".format("Element", "Nuclear Charge", "x", "y", "z")
+        print("Molecule: {n:<10s} Charge: {c:<10d} Multiplicty: {m:<10d} Electrons: {e:<10d}\n".format(
+              n=self.name, c=self.charge, m=self.multiplicity, e=self.nele()))
+        print("{0:<10s} {1:14s}\t{2:^10s}{3:^10s}{4:^10s}\n".format("Element", "Nuclear Charge", "x", "y", "z"))
         for atom in self.atoms:
-            print atom
+            print(atom)
 
 
     def get_distance(self, atom1, atom2):

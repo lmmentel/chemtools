@@ -1,3 +1,4 @@
+from __future__ import print_function
 # standard python packages
 from scipy.optimize import minimize
 import datetime
@@ -80,8 +81,8 @@ def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
             jac=jacob,
             tol=opt["tol"],
             options=opt["options"])
-    print res
-    print "Elapsed time : {0:>20.3f} sec".format(time.time()-starttime)
+    print(res)
+    print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
     # write a nice printer of the optimized exponents if converged
     return res
 
@@ -291,11 +292,11 @@ def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=Fal
         bsopt['nfpshell'] = [0]*_shells.index(shell) + [nf]
         res = driver(bsopt=bsopt, **kwargs)
 
-        print "Completed optimization for {0:d} {1}-type functions".format(nf, shell)
+        print("Completed optimization for {0:d} {1}-type functions".format(nf, shell))
 
-        print "{s:<25s} : {v:>20.10f}".format(s="Current Function value", v=res.fun)
-        print "{s:<25s} : {v:>20.10f}".format(s="Previous Function value", v=e_last)
-        print "{s:<25s} : {v:>20.10f}".format(s="Difference", v=abs(res.fun-e_last))
+        print("{s:<25s} : {v:>20.10f}".format(s="Current Function value", v=res.fun))
+        print("{s:<25s} : {v:>20.10f}".format(s="Previous Function value", v=e_last))
+        print("{s:<25s} : {v:>20.10f}".format(s="Difference", v=abs(res.fun-e_last)))
 
         if abs(res.fun - e_last) < opt_tol:
             print("Basis saturated with respect to threshold")
@@ -308,18 +309,18 @@ def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=Fal
             x_last = res.x.tolist()
             nfps_last = bsopt['nfpshell']
             if len(bsopt['params'][0]) < max_params:
-                print "adding more parameters"
+                print("adding more parameters")
                 restup = tuple(res.x)
                 # this assumption should be revised, improved or justified
                 # suggestion: maybe change to average of existing parameters
                 restup += tuple([abs(min(restup)*0.25)])
                 bsopt['params'] = [restup,]
             else:
-                print "not adding more parameters"
+                print("not adding more parameters")
                 bsopt['params'] = [tuple(res.x),]
             e_last = res.fun
     else:
-        print "Supplied number of functions exhausted but the required accuracy was not reached"
+        print("Supplied number of functions exhausted but the required accuracy was not reached")
         if save:
             save_basis(res.x.tolist(), bsopt)
         return BasisSet.from_optdict(res.x.tolist(), bsopt)
@@ -365,9 +366,9 @@ def opt_multishell(shells=None, nfps=None, guesses=None, max_params=5, opt_tol=1
     for shell, nfs, guess in zip(shells, nfps, guesses):
 
         header = " Beginning optimization for {s:s} shell ".format(s=shell)
-        print "="*100
-        print format(header, '-^100')
-        print "="*100
+        print("="*100)
+        print(format(header, '-^100'))
+        print("="*100)
 
         bsopt['params'] = [tuple(guess)]
         # begin the optimization for a given shell and store the optimized

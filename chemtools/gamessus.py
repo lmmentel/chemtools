@@ -7,6 +7,8 @@ Module for handling Gamess-US related jobs,:
     GamessReader    : reading gamess bianry files.
 '''
 
+from __future__ import print_function
+
 from chemtools.code import Code
 from subprocess import Popen
 from collections import OrderedDict
@@ -294,11 +296,11 @@ class GamessInpParser(object):
 
         for key, value in sorted(inpdict.items()):
             if isinstance(value, dict):
-                print key
+                print(key)
                 for kkey, vvalue in sorted(value.items()):
-                    print "\t{0:<10s} : {1:}".format(kkey, vvalue)
+                    print("\t{0:<10s} : {1:}".format(kkey, vvalue))
             else:
-                print key, '\n', value
+                print(key, '\n', value)
 
     def parse_gamess_basis(self, basis_str):
         '''
@@ -837,8 +839,8 @@ class GamessReader(object):
                         kl += 1
                         if ij >= kl:
                             if abs(twoe[self.ijkl(i,j,k,l)]) > 1.0e-10:
-                                print "{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
-                                    i, j, k, l, twoe[self.ijkl(i,j,k,l)])
+                                print("{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
+                                    i, j, k, l, twoe[self.ijkl(i,j,k,l)]))
 
 class GamessDatParser(object):
 
