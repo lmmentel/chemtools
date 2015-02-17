@@ -9,7 +9,7 @@ import sys
 import time
 import pprint
 # chemtools packages
-from basisset import BasisSet, get_x0
+from chemtools.basisset import BasisSet, get_x0
 
 def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     '''

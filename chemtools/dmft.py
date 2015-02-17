@@ -1,6 +1,6 @@
 
-from code import Code
-from gamessus import GamessLogParser
+from chemtools.code import Code
+from chemtools.gamessus import GamessLogParser
 from subprocess import Popen
 
 import os
