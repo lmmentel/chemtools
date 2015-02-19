@@ -32,6 +32,13 @@ def uste(x, e_cbs, A3, method="CI"):
 
     return v
 
+def km(x, e_cbs, a):
+    '''
+    Two-point formula for extrapolating the HF reference energy, as proposed by
+    A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006)
+    '''
+    return e_cbs + a* (x + 1)*np.exp(-9.0*np.sqrt(x))
+
 def helgaker_X3(x, a, b):
 
     '''Inverse power extrapolation based on T. Helgaker et. al. JCP 106(23),
