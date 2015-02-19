@@ -104,8 +104,25 @@ class Gamess(Code):
     def parse(self):
         pass
 
-    def write_input(self):
-        pass
+    def write_input(self, inpfile=None, core=None, bs=None, inpdata=None, mol=None):
+        '''
+        Write a file containing gamess input.
+        '''
+
+        if isinstance(bs, list):
+            basstr = "".join(x.write_gamess() for x in bs)
+        else:
+            basstr = bs.write_gamess()
+        inpdata = re.sub('geometry', mol.gamess_rep(), inpdata, flags=re.I)
+        inpdata = re.sub('basis', basstr, inpdata, flags=re.I)
+        if core:
+            inpdata = re.sub("core","{0:s}\n".format(str(core)), inpdata, flags=re.I)
+        else:
+            inpdata = re.sub("core","", inpdata, flags=re.I)
+
+        with open(inpfile, 'w') as inp:
+            inp.write(inpdata)
+
 
 class GamessInpParser(object):
     '''

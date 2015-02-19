@@ -1,13 +1,14 @@
+
+""" basisopt is a module for optimizing primitive exponents of basis sets"""
+
 from __future__ import print_function
-# standard python packages
 from scipy.optimize import minimize
 import datetime
-import numpy as np
 import os
-import re
 import sys
 import time
 import pprint
+
 # chemtools packages
 from chemtools.basisset import BasisSet, get_x0
 
@@ -23,13 +24,13 @@ def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     # set default optimization options if opts not given
     if not opt:
         opt = {"method"  : "BFGS",
-                "lambda"  : 10.0,
-                "tol"     : 1.0e-4,
-                "options" : {"maxiter" : 50,
-                             "disp"    : True,
-                             "eps"     : 0.01
-                            }
-               }
+               "lambda"  : 10.0,
+               "tol"     : 1.0e-4,
+               "options" : {"maxiter" : 50,
+                            "disp"    : True,
+                            "eps"     : 0.01
+                           }
+              }
     else:
         if opt["method"].lower() == "nelder-mead":
             jacob = None
@@ -59,31 +60,23 @@ def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     if not mol:
         sys.exit("<driver>: no molecule object specified")
 
-    # print input data
-    print('code:\n')
-    pprint.pprint(code)
-    print('job:\n')
-    pprint.pprint(job)
-    print('mol:\n')
-    pprint.pprint(mol)
-    print('bsnoopt:\n')
-    pprint.pprint(bsnoopt)
-    print('bsopt:\n')
-    pprint.pprint(bsopt)
-    print('opt:\n')
-    pprint.pprint(opt)
-    print("*"*80)
+    # print the input data
+    for name, obj in [("code", code), ("job", job), ("mol", mol),
+                      ("bsnoopt", bsnoopt), ("bsopt", bsopt), ("opt", opt)]:
+        print(name.center(80, "*"))
+        print(obj)
+        print("*"*80)
 
     x0 = get_x0(bsopt)
     res = minimize(function, x0,
-            args=(bsopt, bsnoopt, code, job, mol, opt,),
-            method=opt["method"],
-            jac=jacob,
-            tol=opt["tol"],
-            options=opt["options"])
+                   args=(bsopt, bsnoopt, code, job, mol, opt,),
+                   method=opt["method"],
+                   jac=jacob,
+                   tol=opt["tol"],
+                   options=opt["options"])
     print(res)
     print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
-    # write a nice printer of the optimized exponents if converged
+    # TODO: write a nice printer of the optimized exponents if converged
     return res
 
 def run_total_energy(x0, *args):
@@ -217,7 +210,7 @@ def run_core_energy(x0, *args):
         print("Job terminated with ERRORS, check output.")
         sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
 
-def save_basis(x, bsopt):
+def save_basis(x, bsopt, method=""):
     '''
     save optimized functions to file
     '''
@@ -227,7 +220,7 @@ def save_basis(x, bsopt):
     basis = vars(BasisSet.from_optdict(x, bsopt))
     shells = "".join([str(n)+s for n, s in zip(bsopt['nfpshell'], _shells) if n != 0])
     pars = "-".join([str(len(x)) for x in bsopt['params']])
-    fname = "_".join(["optimized", optimization["method"], bsopt["typ"], pars, shells]) + ".bas"
+    fname = "_".join(["optimized", method, bsopt["typ"], pars, shells]) + ".bas"
     print("Saving basis set under the name: '{}'".format(fname))
     with open(fname, 'wb') as ff:
         ff.write(str(basis))

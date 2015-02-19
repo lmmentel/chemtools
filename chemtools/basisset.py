@@ -56,7 +56,7 @@ class BasisSet:
                 continue
             functions[_shells[lqn]] = dict()
             if bsoptdict["typ"].lower() in ["direxp", "direct", "exps", "exponents"]:
-                exps = list(x0[icount:icount+nf])
+                exps = list(exp(x) for x in x0[icount:icount+nf])
                 icount += nf
                 functions[_shells[lqn]]['exponents'] = exps
             elif bsoptdict["typ"].lower() in ["even", "eventemp", "eventempered"]:

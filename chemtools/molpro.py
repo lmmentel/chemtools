@@ -108,11 +108,11 @@ class Molpro(Code):
         if outfile is not None:
             parser = MolproOutputParser(outfile)
         else:
-            parser = MolproOutputParser(self.outfile)
+            raise ValueError("oufile needs to be specified")
         return parser.terminatedOK()
 
     def __repr__(self):
-        return "<Molpro(\n\tname='{n}',\n\tmolpropath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.molpropath, r=self.runopts) 
+        return "<Molpro(\n\tname='{n}',\n\tmolpropath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.molpropath, r=self.runopts)
 
 class MolproOutputParser(object):
 
