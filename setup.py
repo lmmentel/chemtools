@@ -16,6 +16,7 @@ setup(
     author = "Lukasz Mentel",
     author_email = "lmmentel@gmail.com",
     description = "Python tools for quantum chemical calculations",
+    include_package_data = True,
     license = open('LICENSE.rst').read(),
     long_description = readme(),
     name = 'chemtools',

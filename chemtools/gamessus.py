@@ -124,19 +124,22 @@ class Gamess(Code):
             inp.write(inpdata)
 
 
-class GamessInpParser(object):
+class GamessInput(object):
     '''
     A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self, finput):
+    def __init__(self, finput, inpdata=None):
         '''
         Initialize the class.
         '''
 
         self.finput = finput
-        self.inpdata = {}
-        self.end = " $end"
+        if inpdata is not None:
+            self.inpdata = inpdata
+        else:
+            self.inpdata = {}
+        self.end = " $end\n"
         # not nested groups of input blocks (not parsed into a dict of dicts)
         self._notnested = ["$data", "$vec", "$ecp"]
 
@@ -231,12 +234,22 @@ class GamessInpParser(object):
                 inp.write(" {0:<s}\n".format(key))
                 for kkey, vvalue in sorted(value.items()):
                     inp.write("    {k:s}={v:s}\n".format(k=kkey, v=str(vvalue)))
-                inp.write(self.end + '\n')
+                inp.write(self.end)
         #write $data card
         inp.write(" $data\n")
         inp.write(inpdict['$data'])
-        inp.write(self.end + '\n')
+        inp.write(self.end)
         inp.close()
+
+    def write_data(self, inp, datadict, mol, bs):
+
+        inp.write(" {0:s}\n".format("$data"))
+        inp.write("{0:s}\n".format(datadict["title"]))
+        inp.write("{0:s}\n\n".format(datadict["group"]))
+        for atom in mol.unique():
+            print(atom.gamess_rep())
+            print(bs[atom.symbol])
+        inp.write(self.end)
 
     def set_gamess_input(self, dinp, mol, bs, code, core):
 
@@ -272,7 +285,7 @@ class GamessInpParser(object):
 
         return dinp
 
-    def write_with_vec(self, inpfile, inpdict, vecstr):
+    def write_with_vec(self, inpfile, vecstr):
         '''
         Write new gamess input based on exisiting input and natural orbitals
         from $VEC section in PUNCH file.
@@ -295,10 +308,10 @@ class GamessInpParser(object):
                 previous run,
         '''
 
-        inpdict['$contrl']['scftyp'] = 'none'
-        inpdict['$guess'] = {}
-        inpdict['$guess']['guess'] = 'moread'
-        inpdict['$guess']['norb'] = str(get_naos_nmos(vecstr)[1])
+        self.inpdata['$contrl']['scftyp'] = 'none'
+        self.inpdata['$guess'] = {}
+        self.inpdata['$guess']['guess'] = 'moread'
+        self.inpdata['$guess']['norb'] = str(get_naos_nmos(vecstr)[1])
 
         inp = open(inpfile, "a")
         inp.write("\n $vec\n")
