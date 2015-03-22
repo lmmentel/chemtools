@@ -123,13 +123,12 @@ class Gamess(Code):
         with open(inpfile, 'w') as inp:
             inp.write(inpdata)
 
-
 class GamessInput(object):
     '''
     A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self, finput, inpdata=None):
+    def __init__(self, finput=None, inpdata=None):
         '''
         Initialize the class.
         '''
@@ -340,7 +339,6 @@ class GamessInput(object):
 
         pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
 
-        bs = []
         bslines = basis_str.split("\n")
 
         functions = OrderedDict()
@@ -348,28 +346,41 @@ class GamessInput(object):
         for i, line in enumerate(bslines):
             match = pat.search(line)
             if match:
-                shell = match.group("shell")
+                shell, nf = match.group("shell").lower(), match.group("nf")
+                exps, indxs, coeffs = self.parse_function(bslines[i+1:i+int(nf)+1])
                 if shell in functions.keys():
-                    pass
+                    lasti = len(functions[shell]["exponents"])
+                    functions[shell]["exponents"].extend(exps)
+                    functions[shell]["contractedfs"].append({"indices" : [lasti + i - 1 for i in indxs],
+                                                            "coefficients" : coeffs})
                 else:
                     functions[shell] = OrderedDict()
-                    functions[shell]["exponents"] = list()
+                    functions[shell]["exponents"] = exps
                     functions[shell]["contractedfs"] = list()
-
-                exps, indxs, coeffs = self.parse_function(bslines[i+1:i+int(match.group("nf"))+1])
-        return bs
+                    functions[shell]["contractedfs"].append({"indices" : [i - 1 for i in indxs],
+                                                            "coefficients" : coeffs})
+        return functions
 
     @staticmethod
     def parse_function(los):
         '''
-        Parse basis info from list of strings.
+        Parse a basis set function information from list of strings into
+        three lists containg:
+            exponents
+            indices
+            coefficients
+
+        Remeber that python doesn't recognise the '1.0d-3' format where 'd' or 'D' is used
+        to the regex subsitution has to take care of that.
         '''
 
-        indxs = [int(item.split()[0]) for item in los]
-        exps = [float(item.split()[1]) for item in los]
-        coeffs = [float(item.split()[2]) for item in los]
+        real = re.compile(r'[dD]')
 
-        return exps, indxs, coeffs
+        indxs = [int(item.split()[0]) for item in los]
+        exps = [float(real.sub('E', item.split()[1])) for item in los]
+        coeffs = [float(real.sub('E', item.split()[2])) for item in los]
+
+        return (exps, indxs, coeffs)
 
 class GamessLogParser(object):
     '''
