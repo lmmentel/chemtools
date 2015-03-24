@@ -51,12 +51,17 @@ class Atom(object):
 
     coords = namedtuple("XYZ", ['x', 'y', 'z'])
 
-    def __init__(self, identifier, xyz=(0.0, 0.0, 0.0), id=None):
+    def __init__(self, identifier, xyz=(0.0, 0.0, 0.0), dummy=False, id=None):
 
         self.xyz = Atom.coords(xyz[0], xyz[1], xyz[2])
-        self._set_attributes(identifier)
+        self._set_attributes(identifier, dummy)
 
-    def _set_attributes(self, identifier):
+    def _set_attributes(self, identifier, dummy):
+        '''
+        Set the attributes of an atom based on the unique "indentifier" provided.
+        The attributes are read from the elements.json file.
+        '''
+
         if isinstance(identifier, str):
             if len(identifier) > 2:
                 symbol, data = element_from_name(identifier)
@@ -75,7 +80,11 @@ class Atom(object):
         else:
             raise ValueError("wrong element identifier: {0:s}, use symbol, name or atomic number".format(identifier))
 
+        if dummy:
+            self.set_atomic_number(0.0)
 
+    def set_atomic_number(self, value):
+        self.atomic_number = value
 
     def move(self, x=0.0, y=0.0, z=0.0):
 
@@ -121,7 +130,7 @@ class Molecule(object):
     def atoms(self, values):
         self._atoms = []
         if hasattr(values, "__iter__"):
-            self._atoms = [Atom(identifier=v[0], xyz=v[1]) for v in values]
+            self._atoms = [Atom(identifier=v[0], xyz=v[1], dummy=v[2]) for v in values]
         else:
             raise TypeError("{0:s} object is not iterable".format(type(values)))
 

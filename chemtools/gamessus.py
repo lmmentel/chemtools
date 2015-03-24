@@ -128,12 +128,12 @@ class GamessInput(object):
     A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self, finput=None, inpdata=None):
+    def __init__(self, fname=None, inpdata=None):
         '''
         Initialize the class.
         '''
 
-        self.finput = finput
+        self.fname = fname
         if inpdata is not None:
             self.inpdata = inpdata
         else:
@@ -149,7 +149,7 @@ class GamessInput(object):
         dictionaries of options. All key are converted to lowercase.
         '''
 
-        with open(self.finput, 'r') as finp:
+        with open(self.fname, 'r') as finp:
             contents = finp.read()
         return self.parse_from_string(contents)
 
@@ -213,7 +213,7 @@ class GamessInput(object):
              'basis'  : m.group('basis'),})
         return datadict
 
-    def write_input(self, inpfile, inpdict):
+    def write_input(self, inpdict, fname=None, mol=None, bs=None):
         '''
         Write a gamess input file under the name <inpfile> based on the
         information fstored in the dictionary <inpdict>.
@@ -225,30 +225,41 @@ class GamessInput(object):
 
         if not isinstance(inpdict, dict):
             raise TypeError("expected a dictionary but got {0:s}".format(type(inpdict)))
-        inp = open(inpfile, 'w')
+
+        inpstr = ""
 
         # write nested namelist groups
         for key, value in sorted(inpdict.items()):
             if key not in  self._notnested:
-                inp.write(" {0:<s}\n".format(key))
+                inpstr += " {0:<s}\n".format(key)
                 for kkey, vvalue in sorted(value.items()):
-                    inp.write("    {k:s}={v:s}\n".format(k=kkey, v=str(vvalue)))
-                inp.write(self.end)
+                    inpstr += "    {k:s}={v:s}\n".format(k=kkey, v=str(vvalue))
+                inpstr += self.end
         #write $data card
-        inp.write(" $data\n")
-        inp.write(inpdict['$data'])
-        inp.write(self.end)
-        inp.close()
+        inpstr += self.write_data(inpdict["$data"], mol, bs)
 
-    def write_data(self, inp, datadict, mol, bs):
+        with open(self.fname, "w") as finp:
+            finp.write(inpstr)
 
-        inp.write(" {0:s}\n".format("$data"))
-        inp.write("{0:s}\n".format(datadict["title"]))
-        inp.write("{0:s}\n\n".format(datadict["group"]))
-        for atom in mol.unique():
-            print(atom.gamess_rep())
-            print(bs[atom.symbol])
-        inp.write(self.end)
+    def write_data(self, datadict, mol=None, bs=None):
+        '''
+        Args:
+        =====
+        bs: (dict)
+            dictionary of BasisSet objects
+        '''
+
+        data = ""
+        data += " {0:s}\n".format("$data")
+        data += "{0:s}\n".format(datadict["title"])
+        data += "{0:s}\n\n".format(datadict["group"])
+        if mol is not None:
+            for atom in mol.unique():
+                data += atom.gamess_rep()
+                if bs is not None:
+                    data += bs[atom.symbol].write_gamess()
+        data += self.end
+        return data
 
     def set_gamess_input(self, dinp, mol, bs, code, core):
 
