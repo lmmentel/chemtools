@@ -71,6 +71,8 @@ def main():
 
     remove_dat(args['local_scr'], args['datfile'])
 
+    submit_pbs(args)
+
 def remove_dat(path, datfile):
     '''Remove the dat file from the ASCII scratch.'''
     if os.path.exists(os.path.join(path, datfile)):
