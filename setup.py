@@ -7,20 +7,21 @@ def readme():
     with open('README.rst') as freadme:
         return freadme.read()
 
-#    install_requires = [
-#        'scipy >= 0.11',
-#        'numpy >= 1.7',
-#    ],
-
 setup(
     author = "Lukasz Mentel",
     author_email = "lmmentel@gmail.com",
     description = "Python tools for quantum chemical calculations",
     include_package_data = True,
+    install_requires = [
+        'sqlalchemy',
+        'scipy >= 0.11',
+        'numpy >= 1.7',
+    ],
+
     license = open('LICENSE.rst').read(),
     long_description = readme(),
     name = 'chemtools',
-    packages = ['chemtools'],
+    packages = ['chemtools', 'chemtools/pescan'],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
     version = '0.3.1',
     classifiers = [
@@ -34,5 +35,3 @@ setup(
     ],
     keywords = 'basis set optimization quantum chemistry molecular physics',
 )
-
-
