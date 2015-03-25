@@ -39,7 +39,7 @@ def main():
                         default="1",
                         help="number of processes per node, default=1")
     parser.add_argument("-s",
-                        "--scratch",
+                        "--usescratch",
                         action="store_true",
                         help="use node scratch directory (/scratch/$USER),\
                         default=False")
@@ -53,6 +53,9 @@ def main():
                         help="walltime in the format HH:MM:SS,\
                         default=120:00:00")
     args = vars(parser.parse_args())
+    submit_pbs(args)
+
+def set_defaults(args):
 
     args['workdir'] = os.getcwd()
     args['home'] = os.getenv("HOME")
@@ -68,10 +71,8 @@ def main():
     args['errfile'] = args['jobname'] + ".err"
     args['datfile'] = args['jobname'] + ".dat"
     args['script_name'] = "run." + args['jobname']
+    return args
 
-    remove_dat(args['local_scr'], args['datfile'])
-
-    submit_pbs(args)
 
 def remove_dat(path, datfile):
     '''Remove the dat file from the ASCII scratch.'''
@@ -82,6 +83,9 @@ def submit_pbs(args):
     '''
     Write the run script for PBS and submit it to the queue.
     '''
+    
+    args = set_defaults(args)
+    remove_dat(args["local_scr"], args["datfile"])
 
     with open(args['script_name'], 'w') as script:
         script.write("#PBS -S /bin/bash\n")
@@ -91,8 +95,11 @@ def submit_pbs(args):
             script.write("#PBS -l nodes={0}:ppn={1}\n".format(args['nodes'], args['ppn']))
         script.write("#PBS -l walltime={0}\n\n".format(args['walltime']))
         #script.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/lib\n\n')
+        script.write("#PBS -N {}\n".format(args["jobname"]))
+        if args["queue"] != "default":
+            script.write("#PBS -q {}\n".format(args["queue"]))
         script.write("cd $PBS_O_WORKDIR\n")
-        if args['scratch']:
+        if args['usescratch']:
             wrkdir = os.path.join(args['scratch'], args['jobname'])
             script.write("mkdir -p {}\n".format(wrkdir))
             files = args['jobname']
@@ -108,13 +115,8 @@ def submit_pbs(args):
         print("Created job script: {0}\n NOT submitting to the queue\nbye...".format(args['script_name']))
     else:
         print("Created job script: {0}\nsubmitting to the queue".format(args['script_name']))
-        sublog = open(args['jobname'] + ".sublog", 'w')
-        proc = subprocess.Popen(["qsub", "-q", args['queue'], "-N", args['jobname'], args['script_name']], stdout=sublog, stderr=sublog)
-        sublog.close()
-        with open(args['jobname'] + ".sublog", 'r') as sub:
-            subcontents = sub.read()
-        # get the pid from subcontents
-        pid = ""
+        output = subprocess.check_output(["qsub", args['script_name']])
+        pid = output.split(".")[0]
         return args['jobname'] + ".o" + pid
 
 def submit_slurm(args):

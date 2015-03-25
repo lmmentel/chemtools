@@ -3,7 +3,7 @@ import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from pescan.model import Base, Dimer, Trimer, Tetramer
+from chemtools.pescan.model import Base, Dimer, Trimer, Tetramer
 
 
 def expand_grids(grids=[], debug=False):
