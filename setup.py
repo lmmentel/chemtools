@@ -23,7 +23,7 @@ setup(
     name = 'chemtools',
     packages = ['chemtools', 'chemtools/pescan'],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
-    version = '0.3.1',
+    version = '0.4.0',
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
