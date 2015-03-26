@@ -935,7 +935,7 @@ class GamessDatParser(object):
 
         with open(self.datfile, 'r') as dat:
             datastr = self.find_between(dat.read(), '$DATA', '$END')
-        gip = GamessInpParser()
+        gip = GamessInput()
         return gip.parse_data(datastr.lstrip(' \n'))
 
     def get_orbitals(self, method):
@@ -1008,7 +1008,7 @@ class GamessDatParser(object):
                 expansion coefficients
         '''
 
-        naos, nmos, nlines = self.get_naos_nmos(vecstr)
+        naos, nmos, nlines = get_naos_nmos(vecstr)
         orblines = vecstr.split('\n')
         orbs = np.zeros((naos, nmos), dtype=float)
         counter = -1
@@ -1467,6 +1467,7 @@ def tri2full(vector, shape):
 
     ij = -1
     for i in range(nrow):
-        for j in range(ncol):
+        for j in range(i + 1):
             ij += 1
             matrix[i, j] = matrix[j, i] = vector[ij]
+    return matrix
