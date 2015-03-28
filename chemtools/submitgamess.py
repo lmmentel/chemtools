@@ -93,6 +93,8 @@ def submit_pbs(args):
             script.write("#PBS -l nodes={0}:ppn={1}\n".format(args['HOST'], args['ppn']))
         else:
             script.write("#PBS -l nodes={0}:ppn={1}\n".format(args['nodes'], args['ppn']))
+        if "mem" in args.keys():
+            script.write("#PBS -l mem={0}\n".format(args["mem"]))
         script.write("#PBS -l walltime={0}\n\n".format(args['walltime']))
         #script.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/lib\n\n')
         script.write("#PBS -N {}\n".format(args["jobname"]))
