@@ -22,7 +22,10 @@ setup(
     long_description = readme(),
     name = 'chemtools',
     packages = ['chemtools', 'chemtools/pescan'],
-    scripts = ['chemtools/submitgamess.py'],
+    scripts = [
+        'chemtools/submitgamess.py',
+        'scripts/bsprint',
+               ],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
     version = '0.4.0',
     classifiers = [
