@@ -11,7 +11,7 @@ xyz = namedtuple("XYZ", ['x', 'y', 'z'])
 Base = declarative_base()
 
 class Atom(Base):
-    __tablename__ == 'atoms'
+    __tablename__ = 'atoms'
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -35,7 +35,7 @@ class Atom(Base):
         '''
         Compose the input name from the atom name and the basis set.
         '''
-        return "{m:s}_{b:s}.inp".format(m=self.molecule, b=self.basisset)
+        return "{m:s}_{b:s}.inp".format(m=self.name, b=self.basisset)
 
     def get_xyz(self, x0=0.0, y0=0.0, z0=0.0):
         '''
@@ -51,7 +51,7 @@ class Dimer(Base):
     __tablename__ = 'dimers'
 
     id = Column(Integer, primary_key=True)
-    molecule = Column(String)
+    name = Column(String)
     abspath = Column(String)
     output_name = Column(String)
     basisset = Column(String)
@@ -73,7 +73,7 @@ class Dimer(Base):
         '''
         Compose the input name from the molecule name, basis set and distance.
         '''
-        return "{m:s}_{b:s}_r{r:.2f}.inp".format(m=self.molecule,
+        return "{m:s}_{b:s}_r{r:.2f}.inp".format(m=self.name,
                                                  b=self.basisset,
                                                  r=self.r_atom1_atom2)
 
@@ -86,14 +86,14 @@ class Dimer(Base):
                 xyz(0.0, 0.0, self.r_atom1_atom2/2.0)]
 
     def __repr__(self):
-        return "<Dimer(molecule={m}, basis={b}, r_atom1_atom2={raa:5.2f)}>".format(
-                m=self.molecule, b=self.basisset, raa=self.r_atom1_atom2)
+        return "<Dimer(name={m}, basis={b}, r_atom1_atom2={raa:5.2f)}>".format(
+                m=self.name, b=self.basisset, raa=self.r_atom1_atom2)
 
 class Trimer(Base):
     __tablename__ = 'trimers'
 
     id = Column(Integer, primary_key=True)
-    molecule = Column(String)
+    name = Column(String)
     abspath = Column(String, nullable=True)
     output_name = Column(String)
     basisset = Column(String)
@@ -117,7 +117,7 @@ class Trimer(Base):
         '''
         Compose the input name from the molecule name, basis set and distance.
         '''
-        return "{m:s}_{b:s}_R{R:.2f}_r{r:.2f}_g{g:.2f}.inp".format(m=self.molecule,
+        return "{m:s}_{b:s}_R{R:.2f}_r{r:.2f}_g{g:.2f}.inp".format(m=self.name,
                 b=self.basisset, R=self.r_atom_mol, r=self.r_atom1_atom2,
                 g=self.gamma)
 
@@ -141,14 +141,14 @@ class Trimer(Base):
         return [atom1, atom2, atom3]
 
     def __repr__(self):
-        return "<Trimer(molecule={m}, basis={b}, r_atom_mol={r:5.2f}, gamma={g:5.2f}, r_atom1_atom2={raa:5.2f})>".format(
-                m=self.molecule, b=self.basisset, r=self.r_atom_mol, g=self.gamma, raa=self.r_atom1_atom2)
+        return "<Trimer(name={m}, basis={b}, r_atom_mol={r:5.2f}, gamma={g:5.2f}, r_atom1_atom2={raa:5.2f})>".format(
+                m=self.name, b=self.basisset, r=self.r_atom_mol, g=self.gamma, raa=self.r_atom1_atom2)
 
 class Tetramer(Base):
     __tablename__ = 'tetramers'
 
     id = Column(Integer, primary_key=True)
-    molecule = Column(String)
+    name = Column(String)
     abspath = Column(String)
     input_name = Column(String)
     output_name = Column(String)

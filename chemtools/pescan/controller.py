@@ -3,7 +3,7 @@ import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from chemtools.pescan.model import Base, Dimer, Trimer, Tetramer
+from chemtools.pescan.model import Base, Atom, Dimer, Trimer, Tetramer
 
 
 def expand_grids(grids=[], debug=False):
@@ -33,12 +33,26 @@ def collect(session):
         session.add(job)
     session.commit()
 
-def add_trimer(session, mol_name, basisset, ram, raa, gamma):
+def add_atom(session, name, basisset):
+
+    atom = Atom(name=name,
+                abspath=None,
+                output_name=None,
+                basisset=basisset,
+                hf_energy=None,
+                ci_energy=None,
+                cc_energy=None,
+                status=None)
+    session.add(atom)
+    session.commit()
+    return True
+
+def add_trimer(session, name, basisset, ram, raa, gamma):
     '''
     Loop over all jobs and return a list of dicts with job info
     '''
 
-    trimer = Trimer(molecule=mol_name,
+    trimer = Trimer(name=name,
                     abspath=None,
                     output_name=None,
                     basisset=basisset,
@@ -61,8 +75,8 @@ def add_dimer(session, mol_name, basisset, raa):
     =====
     session:
         database session object (connection)
-    molecule (str):
-        molecule (system) name
+    name (str):
+        name (system) name
     basissets (list):
         list of strings with basis set names
     grids (np.array):
@@ -72,7 +86,7 @@ def add_dimer(session, mol_name, basisset, raa):
     ========
     '''
 
-    dimer = Dimer(molecule=mol_name,
+    dimer = Dimer(name=mol_name,
                   abspath=None,
                   output_name=None,
                   basisset=basisset,
@@ -95,15 +109,15 @@ def create_dirs(session, modelobj=None, workdir=os.getcwd()):
 
     os.chdir(workdir)
 
-    molecules = session.query(modelobj.molecule).distinct().all()
+    molecules = session.query(modelobj.name).distinct().all()
     for mol in molecules:
-        os.mkdir(mol.molecule)
-        os.chdir(mol.molecule)
-        basis = session.query(modelobj.basisset).filter(modelobj.molecule == mol.molecule).distinct().all()
+        os.mkdir(mol.name)
+        os.chdir(mol.name)
+        basis = session.query(modelobj.basisset).filter(modelobj.name == mol.name).distinct().all()
         for bas in basis:
             os.mkdir(bas.basisset)
             jobpath = os.path.join(os.getcwd(), bas.basisset)
-            for entry in session.query(modelobj).filter(modelobj.molecule == mol.molecule).filter(modelobj.basisset == bas.basisset).all():
+            for entry in session.query(modelobj).filter(modelobj.name == mol.name).filter(modelobj.basisset == bas.basisset).all():
                 entry.abspath = jobpath
                 session.add(entry)
         os.chdir("..")
