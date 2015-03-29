@@ -3,7 +3,7 @@ import os
 import re
 import unittest
 
-from chemtools.gamessus import GamessDatParser
+from chemtools.gamessus import GamessDatParser, get_naos_nmos
 
 class TestGDPonHeH2(unittest.TestCase):
     heh2_rhf = '''--- CLOSED SHELL ORBITALS --- GENERATED AT Sun May 11 14:57:30 2014
@@ -362,12 +362,12 @@ H            1.00030  -0.00030   1.00228  -0.00228
     def test_get_naos_nmos_hf(self):
         t = (27, 27, 6)
         vecstr = re.search(r'\$VEC\s*\n(.*?)\s*\$END', TestGDPonHeH2.heh2_rhf, flags=re.DOTALL).group(1)
-        self.assertTupleEqual(t, self.gdp.get_naos_nmos(vecstr))
+        self.assertTupleEqual(t, get_naos_nmos(vecstr))
 
     def test_get_naos_nmos_ci(self):
         t = (27, 27, 6)
         vecstr = re.search(r'\$VEC\s*\n(.*?)\s*\$END', TestGDPonHeH2.heh2_ci, flags=re.DOTALL).group(1)
-        self.assertTupleEqual(t, self.gdp.get_naos_nmos(vecstr))
+        self.assertTupleEqual(t, get_naos_nmos(vecstr))
 
     def test_parse_orbitals_hf(self):
         rhf =np.asarray([[  5.94341142e-01,  -9.00596442e-03,  -0.00000000e+00,

@@ -19,10 +19,10 @@ def save_basis(x, bsopt):
     with open(fname, 'wb') as ff:
         ff.write(str(basis))
 
-be2 = Molecule(name="Be2", atoms=[Atom(at=4, xyz=(0.0, 0.0,  1.2268016705)),
-                                  Atom(at=4, xyz=(0.0, 0.0, -1.2268016705))], charge=0, multiplicity=1)
+be2 = Molecule(name="Be2", atoms=[("Be", (0.0, 0.0,  1.2268016705), False),
+                                  ("Be", (0.0, 0.0, -1.2268016705), False)], charge=0, multiplicity=1)
 
-be = Molecule(name="Be", atoms=[Atom(at=4)], charge=0, multiplicity=1)
+be = Molecule(name="Be", atoms=[("Be", (0.0, 0.0, 0.0), False)], charge=0, multiplicity=1)
 
 optimization = {"method"  : "Nelder-Mead",
                 "lambda"  : 10.0,
