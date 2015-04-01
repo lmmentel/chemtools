@@ -28,7 +28,6 @@ _elements_json = os.path.join(_project_root, "elements.json")
 
 ELEMENTS = json.loads(open(_elements_json, 'rb').read().decode('ascii', errors="ignore"), encoding='utf=8')
 
-
 def element_from_name(name):
     '''Get the data on the element from the ELEMENTS dictionary specified by its name'''
     for k, v in ELEMENTS.items():
@@ -54,9 +53,10 @@ class Atom(object):
     def __init__(self, identifier, xyz=(0.0, 0.0, 0.0), dummy=False, id=None):
 
         self.xyz = Atom.coords(xyz[0], xyz[1], xyz[2])
-        self._set_attributes(identifier, dummy)
+        self.is_dummy = dummy
+        self._set_attributes(identifier)
 
-    def _set_attributes(self, identifier, dummy):
+    def _set_attributes(self, identifier):
         '''
         Set the attributes of an atom based on the unique "indentifier" provided.
         The attributes are read from the elements.json file.
@@ -80,7 +80,7 @@ class Atom(object):
         else:
             raise ValueError("wrong element identifier: {0:s}, use symbol, name or atomic number".format(identifier))
 
-        if dummy:
+        if self.is_dummy:
             self.set_atomic_number(0.0)
 
     def set_atomic_number(self, value):
@@ -130,7 +130,15 @@ class Molecule(object):
     def atoms(self, values):
         self._atoms = []
         if hasattr(values, "__iter__"):
-            self._atoms = [Atom(identifier=v[0], xyz=v[1], dummy=v[2]) for v in values]
+            for v in values:
+                if len(v) == 1:
+                    self._atoms.append(Atom(identifier=v[0]))
+                elif len(v) == 2:
+                    self._atoms.append(Atom(identifier=v[0], dummy=v[1]))
+                elif len(v) == 3:
+                    self._atoms.append(Atom(identifier=v[0], xyz=v[1], dummy=v[2]))
+                else:
+                    raise ValueError("wrong number of Atom arguments: {}, expecting: 1, 2, 3.".format(len(v)))
         else:
             raise TypeError("{0:s} object is not iterable".format(type(values)))
 
