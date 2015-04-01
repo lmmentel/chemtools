@@ -67,7 +67,7 @@ def add_trimer(session, name, basisset, ram, raa, gamma):
     session.commit()
     return True
 
-def add_dimer(session, mol_name, basisset, raa):
+def add_dimer(session, name, basisset, raa):
     '''
     Loop over all jobs and return a list of dicts with job info
 
