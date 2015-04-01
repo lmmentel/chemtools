@@ -86,7 +86,7 @@ def add_dimer(session, mol_name, basisset, raa):
     ========
     '''
 
-    dimer = Dimer(name=mol_name,
+    dimer = Dimer(name=name,
                   abspath=None,
                   output_name=None,
                   basisset=basisset,
