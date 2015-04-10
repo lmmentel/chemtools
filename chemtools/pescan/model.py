@@ -164,7 +164,7 @@ class Tetramer(Base):
     r_mol1 = Column(Float)
     r_mol2 = Column(Float)
 
-    def get_xyz(self, r_atom1_cm23, r_atom2_atom3, gamma, x0=0.0, y0=0.0, z0=0.0):
+    def get_xyz(self, x0=0.0, y0=0.0, z0=0.0):
         '''
         Calculate (x,y,z) coordiantes from internal (R_heh2, r_hh, gamma).
         '''
