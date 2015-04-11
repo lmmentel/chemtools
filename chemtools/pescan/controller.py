@@ -1,10 +1,29 @@
 import numpy as np
 import os
 
+from itertools import izip, product
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from chemtools.pescan.model import Base, Atom, Dimer, Trimer, Tetramer
 
+
+def grid_product(dicts):
+    '''
+    Given a dict whose item are lists return a generator over dict with
+    all possible selections from the list (cartesian product)
+
+    >>> options = {"number": [1,2,3], "color": ["orange","blue"] }
+    >>> print list( my_product(options) )
+    [ {"number": 1, "color": "orange"},
+      {"number": 1, "color": "blue"},
+      {"number": 2, "color": "orange"},
+      {"number": 2, "color": "blue"},
+      {"number": 3, "color": "orange"},
+      {"number": 3, "color": "blue"}
+    ]
+    '''
+    return (dict(izip(dicts, x)) for x in product(*dicts.itervalues()))
 
 def expand_grids(grids=[], debug=False):
 
@@ -19,19 +38,6 @@ def expand_grids(grids=[], debug=False):
     return res
 
 # controller methods
-
-def collect(session):
-    '''
-    Lopp over elements form the joblist, parse the output files and insert
-    the parsed value into the database.
-    '''
-
-    for job in joblist:
-        parser = GamessLogParser(job.output)
-        job.hf_energy = parser.get_hf_total_energy()
-        job.ci_energy = parser.get_energy_components('ci')['TOTAL ENERGY']
-        session.add(job)
-    session.commit()
 
 def add_atom(session, name, basisset):
 
@@ -49,21 +55,41 @@ def add_atom(session, name, basisset):
 
 def add_trimer(session, name, basisset, ram, raa, gamma):
     '''
-    Loop over all jobs and return a list of dicts with job info
+    Add a Trimer to the database.
     '''
 
-    trimer = Trimer(name=name,
-                    abspath=None,
-                    output_name=None,
-                    basisset=basisset,
-                    hf_energy=None,
-                    ci_energy=None,
-                    cc_energy=None,
-                    status=None,
-                    r_atom_mol=ram,
-                    gamma=gamma,
-                    r_atom1_atom2=raa)
+    trimer = Trimer(
+        name=name,
+        abspath=None,
+        output_name=None,
+        basisset=basisset,
+        hf_energy=None,
+        ci_energy=None,
+        cc_energy=None,
+        status=None,
+        r_atom_mol=ram,
+        gamma=gamma,
+        r_atom1_atom2=raa)
     session.add(trimer)
+    session.commit()
+    return True
+
+def add_tetramer(session, name, basisset, r_mol1_mol2, r_mol1, r_mol2, phi_1,
+                 phi_2, gamma):
+    '''
+    Add a Tetramer to the database.
+    '''
+
+    tetramer = Tetramer(
+        name=name,
+        basisset=basisset,
+        r_mol1_mol2=r_mol1_mol2,
+        r_mol1=r_mol1,
+        r_mol2=r_mol2,
+        gamma=gamma,
+        phi_1=phi_1,
+        phi_2=phi_2)
+    session.add(tetramer)
     session.commit()
     return True
 
