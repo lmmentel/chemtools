@@ -164,6 +164,22 @@ class Tetramer(Base):
     r_mol1 = Column(Float)
     r_mol2 = Column(Float)
 
+    @hybrid_property
+    def output(self):
+        '''
+        Return the absolute path of the output.
+        '''
+        return os.path.join(self.abspath, self.output_name)
+
+    @hybrid_property
+    def input_name(self):
+        '''
+        Compose the input name from the molecule name, basis set and distance.
+        '''
+        return "{m:s}_{b:s}_R{R:.2f}_r{r2:.2f}_r{r2:.2f}_p{p1:.2f}_p{p2:.2f}_g{g:.2f}.inp".format(m=self.name,
+                b=self.basisset, R=self.r_mol1_mol2, r1=self.r_mol1,
+                r2=self.r_mol2, p1=self.phi_1, p2=self.phi_2, g=self.gamma)
+
     def get_xyz(self, x0=0.0, y0=0.0, z0=0.0):
         '''
         Calculate (x,y,z) coordiantes from internal (r_mol1_mol2, r_mol1, r_mol2, phi_1, phi_2, gamma).
@@ -197,7 +213,7 @@ class Tetramer(Base):
         return [atom1, atom2, atom3, atom4]
 
     def __repr__(self):
-        return "<Tetramer(name={n:15s}, basis={b:15s}, r_mol1_mol2={r:5.2f}, gamma={g:5.2f}, phi_1={p1:5.2f}, phi_2={p2:5.2f}>".format(
+        return "<Tetramer(name={n:15s}, basis={b:15s}, r_mol1_mol2={r:5.2f}, phi_1={p1:5.2f}, phi_2={p2:5.2f}>, gamma={g:5.2f})".format(
                n=self.name, b=self.basisset, r=self.r_mol1_mol2, g=self.gamma, p1=self.phi_1, p2=self.phi_2)
 
 def unit_vector(data, axis=None, out=None):
