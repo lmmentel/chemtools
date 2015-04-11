@@ -698,7 +698,7 @@ class GamessLogParser(object):
         iend = string.index(end)
         return string[istart+len(start):iend]
 
-class GamessReader(object):
+class GamessFortranReader(object):
     '''
     Class for holding method for reading gamess binary files:
         $JOB.F08 : two electron integrals over AO's,
@@ -1340,6 +1340,67 @@ class SequentialFile(BinaryFile):
             pos = self.tell()
             self.seek(pos+4)
         return ints
+
+class GamessReader(object):
+    '''
+    Class for holding method for reading gamess binary files:
+        $JOB.F08 : two electron integrals over AO's,
+        $JOB.F09 : two electron integrals over MO's,
+        $JOB.F10 : the dictionary file with 1-e integrals, orbitals etc.,
+        $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
+
+    TODO:
+        CI coefficients, and CI hamiltonian matrix elements.
+    '''
+    # add an option to choose which reader should be used for dictionary file
+    # and sequential files, the options are:
+    # - wrapped fortran code that need to be compiled and installed or
+    # - native reader written in python using DictionaryFile and SequentialFile
+    # classes
+    def __init__(self, log):
+        self.logfile    = log
+        i = self.logfile.index("log")
+        self.filebase   = self.logfile[:i-1]
+        self.datfile    = self.filebase + ".dat"
+        self.twoeaofile = self.filebase + ".F08"
+        self.twoemofile = self.filebase + ".F09"
+        self.dictionary = self.filebase + ".F10"
+        self.rdm2file   = self.filebase + ".F15"
+        self.gp         = GamessLogParser(log=self.logfile)
+
+    def get_onee_size(self, aos=True):
+        '''
+        Get the size of the vector holding upper (or lower) triangle
+        of a square matrix of size naos or nmos.
+        '''
+        if aos:
+            n = self.gp.get_number_of_aos()
+        else:
+            n = self.gp.get_number_of_mos()
+        return n*(n+1)/2
+
+    def get_twoe_size(self):
+        '''
+        Get the size of the 1d vector holding upper (or lower) triangle
+        of a supermatrix of size nmos (2RDM and two-electrons integrals).
+        '''
+        n = self.get_onee_size(aos=False)
+        return n*(n+1)/2
+
+    def read_rdm2(self, filename=None, nmo=None):
+
+        '''Read the 2rdm from the gamess-us file'''
+
+        # initialize numpy array to zeros
+        rdm2 = np.zeros(self.get_twoe_size(), dtype=float)
+
+
+    def read_twoeao(self, filename=None, nmo=None):
+
+        '''Read the two electron integrals from the gamess-us file'''
+
+        ints = np.zeros(self.get_twoe_size(), dtype=float)
+
 
 from collections import namedtuple
 
