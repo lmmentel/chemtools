@@ -11,6 +11,8 @@ gamessus
     * add scripts for frequently used CLI functionality such as making NO input
     * add parser for the symmetry labels, lz values orbitals, orbital energies  and orbital info in the LogParser
     * add a method to merge orbitals for 2 atoms/molecules, similar to molpro
+    * make one `data` directory with gamess-us jobs that will by used in test
+      and ipython notebooks (tutorials)  
 
 seqfile
     * add support for reading file produced in parallel runs
