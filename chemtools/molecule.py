@@ -16,6 +16,9 @@ Units
 * specific heat : J/ g mol @ 20 C
 * thermal conductivity : W/m K @25 C
 
+ionization energies
+Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2014). NIST Atomic Spectra Database (ver. 5.2), [Online]. Available: http://physics.nist.gov/asd [2015, April 13]. National Institute of Standards and Technology, Gaithersburg, MD. 
+
 '''
 
 from collections import namedtuple
