@@ -7,6 +7,15 @@ import numpy as np
 import os
 import sys
 
+# add an option to choose which reader should be used for dictionary file
+# and sequential files, the options are:
+# - wrapped fortran code that need to be compiled and installed or
+# - native reader written in python using DictionaryFile and SequentialFile
+# classes
+
+# fortran modules nedded for GamessReader Class
+from gamessusfortranext import twoe
+
 class GamessFortranReader(object):
     '''
     Class for holding method for reading gamess binary files:
@@ -14,26 +23,15 @@ class GamessFortranReader(object):
         $JOB.F09 : two electron integrals over MO's,
         $JOB.F10 : the dictionary file with 1-e integrals, orbitals etc.,
         $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
-
-    TODO:
-        CI coefficients, and CI hamiltonian matrix elements.
     '''
-    # fortran modules nedded for GamessReader Class
-    from gamessusfortranext import twoe
 
-    # add an option to choose which reader should be used for dictionary file
-    # and sequential files, the options are:
-    # - wrapped fortran code that need to be compiled and installed or
-    # - native reader written in python using DictionaryFile and SequentialFile
-    # classes
+
     def __init__(self, log):
         self.logfile    = log
         i = self.logfile.index("log")
         self.filebase   = self.logfile[:i-1]
-        self.datfile    = self.filebase + ".dat"
         self.twoeaofile = self.filebase + ".F08"
         self.twoemofile = self.filebase + ".F09"
-        self.dictionary = self.filebase + ".F10"
         self.rdm2file   = self.filebase + ".F15"
         self.gp         = GamessLogParser(log=self.logfile)
 
@@ -48,12 +46,12 @@ class GamessFortranReader(object):
             n = self.gp.get_number_of_mos()
         return n*(n+1)/2
 
-    def get_twoe_size(self):
+    def get_twoe_size(self, aos=False):
         '''
         Get the size of the 1d vector holding upper (or lower) triangle
         of a supermatrix of size nmos (2RDM and two-electrons integrals).
         '''
-        n = self.get_onee_size(aos=False)
+        n = self.get_onee_size(aos)
         return n*(n+1)/2
 
     def read_rdm2(self, filename=None, nmo=None):
@@ -72,11 +70,29 @@ class GamessFortranReader(object):
             else:
                 sys.exit("File '{0:s}' doesn't exist, exiting...".format(filename))
         elif os.path.exists(self.rdm2file):
-            print("Reading {}".format(self.rdm2file))
             twoe.integrals.readinao(rdm2, self.rdm2file)
             return rdm2
         else:
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.rdm2file))
+
+    def read_twoeao(self, filename=None, nmo=None):
+
+        '''Read the two electron integrals from the gamess-us file'''
+
+        # initialize numpy array to zeros
+        ints = np.zeros(self.get_twoe_size(aos=True), dtype=float)
+        # use gamess module to read the integrals from the file -filename-
+        if filename:
+            if os.path.exists(filename):
+                twoe.integrals.readinao(ints, filename)
+                return ints
+            else:
+                sys.exit("File '{0:s}' doesn't exist, exiting...".format(filename))
+        elif os.path.exists(self.twoeaofile):
+            twoe.integrals.readinao(ints, self.twoeaofile)
+            return ints
+        else:
+            raise OSError("File '{0:s}' doesn't exist, exiting...".format(self.twoeaofile))
 
     def read_twoemo(self, filename=None, nmo=None):
 
@@ -97,37 +113,44 @@ class GamessFortranReader(object):
         else:
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.twoemofile))
 
-    @staticmethod
-    def factor(i, j, k, l):
-        '''
-        Based on the orbitals indices return the factor that takes into account
-        the index permutational symmetry.
-        '''
-        if i == j and k == l and i == k:
-            fijkl = 1.0
-        elif i == j and k == l:
-            fijkl = 2.0
-        elif (i == k and j == l) or (i == j and i == k) or (j == k and j == l) or (i == j or k == l):
-            fijkl = 4.0
-        else:
-            fijkl = 8.0
-        return fijkl
+def ijkl(i, j, k, l):
+    '''
+    Based on the four orbital indices i, j, k, l return the address
+    in the 1d vector.
+    '''
+    ij = max(i, j)*(max(i, j) - 1)/2 + min(i, j)
+    kl = max(k, l)*(max(k, l) - 1)/2 + min(k, l)
+    return max(ij, kl)*(max(ij, kl) - 1)/2 + min(ij, kl) - 1
 
-    # this function should be moved somewhere else
-    def print_twoe(self, twoe, nbf):
-        '''Print the two-electron integrals.'''
-        ij=0
-        for i in xrange(nbf):
-            for j in xrange(i+1):
-                ij += 1
-                kl = 0
-                for k in xrange(nbf):
-                    for l in xrange(k+1):
-                        kl += 1
-                        if ij >= kl:
-                            if abs(twoe[self.ijkl(i,j,k,l)]) > 1.0e-10:
-                                print("{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
-                                    i, j, k, l, twoe[self.ijkl(i,j,k,l)]))
+def factor(i, j, k, l):
+    '''
+    Based on the orbitals indices return the factor that takes into account
+    the index permutational symmetry.
+    '''
+    if i == j and k == l and i == k:
+        fijkl = 1.0
+    elif i == j and k == l:
+        fijkl = 2.0
+    elif (i == k and j == l) or (i == j and i == k) or (j == k and j == l) or (i == j or k == l):
+        fijkl = 4.0
+    else:
+        fijkl = 8.0
+    return fijkl
+
+def print_twoe(twoe, nbf):
+    '''Print the two-electron integrals.'''
+    ij=0
+    for i in xrange(nbf):
+        for j in xrange(i+1):
+            ij += 1
+            kl = 0
+            for k in xrange(nbf):
+                for l in xrange(k+1):
+                    kl += 1
+                    if ij >= kl:
+                        if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10:
+                            print("{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
+                                i, j, k, l, twoe[ijkl(i,j,k,l)]))
 
 
 #"""
