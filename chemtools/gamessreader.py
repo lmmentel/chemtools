@@ -118,9 +118,9 @@ def ijkl(i, j, k, l):
     Based on the four orbital indices i, j, k, l return the address
     in the 1d vector.
     '''
-    ij = max(i, j)*(max(i, j) - 1)/2 + min(i, j)
-    kl = max(k, l)*(max(k, l) - 1)/2 + min(k, l)
-    return max(ij, kl)*(max(ij, kl) - 1)/2 + min(ij, kl) - 1
+    ij = max(i, j)*(max(i, j) + 1)/2 + min(i, j)
+    kl = max(k, l)*(max(k, l) + 1)/2 + min(k, l)
+    return max(ij, kl)*(max(ij, kl) + 1)/2 + min(ij, kl)
 
 def factor(i, j, k, l):
     '''
