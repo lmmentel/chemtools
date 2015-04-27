@@ -4,6 +4,12 @@ from subprocess import Popen, PIPE
 import os
 import re
 import sys
+from string import Template
+
+class MolproTempalte(Template):
+
+    delimiter = '%'
+    idpattern = r'[a-z][_a-z0-9]*'
 
 class Molpro(Code):
     '''
@@ -16,25 +22,30 @@ class Molpro(Code):
 
         self.molpropath = os.path.dirname(self.executable)
 
-    def write_input(self, inpfile=None, core=None, bs=None, inpdata=None, mol=None):
+    def write_input(self, inptempl=None, fname=None, mol=None, bs=None, code=""):
         '''
-        Write the molpro input to "inpfile" based on the information from the
+        Write the molpro input to "fname" file based on the information from the
         keyword arguments.
         '''
 
-        if isinstance(bs, list):
-            basstr = "".join(x.write_molpro() for x in bs)
-        else:
-            basstr = bs.write_molpro()
-        inpdata = re.sub('geometry', mol.molpro_rep(), inpdata, flags=re.I)
-        inpdata = re.sub('basis', "basis={\n"+basstr+"\n}\n", inpdata, flags=re.I)
-        if core:
-            inpdata = re.sub("core","core,{0:s}\n".format(",".join([str(x) for x in core])), inpdata, flags=re.I)
-        else:
-            inpdata = re.sub("core","", inpdata, flags=re.I)
+        template = MolproTemplate(inptempl)
 
-        with open(inpfile, 'w') as inp:
-            inp.write(inpdata)
+        if isinstance(bs, list):
+            bs_str = "".join(x.write_molpro() for x in bs)
+        else:
+            bs_str = bs.write_molpro()
+
+        if core != "":
+            core = "core,{0:s}\n".format(",".join([str(x) for x in core]))
+
+        subs = {
+            'geometry' : mol.molpro_rep(),
+            'basis' : "basis={\n"+bs_str+"\n}\n",
+            'core' : core,
+        }
+
+        with open(fname, 'w') as inp:
+            inp.write(template.substitute(subs))
 
     def run(self, inpfile):
         '''

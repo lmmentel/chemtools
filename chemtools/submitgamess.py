@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group()
     parser.add_argument("input",
-                        help='gamessus job file (input) to be executed')
+                        help='gamessus input file to be executed')
     parser.add_argument("-d",
                         "--dryrun",
                         action="store_true",

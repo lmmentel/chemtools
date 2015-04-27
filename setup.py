@@ -24,6 +24,7 @@ setup(
     packages = ['chemtools', 'chemtools/pescan'],
     scripts = [
         'chemtools/submitgamess.py',
+        'chemtools/submitmolpro.py',
         'scripts/bsprint',
         'scripts/bsconvert',
                ],
