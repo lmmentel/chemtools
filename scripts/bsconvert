@@ -1,0 +1,50 @@
+from __future__ import print_function
+
+from argparse import ArgumentParser
+from chemtools.basisset import BasisSet
+from chemtools.gamessus import GamessInput
+from chemtools.molecule import ELEMENTS, element_from_name
+import os
+
+def get_basis_sets(filename):
+    '''
+    Read all basis sets from a file and return a list of BasisSet objects.
+
+    Args
+    ----
+    path : str
+    filename : str
+    '''
+
+    gi = GamessInput()
+
+    bsets = []
+
+    with open(filename, "r") as finp:
+        contents = finp.read()
+        bsname = os.path.splitext(os.path.basename(filename))[0]
+        for item in contents.split('\n\n'):
+            if not ((item.startswith("!") or item.startswith(" ")) or len(item) == 0):
+                element_name, basis = item.split('\n', 1)
+                if element_name != "":
+                    element_symbol, _ = element_from_name(element_name)
+                    bsets.append(BasisSet.from_dict({"name" : bsname, "element" : element_symbol,
+                                                     "functions" : gi.parse_gamess_basis(basis)}))
+    return bsets
+
+def main():
+
+    parser = ArgumentParser()
+    parser.add_argument("filename", help="file with a basis sets in gamess format")
+    parser.add_argument("-of", "--outputformat", choices=["gamess", "molpro", "dalton", "nwchem", "cfour"], default="gamess")
+    args = parser.parse_args()
+
+    bsets = get_basis_sets(args.filename)
+
+    writer = "write_" + args.outputformat
+    for bset in bsets:
+        method = getattr(bset, writer)
+        print(method())
+
+if __name__ == "__main__":
+    main()

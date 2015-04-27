@@ -25,6 +25,7 @@ setup(
     scripts = [
         'chemtools/submitgamess.py',
         'scripts/bsprint',
+        'scripts/bsconvert',
                ],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
     version = '0.4.0',
