@@ -54,8 +54,8 @@ class Atom(object):
 
     def __init__(self, identifier, xyz=(0.0, 0.0, 0.0), dummy=False, id=None):
 
-        self._dtxyz = np.dtype([('x', 'f8'), ('y', 'f8'), ('z', 'f8')])
-        self.xyz = np.asarray(xyz, dtype=self._dtxyz)
+        #self._dtxyz = np.dtype([('x', 'f8'), ('y', 'f8'), ('z', 'f8')])
+        self.xyz = np.asarray(xyz)
         self.is_dummy = dummy
         self._set_attributes(identifier)
 
@@ -184,7 +184,7 @@ class Molecule(object):
         out = ""
         for atom in self.atoms:
             out = out + "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}\n".format(
-                atom.symbol, float(atom.atomic_number), atom.xyz['x'], atom.xyz['y'], atom.xyz['z'])
+                atom.symbol, float(atom.atomic_number), atom.xyz[0], atom.xyz[1], atom.xyz[2])
         return out
 
     def molpro_rep(self):
@@ -192,7 +192,7 @@ class Molecule(object):
         out = "geomtyp=xyz\ngeometry={{\n{0:4d}\n{1:<80s}\n".format(len(self.atoms), self.name)
         for atom in self.atoms:
             out = out + "{0:<10s}, {1:15.5f}, {2:15.5f}, {3:15.5f}\n".format(
-                atom.symbol, atom.xyz['x'], atom.xyz['y'], atom.xyz['z'])
+                atom.symbol, atom.xyz[0], atom.xyz[1], atom.xyz[2])
         out = out + "}\n"
         return out
 

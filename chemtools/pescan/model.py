@@ -7,6 +7,8 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 Base = declarative_base()
 
+dtxyz = np.dtype([('x', 'f8'), ('y', 'f8'), ('z', 'f8')])
+
 class Atom(Base):
     __tablename__ = 'atoms'
 
@@ -39,7 +41,7 @@ class Atom(Base):
         Return atom (x,y,z) coordinates.
         '''
 
-        return np.asarray([x0, y0, z0])
+        return np.asarray((x0, y0, z0), dtype=dtxyz)
 
     def __repr__(self):
         return "<Atom(name={n}, basis={b})>".format(n=self.name, b=self.basisset)
@@ -79,8 +81,8 @@ class Dimer(Base):
         Calculate (x,y,z) coordiantes from internal (r_atom1_atom2).
         '''
 
-        return np.asarray([[x0, y0, z0 - self.r_atom1_atom2/2.0],
-                           [x0, y0, z0 + self.r_atom1_atom2/2.0]])
+        return np.asarray([(x0, y0, z0 - self.r_atom1_atom2/2.0),
+                           (x0, y0, z0 + self.r_atom1_atom2/2.0)], dtype=dtxyz)
 
     def __repr__(self):
         return "<Dimer(name={m}, basis={b}, r_atom1_atom2={raa:5.2f)}>".format(
@@ -123,14 +125,14 @@ class Trimer(Base):
         Calculate (x,y,z) coordiantes from internal (R_heh2, r_hh, gamma).
         '''
 
-        atom1 = np.asarray([x0, y0, z0])
-        cm = np.asarray([atom1['x'], atom1['y'], atom1['z'] + self.r_atom_mol])
-        atom2 = np.asarray([cm['x'] + 0.5*self.r_atom1_atom2*math.sin(math.radians(self.gamma)),
+        atom1 = np.asarray((x0, y0, z0), dtype=dtxyz)
+        cm = np.asarray((atom1['x'], atom1['y'], atom1['z'] + self.r_atom_mol), dtype=dtxyz)
+        atom2 = np.asarray((cm['x'] + 0.5*self.r_atom1_atom2*math.sin(math.radians(self.gamma)),
                     cm['y'],
-                    cm['z'] + 0.5*self.r_atom1_atom2*math.cos(math.radians(self.gamma))])
-        atom3 = np.asarray([cm['x'] - 0.5*self.r_atom1_atom2*math.sin(math.radians(self.gamma)),
+                    cm['z'] + 0.5*self.r_atom1_atom2*math.cos(math.radians(self.gamma))), dtype=dtxyz)
+        atom3 = np.asarray((cm['x'] - 0.5*self.r_atom1_atom2*math.sin(math.radians(self.gamma)),
                     cm['y'],
-                    cm['z'] - 0.5*self.r_atom1_atom2*math.cos(math.radians(self.gamma))])
+                    cm['z'] - 0.5*self.r_atom1_atom2*math.cos(math.radians(self.gamma))), dtype=dtxyz)
 
         if self.gamma not in [0.0, 90.0]:
             for atom in [atom1, atom2, atom3]:
@@ -183,22 +185,22 @@ class Tetramer(Base):
         Calculate (x,y,z) coordiantes from internal (r_mol1_mol2, r_mol1, r_mol2, phi_1, phi_2, gamma).
         '''
 
-        o = np.asarray([x0, y0, z0])
-        cm1 = o + np.asarray([0.0, 0.0, - self.r_mol1_mol2/2.0])
-        cm2 = o + np.asarray([0.0, 0.0, + self.r_mol1_mol2/2.0])
+        o = np.asarray((x0, y0, z0))
+        cm1 = np.add(o, np.asarray((0.0, 0.0, - self.r_mol1_mol2/2.0)))
+        cm2 = np.add(o, np.asarray((0.0, 0.0, + self.r_mol1_mol2/2.0)))
 
-        atom1 = np.asarray([cm1['x'] + 0.5*self.r_mol1*math.sin(math.radians(self.phi_1)),
-                    cm1['y'],
-                    cm1['z'] + 0.5*self.r_mol1*math.cos(math.radians(self.phi_1))])
-        atom2 = np.asarray([cm1['x'] - 0.5*self.r_mol1*math.sin(math.radians(self.phi_1)),
-                    cm1['y'],
-                    cm1['z'] - 0.5*self.r_mol1*math.cos(math.radians(self.phi_1))])
-        atom3 = np.asarray([cm2['x'] + 0.5*self.r_mol2*math.sin(math.radians(self.phi_2)),
-                    cm2['y'],
-                    cm2['z'] + 0.5*self.r_mol2*math.cos(math.radians(self.phi_2))])
-        atom4 = np.asarray([cm2['x'] - 0.5*self.r_mol2*math.sin(math.radians(self.phi_2)),
-                    cm2['y'],
-                    cm2['z'] - 0.5*self.r_mol2*math.cos(math.radians(self.phi_2))])
+        atom1 = np.asarray((cm1[0] + 0.5*self.r_mol1*math.sin(math.radians(self.phi_1)),
+                    cm1[1],
+                    cm1[2] + 0.5*self.r_mol1*math.cos(math.radians(self.phi_1))))
+        atom2 = np.asarray((cm1[0] - 0.5*self.r_mol1*math.sin(math.radians(self.phi_1)),
+                    cm1[1],
+                    cm1[2] - 0.5*self.r_mol1*math.cos(math.radians(self.phi_1))))
+        atom3 = np.asarray((cm2[0] + 0.5*self.r_mol2*math.sin(math.radians(self.phi_2)),
+                    cm2[1],
+                    cm2[2] + 0.5*self.r_mol2*math.cos(math.radians(self.phi_2))))
+        atom4 = np.asarray((cm2[0] - 0.5*self.r_mol2*math.sin(math.radians(self.phi_2)),
+                    cm2[1],
+                    cm2[2] - 0.5*self.r_mol2*math.cos(math.radians(self.phi_2))))
 
         # get the rotation matrix around the z axis
         Rmatrix = rotation_matrix(math.radians(self.gamma), [0, 0, 1])

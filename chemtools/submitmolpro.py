@@ -64,8 +64,8 @@ def set_defaults(args):
         args['molpro'] = 'molpro'
     args['local_scr'] = os.path.join(os.getenv('HOME'), 'scratch')
     args['jobname'] = os.path.splitext(args["input"])[0]
-    args['outfile'] = args['jobname'] + ".log"
-    args['errfile'] = args['jobname'] + ".err"
+    args['outfile'] = args['jobname'] + ".o${PBS_JOBID}"
+    args['errfile'] = args['jobname'] + ".e${PBS_JOBID}"
     args['script_name'] = "run." + args['jobname']
     return args
 
@@ -86,6 +86,8 @@ def submit_pbs(args):
             script.write("#PBS -l mem={0}\n".format(args["mem"]))
         script.write("#PBS -l walltime={0}\n\n".format(args['walltime']))
         #script.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/share/apps/lib\n\n')
+        script.write("#PBS -o {}\n".format(args["outfile"]))
+        script.write("#PBS -e {}\n".format(args["errfile"]))
         script.write("#PBS -N {}\n".format(args["jobname"]))
         if args["queue"] != "default":
             script.write("#PBS -q {}\n".format(args["queue"]))
