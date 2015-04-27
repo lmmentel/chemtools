@@ -6,7 +6,7 @@ import re
 import sys
 from string import Template
 
-class MolproTempalte(Template):
+class MolproTemplate(Template):
 
     delimiter = '%'
     idpattern = r'[a-z][_a-z0-9]*'
@@ -22,13 +22,13 @@ class Molpro(Code):
 
         self.molpropath = os.path.dirname(self.executable)
 
-    def write_input(self, inptempl=None, fname=None, mol=None, bs=None, code=""):
+    def write_input(self, template=None, fname=None, mol=None, bs=None, code=""):
         '''
         Write the molpro input to "fname" file based on the information from the
         keyword arguments.
         '''
 
-        template = MolproTemplate(inptempl)
+        temp = MolproTemplate(template)
 
         if isinstance(bs, list):
             bs_str = "".join(x.write_molpro() for x in bs)
@@ -45,7 +45,7 @@ class Molpro(Code):
         }
 
         with open(fname, 'w') as inp:
-            inp.write(template.substitute(subs))
+            inp.write(temp.substitute(subs))
 
     def run(self, inpfile):
         '''
@@ -124,6 +124,40 @@ class Molpro(Code):
 
     def __repr__(self):
         return "<Molpro(\n\tname='{n}',\n\tmolpropath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.molpropath, r=self.runopts)
+
+class MolproInput(object):
+    '''
+    Reading, parsing and writing of Molpro input file.
+    '''
+
+    def __init__(self, fname=None):
+
+        self.fname = fname
+
+    def write_input(self, template=None, mol=None, bs=None, core=""):
+        '''
+        Write the molpro input to "fname" file based on the information from the
+        keyword arguments.
+        '''
+
+        temp = MolproTemplate(template)
+
+        if isinstance(bs, list):
+            bs_str = "".join(x.write_molpro() for x in bs)
+        else:
+            bs_str = bs.write_molpro()
+
+        if core != "":
+            core = "core,{0:s}\n".format(",".join([str(x) for x in core]))
+
+        subs = {
+            'geometry' : mol.molpro_rep(),
+            'basis' : "basis={\n"+bs_str+"\n}\n",
+            'core' : core,
+        }
+
+        with open(self.fname, 'w') as inp:
+            inp.write(temp.substitute(subs))
 
 class MolproOutputParser(object):
 

@@ -206,14 +206,14 @@ class GamessInput(object):
              'basis'  : m.group('basis'),})
         return datadict
 
-    def write_input(self, inpdict, fname=None, mol=None, bs=None):
+    def write_input(self, inpdict, mol=None, bs=None):
         '''
         Write a gamess input file under the name <inpfile> based on the
         information fstored in the dictionary <inpdict>.
 
         Args:
-            inpfile (str): name of the file to be written,
-            inpdict (dict): dictionary with the gamess input specification.
+            inpdict : dict
+                dictionary with the gamess input specification.
         '''
 
         if not isinstance(inpdict, dict):
@@ -238,8 +238,8 @@ class GamessInput(object):
         '''
         Args:
         =====
-        bs: (dict)
-            dictionary of BasisSet objects
+        bs : dict
+            dictionary of BasisSet objects with element symbols as keys
         '''
 
         data = ""
