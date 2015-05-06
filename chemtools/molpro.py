@@ -120,7 +120,7 @@ class Molpro(Code):
             parser = MolproOutputParser(outfile)
         else:
             raise ValueError("oufile needs to be specified")
-        return parser.terminatedOK()
+        return parser.accomplished()
 
     def __repr__(self):
         return "<Molpro(\n\tname='{n}',\n\tmolpropath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.molpropath, r=self.runopts)
@@ -259,7 +259,7 @@ class MolproOutputParser(object):
         if match:
             return float(match.group(1))
 
-    def terminatedOK(self):
+    def accomplished(self):
 
         '''Check if the job terminated succesfully.'''
 
