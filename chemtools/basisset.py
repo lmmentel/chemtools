@@ -585,9 +585,3 @@ def get_x0(basisopt):
     '''
 
     return list(chain.from_iterable(basisopt["params"]))
-
-def main():
-    pass
-
-if __name__ == "__main__":
-    main()
