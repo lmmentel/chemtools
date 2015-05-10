@@ -3,4 +3,4 @@ include doc/Makefile
 include doc/conf.py
 include README.rst
 include LICENSE.rst
-include chemtools/elements.json
+include chemtools/elements/elements.db

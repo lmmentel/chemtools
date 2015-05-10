@@ -259,3 +259,43 @@ class Isotope(Base):
 
         return "<Isotope(mass={}, abundance={}, mass_number={})>".format(
                self.mass, self.abundance, self.mass_number)
+
+def element(ids):
+    '''
+    Bases in the type of the `ids` return either an Element object from the
+    database, or a list of Element objects if the `ids` is a list or a tuple of
+    identifiers. Valid identifiers for an element are:
+    * name,
+    * symbol,
+    * atomic number.
+    '''
+
+    if isinstance(ids, (list, tuple)):
+        return [get_element(i) for i in ids]
+    elif isinstance(ids, (str, int)):
+        return get_element(ids)
+    else:
+        raise ValueError("Expected a <list>, <tuple>, <str> or <int>, got: {0:s}".format(type(ids)))
+
+def get_element(identifier):
+    '''
+    Return an element from the database based on the identifier passed. Valid
+    identifiers for an element are:
+    * name,
+    * symbol,
+    * atomic number.
+    '''
+
+    session = get_session()
+
+    if isinstance(identifier, str):
+        if len(identifier) <= 3 and identifier.lower() != "tin":
+            return session.query(Element).filter(Element.symbol == identifier).one()
+        else:
+            return session.query(Element).filter(Element.name == identifier).one()
+    elif isinstance(identifier, int):
+        return session.query(Element).filter(Element.atomic_number == identifier).one()
+    else:
+        raise ValueError("Expecting a <str> or <int>, got: {0:s}".format(type(identifier)))
+
+

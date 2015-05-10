@@ -1,63 +1,32 @@
-'''Module for handling atoms and molecules.
-
-Atomic properties are read from the elements.json file and set as attributes
-Units
-* atomic_radius : pm
-* atomic_volume : cm3/mol
-* boiling point K
-* covalent radius : pm
-* density : g/cm3
-* evaporation heat : kJ/mol
-* first ionization : kJ/mol
-* fusion heat : kJ/mol
-* ionic radius : pm
-* lattice constant : ang
-* melting point : K
-* specific heat : J/ g mol @ 20 C
-* thermal conductivity : W/m K @25 C
-
-ionization energies
-Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2014). NIST Atomic Spectra Database (ver. 5.2), [Online]. Available: http://physics.nist.gov/asd [2015, April 13]. National Institute of Standards and Technology, Gaithersburg, MD. 
-
+'''
+Module for handling atoms and molecules.
 '''
 
 from math import sqrt
 import numpy as np
 import os
-import json
-
-_project_root = os.path.abspath(os.path.dirname(__file__))
-_elements_json = os.path.join(_project_root, "elements.json")
-
-ELEMENTS = json.loads(open(_elements_json, 'rb').read().decode('ascii', errors="ignore"), encoding='utf=8')
-
-def element_from_name(name):
-    '''Get the data on the element from the ELEMENTS dictionary specified by its name'''
-    for k, v in ELEMENTS.items():
-        if v["name"].lower() == name.lower():
-            return k, v
-    else:
-        raise ValueError("name {0:s} not found".format(name))
-
-def element_from_atomic_number(atomic_number):
-    '''Get the data on the element from the ELEMENTS dictionary specified by its atomic number'''
-    for k, v in ELEMENTS.items():
-        if v["atomic_number"] == atomic_number:
-            return k, v
-    else:
-        raise ValueError("element with atomic number {0:d} not found".format(atomic_number))
 
 class Atom(object):
 
     '''Basic atom class representing an atom.'''
 
-
     def __init__(self, identifier, xyz=(0.0, 0.0, 0.0), dummy=False, id=None):
 
-        #self._dtxyz = np.dtype([('x', 'f8'), ('y', 'f8'), ('z', 'f8')])
         self.xyz = np.asarray(xyz)
         self.is_dummy = dummy
         self._set_attributes(identifier)
+
+    @property
+    def xyz(self):
+        return self_xyz
+
+    @xyz.setter
+    def xyz(self, values):
+
+        if len(values) != 3:
+            raise ValueError("Expecting 3 coordinates (x, y, z), got: {0:d}".format(len(values)))
+        else:
+            self._xyz = np.asarray(values)
 
     def _set_attributes(self, identifier):
         '''
