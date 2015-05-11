@@ -97,43 +97,42 @@ class Gamess(Code):
     def parse(self):
         pass
 
-    def write_input(self, inpfile=None, core=None, bs=None, inpdata=None, mol=None):
+    def write_input(self, fname=None, template=None, core=None, bs=None, mol=None):
         '''
         Write a file containing gamess input.
         '''
 
-        if isinstance(bs, list):
-            basstr = "".join(x.write_gamess() for x in bs)
-        else:
-            basstr = bs.write_gamess()
-        inpdata = re.sub('geometry', mol.gamess_rep(), inpdata, flags=re.I)
-        inpdata = re.sub('basis', basstr, inpdata, flags=re.I)
-        if core:
-            inpdata = re.sub("core","{0:s}\n".format(str(core)), inpdata, flags=re.I)
-        else:
-            inpdata = re.sub("core","", inpdata, flags=re.I)
-
-        with open(inpfile, 'w') as inp:
-            inp.write(inpdata)
+        gi = GamessInput(fname=fname, template=template)
+        gi.write_input(mol=mol, bs=bs, core=core)
 
 class GamessInput(object):
     '''
     A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self, fname=None, inpdata=None):
+    def __init__(self, fname=None, template=None):
         '''
         Initialize the class.
         '''
 
         self.fname = fname
-        if inpdata is not None:
-            self.inpdata = inpdata
-        else:
-            self.inpdata = {}
+        self.template = template
         self.end = " $end\n"
         # not nested groups of input blocks (not parsed into a dict of dicts)
         self._notnested = ["$data", "$vec", "$ecp"]
+
+    @property
+    def template(self):
+        return self._template
+
+    @template.setter
+    def template(self, value):
+        if isinstance(value, dict):
+            self._template = value
+        elif value is None:
+            self._template = {}
+        else:
+            raise TypeError("expected a dictionary but got {0:s}".format(type(value)))
 
     def parse(self):
         '''
@@ -206,46 +205,51 @@ class GamessInput(object):
              'basis'  : m.group('basis'),})
         return datadict
 
-    def write_input(self, inpdict, mol=None, bs=None):
+    def write_input(self, mol=None, bs=None, core=None):
         '''
         Write a gamess input file under the name <inpfile> based on the
         information fstored in the dictionary <inpdict>.
 
-        Args:
-            inpdict : dict
-                dictionary with the gamess input specification.
+        Args
+        ----
+        mol : Molecule
+            Molecule object
+        bs : BasisSet
+            BasisSet object or a list of BasisSet objects
         '''
-
-        if not isinstance(inpdict, dict):
-            raise TypeError("expected a dictionary but got {0:s}".format(type(inpdict)))
 
         inpstr = ""
 
         # write nested namelist groups
-        for key, value in sorted(inpdict.items()):
+        for key, value in sorted(self.template.items()):
             if key not in  self._notnested:
                 inpstr += " {0:<s}\n".format(key)
                 for kkey, vvalue in sorted(value.items()):
                     inpstr += "    {k:s}={v:s}\n".format(k=kkey, v=str(vvalue))
                 inpstr += self.end
         #write $data card
-        inpstr += self.write_data(inpdict["$data"], mol, bs)
+        inpstr += self.write_data(mol, bs)
 
         with open(self.fname, "w") as finp:
             finp.write(inpstr)
 
-    def write_data(self, datadict, mol=None, bs=None):
+    def write_data(self, mol=None, bs=None):
         '''
-        Args:
-        =====
-        bs : dict
-            dictionary of BasisSet objects with element symbols as keys
+        Return the $DATA part of the input based on the information in the $data
+        dict.
+
+        Args
+        ----
+        mol : Molecule
+            Molecule object
+        bs : BasisSet
+            BasisSet object or a list of BasisSet objects
         '''
 
         data = ""
         data += " {0:s}\n".format("$data")
-        data += "{0:s}\n".format(datadict["title"])
-        data += "{0:s}\n\n".format(datadict["group"])
+        data += "{0:s}\n".format(self.template["$data"]["title"])
+        data += "{0:s}\n\n".format(self.template["$data"]["group"])
         if mol is not None:
             for atom in mol.unique():
                 data += atom.gamess_rep()

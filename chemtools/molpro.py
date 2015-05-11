@@ -22,30 +22,14 @@ class Molpro(Code):
 
         self.molpropath = os.path.dirname(self.executable)
 
-    def write_input(self, template=None, fname=None, mol=None, bs=None, code=""):
+    def write_input(self, fname=None, template=None, mol=None, bs=None, core=""):
         '''
         Write the molpro input to "fname" file based on the information from the
         keyword arguments.
         '''
 
-        temp = MolproTemplate(template)
-
-        if isinstance(bs, list):
-            bs_str = "".join(x.write_molpro() for x in bs)
-        else:
-            bs_str = bs.write_molpro()
-
-        if core != "":
-            core = "core,{0:s}\n".format(",".join([str(x) for x in core]))
-
-        subs = {
-            'geometry' : mol.molpro_rep(),
-            'basis' : "basis={\n"+bs_str+"\n}\n",
-            'core' : core,
-        }
-
-        with open(fname, 'w') as inp:
-            inp.write(temp.substitute(subs))
+        mi = MolproInput(fname=fname, template=template)
+        mi.write_input(mol=mol, bs=bs, core=core)
 
     def run(self, inpfile):
         '''
@@ -130,9 +114,10 @@ class MolproInput(object):
     Reading, parsing and writing of Molpro input file.
     '''
 
-    def __init__(self, fname=None):
+    def __init__(self, fname=None, template=None):
 
         self.fname = fname
+        self.template = template
 
     def write_input(self, template=None, mol=None, bs=None, core=""):
         '''
@@ -140,7 +125,7 @@ class MolproInput(object):
         keyword arguments.
         '''
 
-        temp = MolproTemplate(template)
+        temp = MolproTemplate(self.template)
 
         if isinstance(bs, list):
             bs_str = "".join(x.write_molpro() for x in bs)
