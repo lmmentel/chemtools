@@ -5,6 +5,7 @@ Module for handling atoms and molecules.
 from math import sqrt
 import numpy as np
 import os
+from elements import element
 
 class Atom(object):
 
@@ -18,7 +19,7 @@ class Atom(object):
 
     @property
     def xyz(self):
-        return self_xyz
+        return self._xyz
 
     @xyz.setter
     def xyz(self, values):
@@ -34,23 +35,11 @@ class Atom(object):
         The attributes are read from the elements.json file.
         '''
 
-        if isinstance(identifier, str):
-            if len(identifier) > 2:
-                symbol, data = element_from_name(identifier)
-                setattr(self, "symbol", symbol)
-                for k, v in data.items():
-                    setattr(self, k, v)
-            else:
-                setattr(self, "symbol", identifier)
-                for k, v in ELEMENTS[identifier].items():
-                    setattr(self, k, v)
-        elif isinstance(identifier, int):
-            symbol, data = element_from_atomic_number(identifier)
-            setattr(self, "symbol", symbol)
-            for k, v in data.items():
-                setattr(self, k, v)
-        else:
-            raise ValueError("wrong element identifier: {0:s}, use symbol, name or atomic number".format(identifier))
+        attrs = ["name", "symbol", "atomic_number", "mass"]
+        atom = element(identifier)
+
+        for attr in attrs:
+            setattr(self, attr, getattr(atom, attr))
 
         if self.is_dummy:
             self.set_atomic_number(0.0)
@@ -67,12 +56,12 @@ class Atom(object):
     def gamess_rep(self):
 
         out = "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}\n".format(
-                self.symbol, float(self.atomic_number), self.xyz['x'], self.xyz['y'], self.xyz['z'])
+                self.symbol, float(self.atomic_number), self.xyz[0], self.xyz[1], self.xyz[2])
         return out
 
     def __repr__(self):
         outs = "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}".format(
-                self.symbol, float(self.atomic_number), self.xyz['x'], self.xyz['y'], self.xyz['z'])
+                self.symbol, float(self.atomic_number), self.xyz[0], self.xyz[1], self.xyz[2])
         return outs
 
 class Molecule(object):
@@ -85,7 +74,7 @@ class Molecule(object):
         self.multiplicity = multiplicity
         self.atoms = atoms
         if sym == "":
-            self.symmetry = "dnh 2"
+            self.symmetry = "c1"
         else:
             self.symmetry = sym
         self.electrons = self.nele()
@@ -106,7 +95,12 @@ class Molecule(object):
                 if len(v) == 1:
                     self._atoms.append(Atom(identifier=v[0]))
                 elif len(v) == 2:
-                    self._atoms.append(Atom(identifier=v[0], dummy=v[1]))
+                    if isinstance(v[1], bool):
+                        self._atoms.append(Atom(identifier=v[0], dummy=v[1]))
+                    elif isinstance(v[1], (list, tuple)):
+                        self._atoms.append(Atom(identifier=v[0], xyz=v[1]))
+                    else:
+                        raise ValueError("Second argument should be <bool> or <tuple>, not {}".format(type(v[1])))
                 elif len(v) == 3:
                     self._atoms.append(Atom(identifier=v[0], xyz=v[1], dummy=v[2]))
                 else:
@@ -138,7 +132,6 @@ class Molecule(object):
         for atom in self.atoms:
             print(atom)
 
-
     def get_distance(self, atom1, atom2):
 
         '''Calcualte the distance between two atoms.'''
@@ -163,5 +156,13 @@ class Molecule(object):
             out = out + "{0:<10s}, {1:15.5f}, {2:15.5f}, {3:15.5f}\n".format(
                 atom.symbol, atom.xyz[0], atom.xyz[1], atom.xyz[2])
         out = out + "}\n"
+        return out
+
+    def __repr__(self):
+
+        out = "<Molecule(name={}, charge={}, multiplicity={},\n".format(self.name, self.charge, self.multiplicity)
+        for atom in self.atoms:
+            out += atom.__repr__() + "\n"
+        out += ")>"
         return out
 
