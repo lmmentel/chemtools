@@ -93,7 +93,7 @@ class Molpro(Code):
         elif objective == "regexp":
             return parser.get_variable(regexp)
         else:
-            sys.exit("<parse>: unknown objective {0:s}".format(objective))
+            raise ValueError("unknown objective in prase {0:s}".format(objective))
 
     def accomplished(self, outfile=None):
         '''

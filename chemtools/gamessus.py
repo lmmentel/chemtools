@@ -65,20 +65,20 @@ class Gamess(Code):
             os.remove(os.path.join(self.scratch, datfile))
 
 
-    def run(self, inpfile, logfile=None, nproc=1, remove_dat=True):
+    def run(self, inpfile, logfile=None):
         '''
         Run a single gamess job interactively - without submitting to the
         queue.
         '''
 
-        if remove_dat:
+        if self.runopts["remove_dat"]:
             self.remove_dat(inpfile)
 
         if logfile is None:
             logfile = os.path.splitext(inpfile)[0] + ".log"
 
         out = open(logfile, 'w')
-        process = Popen([self.executable, inpfile, self.version, str(nproc)], stdout=out, stderr=out)
+        process = Popen([self.executable, inpfile, self.version, str(self.runopts["nproc"])], stdout=out, stderr=out)
         process.wait()
         out.close()
         return logfile
@@ -94,8 +94,30 @@ class Gamess(Code):
         parser = GamessLogParser(outfile)
         return parser.accomplished()
 
-    def parse(self):
-        pass
+    def parse(self, output, method, objective, regexp=None):
+        '''
+        Parser molpro output file to get the objective.
+        '''
+
+        parser = GamessLogParser(output)
+
+        if objective == "total energy":
+            if method == "hf":
+                return parser.get_hf_total_energy()
+            elif method == "cisd":
+                energies = self.get_energy_components(method)
+                return energies["TOTAL ENERGY"]
+        elif objective == "correlation energy":
+                energies = self.get_energy_components(method)
+                return energies["TOTAL ENERGY"] - parser.get_hf_total_energy()
+        elif objective == "core energy":
+            if method == "cisd":
+                energies = self.get_energy_components(method)
+                return energies["TOTAL ENERGY"]
+        elif objective == "regexp":
+            return parser.get_variable(regexp)
+        else:
+            raise ValueError("unknown objective in prase {0:s}".format(objective))
 
     def write_input(self, fname=None, template=None, core=None, bs=None, mol=None):
         '''
@@ -228,12 +250,12 @@ class GamessInput(object):
                     inpstr += "    {k:s}={v:s}\n".format(k=kkey, v=str(vvalue))
                 inpstr += self.end
         #write $data card
-        inpstr += self.write_data(mol, bs)
+        inpstr += self.write_data(mol=mol, bsl=bs)
 
         with open(self.fname, "w") as finp:
             finp.write(inpstr)
 
-    def write_data(self, mol=None, bs=None):
+    def write_data(self, mol=None, bsl=None):
         '''
         Return the $DATA part of the input based on the information in the $data
         dict.
@@ -246,6 +268,14 @@ class GamessInput(object):
             BasisSet object or a list of BasisSet objects
         '''
 
+        # converrt the list of BasisSet object into a dict wilt element symbols
+        # as keys
+
+        if isinstance(bsl, list):
+            bsd = {b.element : b for b in bsl}
+        else:
+            bsd = {bsl.element : bsl}
+
         data = ""
         data += " {0:s}\n".format("$data")
         data += "{0:s}\n".format(self.template["$data"]["title"])
@@ -253,8 +283,7 @@ class GamessInput(object):
         if mol is not None:
             for atom in mol.unique():
                 data += atom.gamess_rep()
-                if bs is not None:
-                    data += bs[atom.symbol].write_gamess()
+                data += bsd[atom.symbol].write_gamess()
         data += self.end
         return data
 
@@ -665,6 +694,15 @@ class GamessLogParser(object):
                 component = match.group('component')
                 res.append({"index" : index, "symbol" : symbol, "center" : center, "component" : component})
         return res
+
+    def get_variable(self, rawstring):
+        with open(selflogfile, 'r') as out:
+            data = out.read()
+
+        genre = re.compile(rawstring, flags=re.M)
+        match = genre.search(data)
+        if match:
+            return float(match.group(1))
 
     @staticmethod
     def parse_pairs(los, sep="="):

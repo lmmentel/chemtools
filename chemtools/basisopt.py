@@ -125,7 +125,7 @@ def run_total_energy(x0, *args):
     else:
         bs2opt.add(bsnoopt)
         bslist.append(bs2opt)
-    code.write_input(fname=job["inpname"], template=job["inpdata"], bs=bslist, mol=mol, core=job["core"])
+    code.write_input(fname=job["inpname"], template=job["template"], bs=bslist, mol=mol, core=job["core"])
     output = code.run(job["inpname"])
     if code.accomplished(output):
         objective = code.parse(output, job["method"], job["objective"], job.get("regexp", None))
