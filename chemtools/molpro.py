@@ -107,7 +107,13 @@ class Molpro(Code):
         return parser.accomplished()
 
     def __repr__(self):
-        return "<Molpro(\n\tname='{n}',\n\tmolpropath='{e}',\n\trunopts='{r}')>".format(n=self.name, e=self.molpropath, r=self.runopts)
+        return "\n".join(["<Molpro(",
+                        "\tname={},".format(self.name),
+                        "\tmolpropath={},".format(self.molpropath),
+                        "\texecutable={},".format(self.executable),
+                        "\tscratch={},".format(self.scratch),
+                        "\trunopts={},".format(str(self.runopts)),
+                        ")>"])
 
 class MolproInput(object):
     '''
