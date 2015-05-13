@@ -17,7 +17,12 @@ def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     Driver for the basis set optimization
     '''
 
-    print("Script started at {0}".format(datetime.datetime.today()))
+    script = sys.argv[0]
+    path = os.path.abspath(os.path.dirname(script))
+
+    print("Script name : {0}".format(script))
+    print("Workdir     : {0}".format(path))
+    print("Start time  : {0}".format(datetime.datetime.today()))
 
     starttime = time.time()
 
@@ -63,9 +68,15 @@ def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     # print the input data
     for name, obj in [("code", code), ("job", job), ("mol", mol),
                       ("bsnoopt", bsnoopt), ("bsopt", bsopt), ("opt", opt)]:
-        print(name.center(80, "*"))
-        print(obj)
-        print("*"*80)
+        print(name.upper().center(80, "="))
+        if isinstance(obj, dict):
+            pprint.pprint(obj)
+        else:
+            print(obj)
+
+    print("\n"+"="*80)
+    print("STARTING OPTIMIZATION".center(80, "="))
+    print("="*80, end="\n\n")
 
     x0 = get_x0(bsopt)
     res = minimize(function, x0,
