@@ -24,16 +24,12 @@ class Gamess(Code):
     def __init__(self, name="GamessUS", version="00", **kwargs):
         super(Gamess, self).__init__(**kwargs)
         self.name = name
-        self.gamesspath = os.path.dirname(self.executable)
+        self.rungms = self.executable
+        self.gmspath = os.path.dirname(self.executable)
         self.version = version
 
-        if os.path.isfile(os.path.join(self.gamesspath, 'ddikick.x')):
-            self.ddikick = os.path.join(self.gamesspath, 'ddikick.x')
-
-        if os.path.isfile(os.path.join(self.gamesspath, 'rungms')):
-            self.rungms = os.path.join(self.gamesspath, 'rungms')
-        else:
-            raise IOError('Could not find "rungms" under {0:s}'.format(self.gamesspath))
+        if os.path.isfile(os.path.join(self.gmspath, 'ddikick.x')):
+            self.ddikick = os.path.join(self.gmspath, 'ddikick.x')
 
     @property
     def version(self):
@@ -45,7 +41,7 @@ class Gamess(Code):
         """Check if the version exist and set it if it does."""
 
         versions = []
-        for item in os.listdir(self.gamesspath):
+        for item in os.listdir(self.gmspath):
             match = re.match(r'[a-z]+\.([0-9]+)\.x', item)
             if match:
                 versions.append(match.group(1))
@@ -53,7 +49,7 @@ class Gamess(Code):
         if value in versions:
             self._version = value
         else:
-            raise IOError('GamessUS version {0:s} not found in {1:s}'.format(value, self.gamesspath))
+            raise IOError('GamessUS version {0:s} not found in {1:s}'.format(value, self.gmspath))
 
     def remove_dat(self, inpfile):
         '''
@@ -126,6 +122,16 @@ class Gamess(Code):
 
         gi = GamessInput(fname=fname, template=template)
         gi.write_input(mol=mol, bs=bs, core=core)
+
+    def __repr__(self):
+        return "\n".join(["<Gamess(",
+                        "\tname={},".format(self.name),
+                        "\tgmspath={},".format(self.gmspath),
+                        "\trungms={},".format(self.rungms),
+                        "\tversion={},".format(self.version),
+                        "\tscratch={},".format(self.scratch),
+                        "\trunopts={},".format(str(self.runopts)),
+                        ")>"])
 
 class GamessInput(object):
     '''

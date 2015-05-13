@@ -1,5 +1,5 @@
 
-'''rMmodule for Complete Basis Set Extrapolations.'''
+'''Mmodule for Complete Basis Set Extrapolations.'''
 
 import numpy as np
 

@@ -39,6 +39,20 @@ class Code():
         else:
             raise ValueError("executable: '{0}' does not exists".format(value))
 
+    @property
+    def scratch(self):
+        return self._scratch
+
+    @scratch.setter
+    def scratch(self, path):
+
+        if path is None:
+            self._scratch = os.path.join(os.getenv('HOME'), 'scratch')
+        elif os.path.exists(path):
+            self._scratch = path
+        else:
+            raise ValueError("Scratch directory doesn't exist: {}".format(path))
+
     @abstractmethod
     def parse():
         pass
