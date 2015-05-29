@@ -1,5 +1,5 @@
 basisopt module documentation
 =============================
 
-.. automodule:: basisopt
+.. automodule:: chemtools.basisopt
    :members:

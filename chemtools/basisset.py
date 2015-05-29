@@ -381,7 +381,7 @@ class BasisSet:
     def get_spherical(l):
         '''
         Calculate the number of spherical components of a function with a given angular
-        momentum value "l".
+        momentum value *l*.
         '''
         return 2*l+1
 
@@ -389,7 +389,7 @@ class BasisSet:
     def get_cartesian(l):
         '''
         Calculate the number of cartesian components of a function with a given angular
-        momentum value "l".
+        momentum value *l*.
         '''
         return int((l+1)*(l+2)/2)
 
@@ -398,12 +398,12 @@ class BasisSet:
         Calculate the number of basis functions
 
         Args:
-            spherical (Bool)
+            spherical : bool
                 flag indicating if spherical or cartesian functions should be
                 used, default: True
 
         Returns:
-            res (int)
+            res : int
                 number of basis functions
         '''
 

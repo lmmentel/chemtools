@@ -32,27 +32,28 @@ Current Modules
    basisopt
    basisset
    code
-   dmft
    gamessus
-   molecule
    molpro
+   molecule
+   elements
 
 Download and Installation
 =========================
 
-Prerequisites
+Depenedencies
 -------------
 
 * Python_ version 2.7.3 or later
-* Periodic_ package
-* Scipy_ verison 0.11 or later
+* numpy_
+* scipy_ verison 0.11 or later
 * setuptools_ if you want to install via ``python setup.py install`` or
   ``easy_install``
 
 
 .. _Python: http://python.org/
 .. _Periodic: https://pypi.python.org/pypi/periodic
-.. _SciPy: http://www.scipy.org/
+.. _scipy: http://www.scipy.org
+.. _numpy: http://www.numpy.org
 .. _setuptools: https://pypi.python.org/pypi/setuptools
 
 

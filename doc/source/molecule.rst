@@ -1,5 +1,5 @@
 molecule module documentation
 =============================
 
-.. automodule:: molecule
+.. automodule:: chemtools.molecule
    :members:

@@ -1,5 +1,5 @@
 dmft module documentation
 =========================
 
-.. automodule:: dmft
+.. automodule:: chemtools.dmft
    :members:

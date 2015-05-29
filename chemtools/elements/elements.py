@@ -25,71 +25,70 @@ class Element(Base):
     '''
     Chemical element.
 
-    Attributes
-    ----------
-    annotation : str
+    Attributes:
+      annotation : str
         Annotations regarding the data
-    atomic_number : int
+      atomic_number : int
         Atomic number
-    atomic_radius : float
+      atomic_radius : float
         Atomic radius in pm
-    atomic_volume : float
+      atomic_volume : float
         Atomic volume in cm3/mol
-    block : int
+      block : int
         Block in periodic table
-    boiling_point : float
+      boiling_point : float
         Boiling temperature in K
-    category : str
+      category : str
         Category in the periodic table
-    covalent_radius : float
+      covalent_radius : float
         Covalent radius in pm
-    density : float
+      density : float
         Density at 295K in g/cm3 respectively g/L
-    description : str
+      description : str
         Short description of the element
-    dipole_polarizability : float
+      dipole_polarizability : float
         Dipole polarizability in atomic units from P. Schwerdtfeger "Table of
         experimental and calculated static dipole polarizabilities for the
         electronic ground states of the neutral elements (in atomic units)",
         February 11, 2014
-    electron_affinity : float
+      electron_affinity : float
         Electron affinity in eV
-    electronegativity : float
+      electronegativity : float
         Electronegativity (Pauling scale)
-    electronic_configuration : str
+      electronic_configuration : str
         Ground state electron configuration
-    evaporation_heat : float
+      evaporation_heat : float
         Evaporation heat in kJ/mol
-    fusion_heat : float
+      fusion_heat : float
         Fusion heat in kJ/mol
-    group : int
+      group : int
         Group in periodic table
-    lattice_constant : float
+      lattice_constant : float
         Lattice constant in ang
-    lattice_structure : str
+      lattice_structure : str
         Lattice structure code
-    mass : float
+      mass : float
         Relative atomic mass. Ratio of the average mass of atoms
         of the element to 1/12 of the mass of an atom of 12C
-    melting_point : float
+      melting_point : float
         Melting temperature in K
-    name : str
+      name : str
         Name in english
-    period : int
+      period : int
         Period in periodic table
-    series : int
+      series : int
         Index to chemical series
-    specific_heat : float
+      specific_heat : float
         Specific heat in J/g mol @ 20 C
-    symbol : str of length 1 or 2
+      symbol : str of length 1 or 2
         Chemical symbol
-    thermal_conductivity : float
+      thermal_conductivity : float
         Thermal conductivity in @/m K @25 C
-    vdwrad : float
+      vdwrad : float
         Van der Waals radius in Angstrom
-    oxistates : str
+      oxistates : str
         Oxidation states
-    ionenergy : tuple
+      ionenergy : tuple
         Ionization energies in eV parsed from
         http://physics.nist.gov/cgi-bin/ASD/ie.pl on April 13, 2015
     '''
@@ -181,7 +180,18 @@ class Element(Base):
 
 
 class IonizationEnergy(Base):
-    '''Ionization energies of an element.'''
+    '''
+    Ionization energy of an element
+
+    Attributes:
+      atomic_number : int
+        Atomic number
+      degree : int
+        Degree of ionization with respect to neutral atom
+      energy : float
+        Ionization energy in eV parsed from
+        http://physics.nist.gov/cgi-bin/ASD/ie.pl on April 13, 2015
+    '''
 
     __tablename__ = 'ionizationenergies'
 
@@ -200,7 +210,15 @@ class IonizationEnergy(Base):
                a=self.atomic_number, d=self.degree, e=self.energy)
 
 class OxidationState(Base):
-    '''Oxidation states of an element.'''
+    '''
+    Oxidation states of an element
+
+    Attributes:
+      atomic_number : int
+        Atomic number
+      oxidation_state : int
+        Oxidation state
+    '''
 
     __tablename__ = 'oxidationstates'
 
@@ -228,7 +246,13 @@ class Group(Base):
                s=self.symbol, n=self.name)
 
 class Series(Base):
-    '''Name of the series in the periodic table.'''
+    '''
+    Name of the series in the periodic table.
+
+    Attributes:
+      name : str
+        Name of the series
+    '''
 
     __tablename__ = 'series'
 
@@ -242,6 +266,16 @@ class Series(Base):
 class Isotope(Base):
     '''
     Isotope
+
+    Attributes:
+      atomic_number : int
+        Atomic number
+      mass : float
+        Mass of the isotope
+      abundance : float
+        Abundance of the isotope
+      mass_number : int
+        Mass number of the isotope
     '''
 
     __tablename__ = "isotopes"
@@ -264,12 +298,10 @@ class Isotope(Base):
 
 def element(ids):
     '''
-    Bases in the type of the `ids` return either an Element object from the
-    database, or a list of Element objects if the `ids` is a list or a tuple of
-    identifiers. Valid identifiers for an element are:
-    * name,
-    * symbol,
-    * atomic number.
+    Based on the type of the `ids` identifier return either an ``Element``
+    object from the database, or a list of ``Element`` objects if the `ids` is
+    a list or a tuple of identifiers. Valid identifiers for an element are:
+    *name*, *symbol*, *atomic number*.
     '''
 
     if isinstance(ids, (list, tuple)):
@@ -279,13 +311,10 @@ def element(ids):
     else:
         raise ValueError("Expected a <list>, <tuple>, <str> or <int>, got: {0:s}".format(type(ids)))
 
-def get_element(identifier):
+def get_element(ids):
     '''
-    Return an element from the database based on the identifier passed. Valid
-    identifiers for an element are:
-    * name,
-    * symbol,
-    * atomic number.
+    Return an element from the database based on the `ids` identifier passed.
+    Valid identifiers for an element are:*name*, *symbol*, *atomic number*.
     '''
 
     session = get_session()

@@ -15,6 +15,25 @@ from chemtools.basisset import BasisSet, get_x0
 def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
     '''
     Driver for the basis set optimization
+
+    Args:
+      code : Code
+        Instance of the ``Code`` class specifying which program to use
+      job : dict
+        Dictionary specifying the job options
+      mol : Molecule
+        Instance of the ``Molecule`` class specifying the system
+      bsnoopt : list or BasisSet
+        Instance of the ``BasisSet`` class or list of those intances with a
+        basis set whose exponents are not going to be optimized
+      bsopt : dict
+        A dictionary specifying the basis set to be optimized
+      opt : dict
+        A dictionary specyfing the optimization algorithm and its options
+
+    Returns:
+        res : OptimizeResult
+          An instance of the ``scipy.optimize.OptimizeResult`` class
     '''
 
     script = sys.argv[0]
@@ -96,11 +115,11 @@ def run_total_energy(x0, *args):
     energy (or property) as specified by the objective function.
 
     Args:
-        x0: list/numpy 1d array
+        x0 : list or numpy.array
             contains a list of parameters to be optimized, may be
             explicit exponents or parametrized exponents in terms
             of some polynomial
-        args: tuple of dictionaries
+        args : tuple of dicts
             bsopt, bsnoopt, code, job, mol, opt, needed for writing
             input and parsing output
 
@@ -159,11 +178,11 @@ def run_core_energy(x0, *args):
     designed to extract core energy.
 
     Args:
-        x0: list/numpy 1d array
+        x0: list or numpy.array
             contains a list of parameters to be optimized, may be
             explicit exponents or parametrized exponents in terms
             of some polynomial
-        args: tuple of dictionaries
+        args: tuple of dicts
             bsopt, bsnoopt, code, job, mol, opt, needed for writing
             input and parsing output
     Returns:
@@ -223,7 +242,13 @@ def run_core_energy(x0, *args):
 
 def save_basis(x, bsopt, method=""):
     '''
-    save optimized functions to file
+    Save the optimized functions to file
+
+    Attributes:
+      x : list of floats
+        Optimal parameters
+      bsopt : dict
+        A dictionary specifying the basis set to be optimized
     '''
 
     _shells = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
@@ -242,28 +267,23 @@ def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=Fal
     the energy difference for two consecutive function numbers is less than the threshold
 
     Kwargs:
-        shell : (string)
+        shell : string
             string label for the shell to be optimized
-
-        nfs : (list of ints)
+        nfs : list of ints
             list of integers representing the number of basis functions to be
             inceremented in the optimization,
-
-        max_params : (int)
+        max_params : int
             maximal number of parameters to be used in the legendre expansion,
             (length of the expansion)
-
-        opt_tol : (float)
+        opt_tol : float
             threshold controlling the termination of the shell optimization,
             if energy difference between two basis sets with subsequent number
             of functionsis larger than this threshold, another function is
             added to this shell and parameters are reoptimized,
-
-        save : (bool)
+        save : bool
             a flag to trigger saving all the optimized basis functions for each
             shell,
-
-        **kwargs:
+        kwargs : dict
             options for the basis set optimization driver, see driver function
             from the basisopt module
 
@@ -355,7 +375,7 @@ def opt_multishell(shells=None, nfps=None, guesses=None, max_params=5, opt_tol=1
             of functionsis larger than this threshold, another function is
             added to this shell and parameters are reoptimized
 
-        **kwargs:
+        kwargs:
             options for the basis set optimization driver, see driver function
             from the basisopt module
     '''

@@ -1,5 +1,5 @@
 basisset module documentation
 =============================
 
-.. automodule:: basisset
+.. automodule:: chemtools.basisset
    :members:
