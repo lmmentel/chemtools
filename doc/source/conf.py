@@ -23,7 +23,9 @@ class Mock(MagicMock):
     def __getattr__(cls, name):
             return Mock()
 
-MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'pandas', 'sqlalchemy']
+MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'pandas',
+    'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext.associationproxy',
+    'sqlalchemy.ext.declarative', 'sqlalchemy.ext.hybrid']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 sys.path.insert(0, '/home/lmentel/Devel/chemtools')
