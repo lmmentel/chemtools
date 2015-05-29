@@ -3,6 +3,7 @@
 
 from sqlalchemy import Column, Integer, String, Float, create_engine, ForeignKey
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 import os
@@ -118,8 +119,9 @@ class Element(Base):
     melting_point = Column(String)
     name = Column(String)
     period = Column(Integer)
-    series = relationship("Series", uselist=False)
-    series_id = Column(Integer, ForeignKey("series.id"))
+    _series_id = Column("series_id", Integer, ForeignKey("series.id"))
+    _series = relationship("Series", uselist=False)
+    series = association_proxy("_series", "name")
     specific_heat = Column(Float)
     symbol = Column(String)
     thermal_conductivity = Column(Float)
