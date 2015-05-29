@@ -14,7 +14,7 @@ MolPro_ program packages but other codes can be easily interfaced.
 Documentation
 =============
 
-The documentation in hosted at `Read The Docs <http://chemtools.rtfd.org/>`_.
+The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
 
 .. toctree::
    :maxdepth: 2
