@@ -29,13 +29,8 @@ Current Modules
 .. toctree::
    :maxdepth: 2
 
-   basisopt
-   basisset
-   code
-   gamessus
-   molpro
-   molecule
-   elements
+   Tutorials <tutorials>
+   Module Reference <_reference/modules>
 
 Download and Installation
 =========================

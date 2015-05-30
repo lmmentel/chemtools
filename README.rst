@@ -18,7 +18,6 @@ The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/
 
 .. toctree::
    :maxdepth: 2
-The MIT License (MIT)
 
 License
 =======

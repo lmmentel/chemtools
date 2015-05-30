@@ -1,5 +1,5 @@
 from __future__ import print_function
-from chemtools.code import Code
+from .code import Code
 from subprocess import Popen, PIPE
 import os
 import re

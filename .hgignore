@@ -3,6 +3,7 @@ syntax: glob
 chemtools.egg-info/**
 .ipynb_checkpoints/**
 doc/_build/**
+doc/source/_reference/**
 dist/**
 build/**
 *.x

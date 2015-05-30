@@ -1,5 +1,5 @@
 
-'''Mmodule for Complete Basis Set Extrapolations.'''
+'''Module for Complete Basis Set Extrapolations.'''
 
 import numpy as np
 
@@ -54,10 +54,19 @@ def cbs_helgaker(x, Dinf, alpha, beta):
 
 def scf_exp(x, e_cbs, b, a):
     '''
-    CBS extrapolation by exponential Dunning-Feller relation.
-    e^hf(x) = e_cbs + b*exp(-ax)
-        x    : cardinal number of the basis set,
-        b, c : empirical parameters.
+    CBS extrapolation formula by exponential Dunning-Feller relation.
+
+    :math:`E^{HF}(x) = E_{CBS} + b\cdot\exp(-ax)`
+
+    Args:
+      x : int
+        Cardinal number of the basis set
+      e_cbs : float
+        Approximation to the energy value at the CBS limit
+      b : float
+        Pre-exponential empirical parameter
+      c : float
+        Exponential empirical parameter
     '''
 
     return e_cbs + b * np.exp(-a*x)
@@ -65,9 +74,18 @@ def scf_exp(x, e_cbs, b, a):
 def scf_pol(x, e_cbs, b, a):
     '''
     CBS extrapolation by polynomial relation.
-    e^hf(x) = e_cbs + b*x^(-a)
-        x    : cardinal number of the basis set,
-        b, c : empirical parameters.
+
+    :math:`E^{HF}(x) = E_{CBS} + b\cdot x^{-a}`
+
+    Args:
+      x : int
+        Cardinal number of the basis set
+      e_cbs : float
+        Approximation to the energy value at the CBS limit
+      b : float
+        Polynomial coefficient
+      a : float
+        Order of the polynomial
     '''
 
     return e_cbs + b * np.power(x, -a)

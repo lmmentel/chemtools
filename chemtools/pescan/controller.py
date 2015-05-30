@@ -98,18 +98,15 @@ def add_dimer(session, name, basisset, raa):
     Loop over all jobs and return a list of dicts with job info
 
     Args:
-    =====
-    session:
+      session:
         database session object (connection)
-    name (str):
-        name (system) name
-    basissets (list):
+      name : str
+        name of the system
+      basissets : list 
         list of strings with basis set names
-    grids (np.array):
+      grids : numpy.array
         1-D numpy array with the values of the internuclear distances
 
-    Returns:
-    ========
     '''
 
     dimer = Dimer(name=name,

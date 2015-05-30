@@ -1,14 +1,14 @@
 '''
-Module for handling Gamess-US related jobs,:
-    Gamess          : running and submitting jobs, writing inputs,
-    GamessInpParser : parsing the input file,
-    GamessLogParser : parsing the output file,
-    GamessDatParser : parsing data from the gamess PUNCH (*.dat) file
+Module for handling Gamess-US related jobs:
+- Gamess          : running and submitting jobs, writing inputs,
+- GamessInpParser : parsing the input file,
+- GamessLogParser : parsing the output file,
+- GamessDatParser : parsing data from the gamess PUNCH (\*.dat) file
 '''
 
 from __future__ import print_function
 
-from chemtools.code import Code
+from .code import Code
 from subprocess import Popen
 from collections import OrderedDict
 import numpy as np
@@ -238,12 +238,13 @@ class GamessInput(object):
         Write a gamess input file under the name <inpfile> based on the
         information fstored in the dictionary <inpdict>.
 
-        Args
-        ----
-        mol : Molecule
-            Molecule object
-        bs : BasisSet
-            BasisSet object or a list of BasisSet objects
+        Args:
+          mol : Molecule
+            Molecule class instance
+          bs : BasisSet
+            BasisSet class instance or a list of BasisSet class instances
+          core : int
+            Number ofr frozen core orbitals
         '''
 
         inpstr = ""
@@ -266,12 +267,11 @@ class GamessInput(object):
         Return the $DATA part of the input based on the information in the $data
         dict.
 
-        Args
-        ----
-        mol : Molecule
-            Molecule object
-        bs : BasisSet
-            BasisSet object or a list of BasisSet objects
+        Args:
+          mol : Molecule
+            Molecule class instance
+          bs : BasisSet
+            BasisSet class instance or a list of BasisSet class instances
         '''
 
         # converrt the list of BasisSet object into a dict wilt element symbols
@@ -408,13 +408,10 @@ class GamessInput(object):
     def parse_function(los):
         '''
         Parse a basis set function information from list of strings into
-        three lists containg:
-            exponents
-            indices
-            coefficients
+        three lists containg: exponents, indices, coefficients.
 
-        Remeber that python doesn't recognise the '1.0d-3' format where 'd' or 'D' is used
-        to the regex subsitution has to take care of that.
+        Remeber that python doesn't recognise the `1.0d-3` format where `d` or
+        `D` is used to the regex subsitution has to take care of that.
         '''
 
         real = re.compile(r'[dD]')
@@ -757,7 +754,7 @@ class GamessDatParser(object):
 
     def get_occupations(self):
         '''
-        Parse the occupation numbers from the ascii PUNCH file (*.dat).
+        Parse the occupation numbers from the ascii PUNCH file (\*.dat).
         '''
 
         with open(self.datfile, 'r') as dat:
@@ -785,17 +782,19 @@ class GamessDatParser(object):
 
     def get_orbitals(self, method):
         '''
-        Parse the natural orbitals from the ascii PUNCH file (*.dat).
+        Parse the natural orbitals from the ascii PUNCH file (\*.dat).
+
         Args:
-            method (str)
-                acceptable values are:
-                    for scf orbitals: "scf", "hf", "rhf", "rohf", "uhf", "gvb"
-                    for mcscf orbitals: "mcscfmos", "mcscfnos"
-                    for ci orbitals: "ci", "aldet", "fsoci", "guga", "genci", "ormas""
+          method : str
+            acceptable values are:
+                - for scf orbitals: "scf", "hf", "rhf", "rohf", "uhf", "gvb"
+                - for mcscf orbitals: "mcscfmos", "mcscfnos"
+                - for ci orbitals: "ci", "aldet", "fsoci", "guga", "genci", "ormas""
+
         Returns:
-            orbs (numpy.array)
-                2D numpy array of shape (naos, nmos) containing ortbials
-                expansion coefficients
+            orbs : numpy.array
+              2D numpy array of shape (naos, nmos) containing ortbials
+              expansion coefficients
         '''
 
         with open(self.datfile, 'r') as dat:
@@ -834,23 +833,23 @@ class GamessDatParser(object):
         Parse dat orbitals into numpy array of the shape (naos, nmos)
 
         Parse orbitals given a string obtained from the $VEC section of the
-        PUNCH file (*.dat) into a numpy array of the shape (naos, nmos) where
+        PUNCH file (\*.dat) into a numpy array of the shape (naos, nmos) where
         "naos" and "nmos" are the number of atomic orbitals and number of
         molecular orbitals respectively. The shape is deduced from the last
         line of the string.
 
         Args:
-            vecstr (str)
-                string with the contents fo the gamess $VEC block
-            clength (int)
-                total length of the coefficient string as stored by the gamess
-                format, by default gamess stores orbital coefficients in
-                'e15.8' fortran format so the total length is 15.
+          vecstr : str
+            string with the contents fo the gamess $VEC block
+          clength : int
+            total length of the coefficient string as stored by the gamess
+            format, by default gamess stores orbital coefficients in
+            `e15.8` fortran format so the total length is 15.
 
         Returns:
-            orbs (numpy.array)
-                2D numpy array of shape (naos, nmos) containing ortbials
-                expansion coefficients
+          orbs : numpy.array
+            2D numpy array of shape (naos, nmos) containing ortbials
+            expansion coefficients
         '''
 
         naos, nmos, nlines = get_naos_nmos(vecstr)
