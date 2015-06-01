@@ -314,19 +314,19 @@ def element(ids):
 def get_element(ids):
     '''
     Return an element from the database based on the `ids` identifier passed.
-    Valid identifiers for an element are:*name*, *symbol*, *atomic number*.
+    Valid identifiers for an element are: *name*, *symbol*, *atomic number*.
     '''
 
     session = get_session()
 
-    if isinstance(identifier, str):
-        if len(identifier) <= 3 and identifier.lower() != "tin":
-            return session.query(Element).filter(Element.symbol == identifier).one()
+    if isinstance(ids, str):
+        if len(ids) <= 3 and ids.lower() != "tin":
+            return session.query(Element).filter(Element.symbol == ids).one()
         else:
-            return session.query(Element).filter(Element.name == identifier).one()
-    elif isinstance(identifier, int):
-        return session.query(Element).filter(Element.atomic_number == identifier).one()
+            return session.query(Element).filter(Element.name == ids).one()
+    elif isinstance(ids, int):
+        return session.query(Element).filter(Element.atomic_number == ids).one()
     else:
-        raise ValueError("Expecting a <str> or <int>, got: {0:s}".format(type(identifier)))
+        raise ValueError("Expecting a <str> or <int>, got: {0:s}".format(type(ids)))
 
 

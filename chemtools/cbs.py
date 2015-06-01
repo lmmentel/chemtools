@@ -36,7 +36,18 @@ def km(x, e_cbs, a):
     '''
     Two-point formula for extrapolating the HF reference energy, as proposed by
     A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006)
+
+    :math:`E^{HF}(X) = E_{CBS} + a\cdot (X+1)\cdot \exp(-9\sqrt{X})`
+
+    Args:
+      x : int
+        Cardinal number of the basis set
+      e_cbs : float
+        Approximation to the energy value at the CBS limit
+      a : float
+        Pre-exponential empirical parameter
     '''
+
     return e_cbs + a* (x + 1)*np.exp(-9.0*np.sqrt(x))
 
 def helgaker_X3(x, a, b):
@@ -56,7 +67,7 @@ def scf_exp(x, e_cbs, b, a):
     '''
     CBS extrapolation formula by exponential Dunning-Feller relation.
 
-    :math:`E^{HF}(x) = E_{CBS} + b\cdot\exp(-ax)`
+    :math:`E^{HF}(X) = E_{CBS} + b\cdot\exp(-aX)`
 
     Args:
       x : int

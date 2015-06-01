@@ -44,7 +44,7 @@ __location__ = os.path.join(os.getcwd(), os.path.dirname(
 
 output_dir = os.path.join(__location__, "_reference")
 module_dir = os.path.join(__location__, "../../chemtools")
-cmd_line_template = "sphinx-apidoc -f -o {outputdir} {moduledir}"
+cmd_line_template = "sphinx-apidoc -f --separate -o {outputdir} {moduledir}"
 cmd_line = cmd_line_template.format(outputdir=output_dir, moduledir=module_dir)
 apidoc.main(cmd_line.split(" "))
 
