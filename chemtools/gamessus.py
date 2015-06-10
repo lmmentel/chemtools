@@ -120,7 +120,7 @@ class Gamess(Code):
         Write a file containing gamess input.
         '''
 
-        gi = GamessInput(fname=fname, template=template)
+        gi = GamessInput(fname=fname, inpt=template)
         gi.write_input(mol=mol, bs=bs, core=core)
 
     def __repr__(self):
@@ -138,27 +138,27 @@ class GamessInput(object):
     A class for parsing and writing gamess-us input files.
     '''
 
-    def __init__(self, fname=None, template=None):
+    def __init__(self, fname=None, inpt=None):
         '''
         Initialize the class.
         '''
 
         self.fname = fname
-        self.template = template
         self.end = " $end\n"
+        self.inpt = inpt
         # not nested groups of input blocks (not parsed into a dict of dicts)
         self._notnested = ["$data", "$vec", "$ecp"]
 
     @property
-    def template(self):
-        return self._template
+    def inpt(self):
+        return self._inpt
 
-    @template.setter
-    def template(self, value):
+    @inpt.setter
+    def inpt(self, value):
         if isinstance(value, dict):
-            self._template = value
+            self._inpt = value
         elif value is None:
-            self._template = {}
+            self._inpt = {}
         else:
             raise TypeError("expected a dictionary but got {0:s}".format(type(value)))
 
@@ -186,17 +186,17 @@ class GamessInput(object):
         iterator = pat.finditer(inpstr)
         for match in iterator:
             if match.group("block").lower() not in self._notnested:
-                self.inpdata[match.group("block").lower()] = {}
+                self.inpt[match.group("block").lower()] = {}
                 fields = [s.strip() for s in match.group("entries").split("\n")]
                 for field in fields:
                     if not field.startswith("!"):
                         for line in field.split():
                             key, value = line.split("=")
-                            self.inpdata[match.group("block").lower()][key.lower()] = value
+                            self.inpt[match.group("block").lower()][key.lower()] = value
             elif match.group("block").lower() == "$data":
-                self.inpdata["$data"] = self.parse_data(match.group("entries"))
+                self.inpt["$data"] = self.parse_data(match.group("entries"))
             elif match.group("block").lower() in ["$vec", "$ecp"]:
-                self.inpdata[match.group("block").lower()] = match.group("entries")
+                self.inpt[match.group("block").lower()] = match.group("entries")
         return True
 
     def parse_data(self, datastr, parse_basis=False):
@@ -250,7 +250,7 @@ class GamessInput(object):
         inpstr = ""
 
         # write nested namelist groups
-        for key, value in sorted(self.template.items()):
+        for key, value in sorted(self.inpt.items()):
             if key not in  self._notnested:
                 inpstr += " {0:<s}\n".format(key)
                 for kkey, vvalue in sorted(value.items()):
@@ -284,8 +284,8 @@ class GamessInput(object):
 
         data = ""
         data += " {0:s}\n".format("$data")
-        data += "{0:s}\n".format(self.template["$data"]["title"])
-        data += "{0:s}\n\n".format(self.template["$data"]["group"])
+        data += "{0:s}\n".format(self.inpt["$data"]["title"])
+        data += "{0:s}\n\n".format(self.inpt["$data"]["group"])
         if mol is not None:
             for atom in mol.unique():
                 data += atom.gamess_rep()
