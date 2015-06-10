@@ -2,7 +2,7 @@ import numpy as np
 import os
 import unittest
 
-from chemtools.gamessus import DictionaryFile
+from chemtools.gamessreader import DictionaryFile
 
 class TestDictionaryFileHeMini(unittest.TestCase):
 

@@ -11,7 +11,7 @@ class TestGIPonHeH2(unittest.TestCase):
         self.gip.parse()
 
     def test_inpdict(self):
-        self.assertIsInstance(self.gip.inpdata, dict)
+        self.assertIsInstance(self.gip.inpt, dict)
 
     def test_contrl(self):
         d ={"scftyp" : "rhf",
@@ -23,45 +23,45 @@ class TestGIPonHeH2(unittest.TestCase):
             "itol" : "30",
             "ispher" : "1",
             "units" : "bohr"}
-        self.assertDictEqual(d, self.gip.inpdata["$contrl"])
+        self.assertDictEqual(d, self.gip.inpt["$contrl"])
 
     def test_trans(self):
         d = {"cuttrf" : "1.0d-10"}
-        self.assertDictEqual(d, self.gip.inpdata["$trans"])
+        self.assertDictEqual(d, self.gip.inpt["$trans"])
 
     def test_system(self):
         d = {"timlim" : "525600",
              "mwords" : "100"}
-        self.assertDictEqual(d, self.gip.inpdata["$system"])
+        self.assertDictEqual(d, self.gip.inpt["$system"])
 
     def test_title(self):
-        self.assertEqual(self.gip.inpdata["$data"]["title"], "He-H2 FCI")
+        self.assertEqual(self.gip.inpt["$data"]["title"], "He-H2 FCI")
 
     def test_group(self):
-        self.assertEqual(self.gip.inpdata["$data"]["group"], "cnv 2")
+        self.assertEqual(self.gip.inpt["$data"]["group"], "cnv 2")
 
     def test_atoms(self):
-        self.assertEqual(len(self.gip.inpdata["$data"]["atoms"]), 2)
+        self.assertEqual(len(self.gip.inpt["$data"]["atoms"]), 2)
 
     def  test_atom1_xyz(self):
         t = tuple([0.0, 0.0, -3.0])
-        self.assertTupleEqual(t, self.gip.inpdata["$data"]["atoms"][0]["xyz"])
+        self.assertTupleEqual(t, self.gip.inpt["$data"]["atoms"][0]["xyz"])
 
     def  test_atom1_atomic(self):
-        self.assertEqual(self.gip.inpdata["$data"]["atoms"][0]["atomic"], "2.0")
+        self.assertEqual(self.gip.inpt["$data"]["atoms"][0]["atomic"], "2.0")
 
     def  test_atom1_label(self):
-        self.assertEqual(self.gip.inpdata["$data"]["atoms"][0]["label"], "He")
+        self.assertEqual(self.gip.inpt["$data"]["atoms"][0]["label"], "He")
 
     def  test_atom2_xyz(self):
         t = tuple([0.0, 0.724368, 3.0])
-        self.assertTupleEqual(t, self.gip.inpdata["$data"]["atoms"][1]["xyz"])
+        self.assertTupleEqual(t, self.gip.inpt["$data"]["atoms"][1]["xyz"])
 
     def  test_atom2_atomic(self):
-        self.assertEqual(self.gip.inpdata["$data"]["atoms"][1]["atomic"], "1.0")
+        self.assertEqual(self.gip.inpt["$data"]["atoms"][1]["atomic"], "1.0")
 
     def  test_atom2_label(self):
-        self.assertEqual(self.gip.inpdata["$data"]["atoms"][1]["label"], "H")
+        self.assertEqual(self.gip.inpt["$data"]["atoms"][1]["label"], "H")
 
 class TestGIPonNe(unittest.TestCase):
     ne_no_inp = ''' $CONTRL
@@ -150,10 +150,10 @@ NE 10.0       0.00000000       0.00000000      0.0000000
         self.gip.parse_from_string(TestGIPonNe.ne_no_inp)
 
     def test_inpdict(self):
-        self.assertIsInstance(self.gip.inpdata, dict)
+        self.assertIsInstance(self.gip.inpt, dict)
 
     def test_vec(self):
-        self.assertIsInstance(self.gip.inpdata["$vec"], str)
+        self.assertIsInstance(self.gip.inpt["$vec"], str)
 
 if __name__ == "__main__":
     unittest.main()

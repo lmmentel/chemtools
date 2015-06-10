@@ -1,6 +1,6 @@
 
 import unittest
-from chemtools.gamessus import SequentialFile
+from chemtools.gamessreader import SequentialFile
 import os
 import numpy as np
 

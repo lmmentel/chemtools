@@ -1,6 +1,6 @@
 
 import unittest
-from chemtools.gamessus import GamessReader
+from chemtools.gamessreader import GamessReader
 
 
 class TestGamessReader(unittest.TestCase):

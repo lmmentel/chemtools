@@ -4,20 +4,6 @@ from chemtools import molpro
 from chemtools.basisset import BasisSet
 from chemtools.basisopt import opt_shell_by_nf, opt_multishell
 
-def save_basis(x, bsopt):
-    '''
-    save optimized functions to file
-    '''
-
-    _shells = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
-
-    basis = vars(BasisSet.from_optdict(x, bsopt))
-    shells = "".join([str(n)+s for n, s in zip(bsopt['nfpshell'], _shells) if n != 0])
-    pars = "-".join([str(len(x)) for x in bsopt['params']])
-    fname = "_".join(["optimized", optimization["method"], bsopt["typ"], pars, shells]) + ".bas"
-    print("Saving basis set under the name: '{}'".format(fname))
-    with open(fname, 'wb') as ff:
-        ff.write(str(basis))
 
 be2 = Molecule(name="Be2", atoms=[("Be", (0.0, 0.0,  1.2268016705), False),
                                   ("Be", (0.0, 0.0, -1.2268016705), False)], charge=0, multiplicity=1)
