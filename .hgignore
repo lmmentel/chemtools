@@ -6,6 +6,8 @@ doc/_build/**
 doc/source/_reference/**
 dist/**
 build/**
+.tox/**
+.eggs/**
 *.x
 *.a
 *.so
