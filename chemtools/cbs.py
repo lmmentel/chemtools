@@ -1,11 +1,43 @@
 
-'''Module for Complete Basis Set Extrapolations.'''
+'''Module for Complete Basis Set (CBS) Extrapolations.'''
 
+from scipy.optimize import curve_fit
 import numpy as np
 
-def uste(x, e_cbs, A3, method="CI"):
+def extrapolate(x, energy, method, **kwargs):
+    '''
+    An interface for performing CBS extrapolations using various methods.
 
-    '''CBS extrapolation using USTE shceme based on
+    Args:
+      x : numpy.array
+        A vector of basis set cardinal numbers
+      energy : numpy.array
+        A vector of corresponding energies
+      method : str
+        Method/formula to use to perform the extrapolation
+    '''
+
+    methods = {
+        'poly' : poly,
+        'expo' : expo,
+        'exposqrt' : exposqrt,
+        'exposum' : exposum,
+        'uste' : uste,
+    }
+
+    if len(x) != len(energy):
+        raise ValueError("x and energy should have the same size")
+
+    if method in methods.keys():
+        eopt, ecov = curve_fit(methods[method](**kwargs), x, energy, p0=(energy.min(), 1.0, 1.0))
+        return eopt
+    else:
+        raise ValueError("wrong method: {0}, accepted values are: {1}".format(method, ", ".join(list(methods.keys()))))
+
+
+def uste(x, e_cbs, a, method="CI"):
+    '''
+    CBS extrapolation using USTE shceme based on
     A. J. C. Varandas, JPCA 114, 8505-8516 (2010).
 
     Args:
@@ -13,101 +45,86 @@ def uste(x, e_cbs, A3, method="CI"):
         Cardinal number of the basis set
       e_cbs : float
         Approximation to the energy value at the CBS limit
-      A3 : float
-        Empirical parameter
+      a : float
+        Empirical A3 parameter
       method : str
-        One of: *CI*, *CC*
+        One of: *ci*, *cc*
     '''
+    def uste_ci(x, e_cbs, a):
+        # parameters calibrated for MRCI(Q)
+        params = {
+            "A05" :  0.003769,
+            "c"   : -1.1784771,
+            "m"   : 1.25,
+            "alpha" : -0.375}
 
-    # parameters calibrated for MRCI(Q)
-    ci_params = {
-        "A05" :  0.003769,
-        "c"   : -1.1784771,
-        "m"   : 1.25,
-        "alpha" : -0.375}
-    # parameters calibrated for CC
-    cc_params = {
-        "A05" :  0.1660699,
-        "c"   : -1.4222512,
-        "m"   : 1.0,
-        "alpha" : -0.375}
+        a5 = params["A05"] + params['c']*math.pow(a, params["m"])
+        v = e_cbs + a/np.power(x+params["alpha"], 3) +a5/np.power(x+params["alpha"], 5)
+        return v
+
+    def uste_cc(x, e_cbs, a):
+        # parameters calibrated for CC
+        params = {
+            "A05" :  0.1660699,
+            "c"   : -1.4222512,
+            "m"   : 1.0,
+            "alpha" : -0.375}
+
+        a5 = params["A05"] + params['c']*math.pow(a, params["m"])
+        v = e_cbs + a/np.power(x+params["alpha"], 3) +a5/np.power(x+params["alpha"], 5)
+        return v
 
     if method == "CI":
-        dd = ci_params.copy()
+        return uste_ci
     elif method == "CC":
-        dd = cc_params.copy()
+        return uste_cc
+    else:
+        ValueError("wrong method: {}, accepted values are: 'ci', 'cc'".format(method))
 
-    A5 = dd["A05"] + c*math.pow(A3, dd["m"])
+def exposqrt(twopoint=True):
 
-    v = e_cbs + A3/np.power(x+dd["alpha"], 3) +A5/np.power(x+dd["alpha"], 5)
+    def exposqrt2(x, e_cbs, a):
+        '''
+        Two-point formula for extrapolating the HF reference energy, as proposed
+        by A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006)
 
-    return v
+        :math:`E^{HF}(X) = E_{CBS} + A\cdot \exp(-9\sqrt{X})`
 
-def km2(x, e_cbs, a):
-    '''
-    Two-point formula for extrapolating the HF reference energy, as proposed by
-    A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006)
+        Args:
+        x : int
+            Cardinal number of the basis set
+        e_cbs : float
+            Approximation to the energy value at the CBS limit
+        a : float
+            Pre-exponential empirical parameter
+        '''
+        return e_cbs + a*np.exp(-9.0*np.sqrt(x))
 
-    :math:`E^{HF}(X) = E_{CBS} + a\cdot (X+1)\cdot \exp(-9\sqrt{X})`
+    def exposqrt3(x, e_cbs, a, b):
+        '''
+        Three-point formula for extrapolating the HF reference energy, as proposed
+        by A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006)
 
-    Args:
-      x : int
-        Cardinal number of the basis set
-      e_cbs : float
-        Approximation to the energy value at the CBS limit
-      a : float
-        Pre-exponential empirical parameter
-    '''
+        :math:`E^{HF}(X) = E_{CBS} + A\cdot \exp(-B\sqrt{X})`
 
-    return e_cbs + a* (x + 1)*np.exp(-9.0*np.sqrt(x))
+        Args:
+        x : int
+            Cardinal number of the basis set
+        e_cbs : float
+            Approximation to the energy value at the CBS limit
+        a : float
+            Pre-exponential empirical parameter
+        b : float
+            Exponential empirical parameter
+        '''
+        return e_cbs + a*np.exp(-b*np.sqrt(x))
 
-def km3(x, e_cbs, a, b):
-    '''
-    Three-point formula for extrapolating the HF reference energy, as proposed
-    by A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006)
+    if twopoint:
+        return exposqrt2
+    else:
+        return exposqrt3
 
-    :math:`E^{HF}(X) = E_{CBS} + A\cdot \exp(-B\sqrt{X})`
-
-    Args:
-      x : int
-        Cardinal number of the basis set
-      e_cbs : float
-        Approximation to the energy value at the CBS limit
-      a : float
-        Pre-exponential empirical parameter
-      b : float
-        Exponential empirical parameter
-    '''
-
-    return e_cbs + a*np.exp(-b*np.sqrt(x))
-
-def helgaker_X3(x, a, b):
-
-    '''Inverse power extrapolation based on T. Helgaker et. al. JCP 106(23),
-    9639 (1997).'''
-
-    return a + b * np.power(x,-3)
-
-def cbs_helgaker(x, e_cbs, a, b):
-
-    '''Helgaker type extrapolationn to CBS with 3 parameters.
-
-    :math:`E^{HF}(X) = E_{CBS} + A\cdot X^{-B}`
-
-   Args:
-       x : int
-        Cardinal number of the basis set
-      e_cbs : float
-        Approximation to the energy value at the CBS limit
-      b : float
-        Polynomial coefficient
-      a : float
-        Order of the polynomial
-    '''
-
-    return e_cbs + a*np.power(x, -b)
-
-def scf_exp(x, e_cbs, a, b):
+def expo(x, e_cbs, a, b):
     '''
     CBS extrapolation formula by exponential Dunning-Feller relation.
 
@@ -126,22 +143,57 @@ def scf_exp(x, e_cbs, a, b):
 
     return e_cbs + b * np.exp(-a*x)
 
-def scf_pol(x, e_cbs, b, a):
+def exposum(x, e_cbs, a, b):
     '''
-    CBS extrapolation by polynomial relation.
+    Three point extrapolation through sum of exponentials expression
 
-    :math:`E^{HF}(x) = E_{CBS} + b\cdot x^{-a}`
+    :math:`E(X) = E_{CBS} + A \cdot\exp(-(X-1)) + B\cdot\exp(-(X-1)^2)`
 
     Args:
       x : int
         Cardinal number of the basis set
       e_cbs : float
         Approximation to the energy value at the CBS limit
-      b : float
-        Polynomial coefficient
       a : float
-        Order of the polynomial
+        Empirical coefficent
+      b : float
+        Empirical coefficent
+    '''
+    return e_cbs + a*np.exp(-(x-1)) + b*np.exp(-(x-1)**2)
+
+def poly(p=0.0, z=3.0, twopoint=True):
+    '''
+    CBS extrapolation by polynomial relation.
+
+    :math:`E(X) = E_{CBS} + \sum_{i}A_{i}\cdot (X + P)^{-B_{i}}`
+
+    Args:
+      x : int
+        Cardinal number of the basis set
+      e_cbs : float
+        Approximation to the energy value at the CBS limit
+      a : float or list of floats
+        Polynomial coefficient
+      z : float or list of floats
+        Order of the polynomial, *default=3.0*
+      p : float
+        A parameter modifying the cardinal number, *default=0.0*
     '''
 
-    return e_cbs + b * np.power(x, -a)
+    def poly3(x, e_cbs, a, z):
+
+        a = np.array(a)
+        z = np.array(z)
+        return e_cbs + np.dot(a, np.power((x + p), -z))
+
+    def poly2(x, e_cbs, a):
+
+        a = np.array(a)
+        zeta = np.array(z)
+        return e_cbs + np.dot(a, np.power((x + p), -zeta))
+
+    if twopoint:
+        return poly2
+    else:
+        return poly3
 
