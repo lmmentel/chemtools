@@ -1,4 +1,7 @@
 #import pymongo
+
+from __future__ import division
+
 import copy
 import decimal
 import numpy as np
@@ -573,15 +576,17 @@ def zetas2legendre(zetas, kmax):
 def eventemp(nf, params):
     '''
     Generate a sequence of nf even tempered exponents accodring to
-    the even tempered formula zeta_i = alpha * beta**(i-1),
+    the even tempered formula
+
+    :math:`\\zeta_i = \\alpha \cdot \\beta^{i-1}`.
 
     Args:
-        nf (int)
+        nf : int
             number fo exponents to generate
-        params (tuple)
+        params : tuple of floats
             alpha and beta parameters
     Returns:
-        res (list)
+        res : list
             list of generated exponents (floats)
     '''
     if not isinstance(nf, int):
@@ -596,15 +601,16 @@ def welltemp(nf, params):
     '''
     Generate a sequence of nf well tempered exponents accodring to
     the well tempered fromula
-    zeta_i = alpha * beta**(i-1) * [1 + gamma * (i/nf)**delta]
+
+    :math:`\\zeta_i = \\alpha \cdot \\beta^{i-1} \cdot \\left[1 + \\gamma \cdot \\left(\\frac{i}{N}\\right)^{\delta}\\right]`.
 
     Args:
-        nf (int)
+        nf : int
             number fo exponents to generate
-        params (tuple)
+        params : tuple of floats
             alpha, beta, gamma and delta parameters
     Returns:
-        res (list)
+        res : list of floats
             list of generated exponents (floats)
     '''
     if not isinstance(nf, int):
@@ -618,9 +624,21 @@ def welltemp(nf, params):
 def legendre(nf, coeffs):
     '''
     Generate a sequence of nf exponents from expansion in the orthonormal
-    legendre polynomials as described in:
-    Peterson, G. A. et.al J. Chem. Phys., Vol. 118, No. 3 (2003).
+    legendre polynomials as described in: Peterson, G. A. et.al J. Chem. Phys.,
+    Vol. 118, No. 3 (2003), eq. (7).
+
+    :math:`\ln \\zeta_i = \\sum^{k_{\max}}_{k=0} A_k P_k \\left(\\frac{2j-2}{N-1}-1\\right)`
+
+    Args:
+        nf : int
+            number fo exponents to generate
+        params : tuple of floats
+            polynomial coefficients (expansion parameters)
+    Returns:
+        res : list of floats
+            list of generated exponents (floats)
     '''
+
     if not isinstance(nf, int):
         raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
     if len(coeffs) <  1:
@@ -628,7 +646,7 @@ def legendre(nf, coeffs):
 
     # special case for one function
     if len(coeffs) == 1:
-        return [np.exp(coeffs[0])] 
+        return [np.exp(coeffs[0])]
 
     poly = np.polynomial.legendre.Legendre(coeffs)
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]

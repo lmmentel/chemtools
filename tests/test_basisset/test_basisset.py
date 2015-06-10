@@ -31,7 +31,7 @@ class TestBasisSetModule(unittest.TestCase):
         self.assertListEqual(basisset.welltemp(1, (1.0, 2.0, 3.0, 4.0)), [4.0])
 
     def test_welltemp_medium(self):
-        self.assertListEqual(basisset.welltemp(4, (0.5, 2.0, 3.0, 4.0)), [0.5, 1.0, 2.0, 16.0])
+        self.assertListEqual(basisset.welltemp(4, (0.5, 2.0, 3.0, 4.0)), [0.505859375, 1.1875, 3.8984375, 16.0])
 
     def test_legendre_if_nf_is_integer(self):
         self.assertRaises(TypeError, basisset.legendre, (0.0, (1.0, 2.0, 3.0, 4.0)))

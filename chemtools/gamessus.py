@@ -859,7 +859,7 @@ class GamessDatParser(object):
         for i in range(0, nmos):
             for j in range(0, nlines):
                 counter += 1
-                nitems = int(len(orblines[counter][5:]))/clength
+                nitems = int(len(orblines[counter][5:]))//clength
                 orbs[5*j:5*(j+1), i] = [float(orblines[counter][5+15*n:5+15*(n+1)]) for n in range(nitems)]
         return orbs
 
@@ -900,12 +900,12 @@ def get_naos_nmos(vecstr, clength=15):
     veclines = len(vecstr.split('\n'))
     lineit = iter(vecstr.split('\n'))
     nlines = 0
-    while lineit.next()[:2].strip() == '1':
+    while next(lineit)[:2].strip() == '1':
         nlines += 1
     if nlines == 0:
         raise ValueError("'nlines' cannot be zero, check vecstr in 'get_naos_nmos'")
-    naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])/clength
-    nmos = veclines/nlines
+    naos = 5*(nlines - 1) + len(vecstr.split('\n')[nlines-1][5:])//clength
+    nmos = veclines//nlines
     return naos, nmos, nlines
 
 def take(seq, num):
