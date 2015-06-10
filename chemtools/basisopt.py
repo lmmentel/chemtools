@@ -8,106 +8,179 @@ import os
 import sys
 import time
 import pprint
+import string
+import random
 
 # chemtools packages
 from chemtools.basisset import BasisSet, get_x0
 
-def driver(code=None, job=None, mol=None, bsnoopt=None, bsopt=None, opt=None):
-    '''
-    Driver for the basis set optimization
+class Job(object):
 
-    Args:
-      code : Code
-        Instance of the ``Code`` class specifying which program to use
-      job : dict
-        Dictionary specifying the job options
-      mol : Molecule
-        Instance of the ``Molecule`` class specifying the system
-      bsnoopt : list or BasisSet
-        Instance of the ``BasisSet`` class or list of those intances with a
-        basis set whose exponents are not going to be optimized
-      bsopt : dict
-        A dictionary specifying the basis set to be optimized
-      opt : dict
-        A dictionary specyfing the optimization algorithm and its options
+    def __init__(self, calcmethod=None, objective=None, core=None, template=None,
+                 regexp=None, verbose=False, code=None, optalg=None, mol=None,
+                 bsopt=None, bsnoopt=None, fname=None):
+        '''
 
-    Returns:
-        res : OptimizeResult
-          An instance of the ``scipy.optimize.OptimizeResult`` class
-    '''
+        Args:
+          calcmethod : str
+            Electornic structure method to use in optimzation
+          objective : str
+            Obejctive on which the optimization will be evaluated
+          code : chemtools.code.Code
+            Instance of the `Code` subclass specifying which program to use
+          mol : chemtools.molecule.Molecule
+            Instance of the `Molecule` class specifying the system
+          bsnoopt : chemtools.basisset.BasisSet
+            Instance of the `BasisSet` class or list of those intances with a
+            basis set whose exponents are not going to be optimized
+          bsopt : dict
+            A dictionary specifying the basis set to be optimized
+         optalg : dict
+            A dictionary specyfing the optimization algorithm and its options
 
-    script = sys.argv[0]
-    path = os.path.abspath(os.path.dirname(script))
+        '''
+        self.bsopt = bsopt
+        self.bsnoopt = bsnoopt
+        self.calcmethod = calcmethod
+        self.objective = objective
+        self.regexp = regexp
+        self.template = template
+        self.verbose = verbose
+        self.core = core
+        self.code = code
+        self.optalg = optalg
+        self.mol = mol
+        self.results = []
+        self.fname = fname
+        #self.parameters = parameters
+        self.function = self.get_function()
 
-    print("Script name : {0}".format(script))
-    print("Workdir     : {0}".format(path))
-    print("Start time  : {0}".format(datetime.datetime.today()))
+    @property
+    def fname(self):
+        return self._fname
 
-    starttime = time.time()
-
-    # set default optimization options if opts not given
-    if not opt:
-        opt = {"method"  : "BFGS",
-               "lambda"  : 10.0,
-               "tol"     : 1.0e-4,
-               "options" : {"maxiter" : 50,
-                            "disp"    : True,
-                            "eps"     : 0.01
-                           }
-              }
-    else:
-        if opt["method"].lower() == "nelder-mead":
-            jacob = None
+    @fname.setter
+    def fname(self, value):
+        if value is None:
+            self._fname = ''.join(random.choice(string.ascii_letters) for _ in range(10)) + '.inp'
         else:
-            jacob = False
-        if "lambda" not in opt.keys():
-            opt["lambda"] = 10.0
+            self._fname = value
 
-    if job:
-        if job["objective"].lower() == "core energy":
-            if len(job["core"]) == 2:
-                if job["core"][0] > job["core"][1]:
-                    job["core"].reverse()
+    @property
+    def optalg(self):
+        return self._optalg
+
+    @optalg.setter
+    def optalg(self, value):
+        '''set default optimization options if opts not given'''
+        if value is None:
+            self._optalg = {"method"  : "BFGS",
+                            "lambda"  : 10.0,
+                            "tol"     : 1.0e-4,
+                            "options" : {"maxiter" : 50,
+                                            "disp"    : True,
+                                            "eps"     : 0.01
+                                        }
+                            }
+        elif isinstance(value, dict):
+            print('value is dict')
+            if value.get('method').lower() == "nelder-mead":
+                value['jacob'] = None
             else:
-                sys.exit("<driver>: core should have 2 entries, but it has {0:4d}".format(len(job["core"])))
-            function = run_core_energy
-        elif job["objective"] in ["total energy", "correlation energy", "regexp"]:
-            function = run_total_energy
+                value['jacob'] = False
+            if not value.has_key('lambda'):
+                value["lambda"] = 10.0
+            self._optalg = value
         else:
-            sys.exit("<driver>: wrong objective in code dictionary")
-    else:
-        sys.exit("<driver>: no dictionary describing code given")
+            raise ValueError("optalg should be a <dict>, got: {}".format(type(value)))
 
-    if not bsopt:
-        sys.exit("<driver>: no dictionary describing basis set to be optimized given")
+    @property
+    def objective(self):
+        return self._objective
 
-    if not mol:
-        sys.exit("<driver>: no molecule object specified")
+    @objective.setter
+    def objective(self, value):
 
-    # print the input data
-    for name, obj in [("code", code), ("job", job), ("mol", mol),
-                      ("bsnoopt", bsnoopt), ("bsopt", bsopt), ("opt", opt)]:
-        print(name.upper().center(80, "="))
-        if isinstance(obj, dict):
-            pprint.pprint(obj)
+        if value in ['total energy', 'core energy', 'correlation energy', 'regexp']:
+            self._objective = value
         else:
-            print(obj)
+            raise ValueError('unknown objective: {}'.format(value))
 
-    print("\n"+"="*80)
-    print("STARTING OPTIMIZATION".center(80, "="))
-    print("="*80, end="\n\n")
+    @property
+    def bsopt(self):
+        return self._bsopt
 
-    x0 = get_x0(bsopt)
-    res = minimize(function, x0,
-                   args=(bsopt, bsnoopt, code, job, mol, opt,),
-                   method=opt["method"],
-                   jac=jacob,
-                   tol=opt["tol"],
-                   options=opt["options"])
-    print(res)
-    print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
-    # TODO: write a nice printer of the optimized exponents if converged
-    return res
+    @bsopt.setter
+    def bsopt(self, value):
+
+        if value is None:
+            raise ValueError("no dictionary describing basis set to be optimized given")
+        else:
+            self._bsopt = value
+
+    def get_function(self):
+        if self.objective == 'core energy':
+            return run_core_energy
+        elif self.objective in ['total energy', 'correlation energy', 'regexp']:
+            return run_total_energy
+
+    def header(self):
+        '''
+        Return the basic information about the execution environment and
+        optimization settings.
+        '''
+
+        script = sys.argv[0]
+        path = os.path.abspath(os.path.dirname(script))
+
+        out = "\n".join(["Script name : {0}".format(script),
+                         "Workdir     : {0}".format(path),
+                         "Start time  : {0}".format(datetime.datetime.today()),
+                        ])
+
+        return out
+
+    def jobinfo(self):
+        '''Return the information on the optimization objects and parameters'''
+
+        #for name, obj in [("code", code), ("job", job), ("mol", mol),
+        #                ("bsnoopt", bsnoopt), ("bsopt", bsopt), ("opt", opt)]:
+        attrs = ['code', 'mol', 'optalg']
+        out = ''
+        for attr in attrs:
+            out += attr.upper().center(80, "=") + '\n'
+            obj = getattr(self, attr)
+            if isinstance(obj, dict):
+                out += pprint.pformat(obj)
+            else:
+                out += str(obj)
+        return out
+
+    def run(self):
+        '''
+        Driver for the basis set optimization
+
+        Returns:
+            res : OptimizeResult
+            An instance of the ``scipy.optimize.OptimizeResult`` class
+        '''
+
+        print(self.header())
+        print("\n"+"="*80, "STARTING OPTIMIZATION".center(80, "="), "="*80, end="\n\n", sep='\n')
+        print(self.jobinfo())
+
+        starttime = time.time()
+
+        x0 = get_x0(self.bsopt)
+        res = minimize(self.function, x0,
+                    args=(self,),
+                    method=self.optalg["method"],
+                    jac=self.optalg['jacob'],
+                    tol=self.optalg["tol"],
+                    options=self.optalg["options"])
+        print(res)
+        print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
+        self.results.append(res)
 
 def run_total_energy(x0, *args):
     '''
@@ -130,9 +203,9 @@ def run_total_energy(x0, *args):
     '''
 
     # unpack the args tuple for code readability
-    bsopt, bsnoopt, code, job, mol, opt = args
+    job = args[0]
 
-    if bsopt["typ"] in ["direxp", "direct", "exps", "exponents", "event", "eventemp", "well", "welltemp"]:
+    if job.bsopt["typ"] in ["direxp", "direct", "exps", "exponents", "event", "eventemp", "well", "welltemp"]:
         #penalty = sum(min(0, x)**2 for x in x0)
         penalty = 0.0
         if any(x < 0 for x in x0):
@@ -141,33 +214,33 @@ def run_total_energy(x0, *args):
         penalty = 0.0
 
     bslist = []
-    bs2opt = BasisSet.from_optdict(x0, bsopt)
-    if job["verbose"]:
+    bs2opt = BasisSet.from_optdict(x0, job.bsopt)
+    if job.verbose:
         print("Current exponents")
         bs2opt.print_exponents()
-    if isinstance(bsnoopt, list):
-        for bs in bsnoopt:
+    if isinstance(job.bsnoopt, list):
+        for bs in job.bsnoopt:
             if bs2opt.element == bs.element:
                 bs2opt.add(bs)
             else:
                 bslist.append(bs)
         bslist.append(bs2opt)
     else:
-        bs2opt.add(bsnoopt)
+        bs2opt.add(job.bsnoopt)
         bslist.append(bs2opt)
-    code.write_input(fname=job["inpname"], template=job["template"], bs=bslist, mol=mol, core=job["core"])
-    output = code.run(job["inpname"])
-    if code.accomplished(output):
-        objective = code.parse(output, job["method"], job["objective"], job.get("regexp", None))
+    job.code.write_input(fname=job.fname, template=job.template, bs=bslist, mol=job.mol, core=job.core)
+    output = job.code.run(job.fname)
+    if job.code.accomplished(output):
+        objective = job.code.parse(output, job.calcmethod, job.objective, job.regexp)
         if objective is None:
             raise ValueError("Unable to parse the objective, check output")
-        if job["verbose"]:
+        if job.verbose:
             print("{0:<s}".format("Job Terminated without errors"))
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("\n{0:<20s} : {1:>30s}".format("Output", output))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", objective + opt["lambda"]*penalty))
+            print("{0:<20s} : {1:>30.10f}".format("Objective", objective + job.optalg["lambda"]*penalty))
             print("="*80)
-        return objective +opt["lambda"]*penalty
+        return objective + job.optalg["lambda"]*penalty
     else:
         sys.exit("something went wrong, check output {0:s}".format(output))
 
@@ -239,27 +312,6 @@ def run_core_energy(x0, *args):
     else:
         print("Job terminated with ERRORS, check output.")
         sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
-
-def save_basis(x, bsopt, method=""):
-    '''
-    Save the optimized functions to file
-
-    Attributes:
-      x : list of floats
-        Optimal parameters
-      bsopt : dict
-        A dictionary specifying the basis set to be optimized
-    '''
-
-    _shells = ['s', 'p', 'd', 'f', 'g', 'h', 'i']
-
-    basis = vars(BasisSet.from_optdict(x, bsopt))
-    shells = "".join([str(n)+s for n, s in zip(bsopt['nfpshell'], _shells) if n != 0])
-    pars = "-".join([str(len(x)) for x in bsopt['params']])
-    fname = "_".join(["optimized", method, bsopt["typ"], pars, shells]) + ".bas"
-    print("Saving basis set under the name: '{}'".format(fname))
-    with open(fname, 'wb') as ff:
-        ff.write(str(basis))
 
 def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
     '''

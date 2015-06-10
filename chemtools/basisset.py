@@ -4,6 +4,8 @@ import decimal
 import numpy as np
 from itertools import chain
 from collections import OrderedDict
+import pickle
+
 
 _shells = ["s", "p", "d", "f", "g", "h", "i"]
 
@@ -18,31 +20,95 @@ def splitlist(l, n):
     for i in xrange(splits):
         yield l[n*i:n*i+n]
 
+
+def read_pickle(fname):
+    '''Read a pickled BasisSet object from file
+
+    Args:
+      fname : str
+        File name containing the BasisSet
+    '''
+
+    with open('fname', 'rb') as fil:
+        return pickle.load(fil)
+
+
+def read_dict(dct):
+    '''
+    Initialize the BasisSet object from a general dictionary with an
+    assumed structure of "functions" entry. This method can be used to
+    initialize the BasisSet object directly from mongoDB database.
+
+    Args:
+      dct : dict
+        Dictionary with the basis set data, required keys are:
+          - name
+          - element
+          - functions
+    '''
+    required = set(['name', 'element', 'functions'])
+    if isinstance(dct, dict):
+        if not required.issubset(set(d.keys())):
+            missing = list(required.difference(set(dct.keys())))
+            raise ValueError('Following keys are required: {0}'.format(", ".join(missing)))
+        bs = BasisSet()
+        for key, val in dct.items():
+            if key == 'functions':
+                setattr(bs, key, OrderedDict(sorted(val.items(), key=lambda x: _shells.index(x[0]))))
+            else:
+                setattr(bs, key, val)
+    return bs
+
 class BasisSet:
     '''
     Basis set module supporting basic operation on basis sets and can be used
     as a API for mongoDB basis set repository.
     '''
 
-    @classmethod
-    def from_dict(cls, d):
+
+    def __init__(self, name, element, family=None, kind=None, model=None,
+                 functions=None, params=None):
         '''
-        Initialize the BasisSet object from a general dictionary with an
-        assumed structure of "functions" entry. This method can be used to
-        initialize the BasisSet object directly from mongoDB database.
+        Args:
+          name : str
+            Name of the basis set
+          element : str
+            Symbol of the element
+
+        Kwargs:
+          kind : str
+            Classification of the basis set functions, *diffuse*, *tight*
+          family : str
+            basis set family
+          functions : dict
+            Dict of functions with *s*, *p*, *d*, *f*, ... as keys
+          model/scheme/generator/ : str
+            Name of the model from which the functions should be generated
+          params : list of dicts
+            Parameters for generating the functins according to the model
         '''
-        required = set(['name', 'element', 'functions'])
-        if isinstance(d, dict):
-            if not required.issubset(set(d.keys())):
-                missing = list(required.difference(set(d.keys())))
-                raise ValueError('Following keys are required: {0}'.format(", ".join(missing)))
-            bs = cls()
-            for key, val in d.items():
-                if key == 'functions':
-                    setattr(bs, key, OrderedDict(sorted(val.items(), key=lambda x: _shells.index(x[0]))))
-                else:
-                    setattr(bs, key, val)
-        return bs
+
+        self.name = name
+        self.element = element
+        self.family = family
+        self.kind = kind
+        self.model = model
+        self.params = params
+        self.functions = functions
+
+    def to_pickle(self, fname=None):
+        '''Save the basis set in pickle format under the filename `fname`
+
+        Args:
+          fname : str
+            File name
+        '''
+
+        if fname is None:
+            fname = self.name.strip().replace(' ', '_') + '.bas.pkl'
+
+        with open(fname, 'wb') as fbas:
+            pickle.dump(self, fbas)
 
     @classmethod
     def from_optdict(cls, x0, bsoptdict):
@@ -73,7 +139,7 @@ class BasisSet:
                 exps = legendre(nf, pars)
                 functions[_shells[lqn]]['exponents'] = exps
                 icount += npar
-        bs = cls()
+        bs = cls(bsoptdict['name'], bsoptdict['element'])
         setattr(bs, 'functions', cls.add_coeffs(functions))
         for key in bsoptdict.keys():
             if key != "functions":
