@@ -29,13 +29,13 @@ def extrapolate(x, energy, method, **kwargs):
         raise ValueError("x and energy should have the same size")
 
     if method in methods.keys():
-        eopt, ecov = curve_fit(methods[method](**kwargs), x, energy, p0=(energy.min(), 1.0, 1.0))
+        eopt, ecov = curve_fit(methods[method](**kwargs), x, energy)
         return eopt
     else:
         raise ValueError("wrong method: {0}, accepted values are: {1}".format(method, ", ".join(list(methods.keys()))))
 
 
-def uste(x, e_cbs, a, method="CI"):
+def uste(method="CI"):
     '''
     CBS extrapolation using USTE shceme based on
     A. J. C. Varandas, JPCA 114, 8505-8516 (2010).
@@ -58,7 +58,7 @@ def uste(x, e_cbs, a, method="CI"):
             "m"   : 1.25,
             "alpha" : -0.375}
 
-        a5 = params["A05"] + params['c']*math.pow(a, params["m"])
+        a5 = params["A05"] + params['c']*np.power(a, params["m"])
         v = e_cbs + a/np.power(x+params["alpha"], 3) +a5/np.power(x+params["alpha"], 5)
         return v
 
@@ -70,13 +70,13 @@ def uste(x, e_cbs, a, method="CI"):
             "m"   : 1.0,
             "alpha" : -0.375}
 
-        a5 = params["A05"] + params['c']*math.pow(a, params["m"])
+        a5 = params["A05"] + params['c']*np.power(a, params["m"])
         v = e_cbs + a/np.power(x+params["alpha"], 3) +a5/np.power(x+params["alpha"], 5)
         return v
 
-    if method == "CI":
+    if method.lower() == "ci":
         return uste_ci
-    elif method == "CC":
+    elif method.lower() == "cc":
         return uste_cc
     else:
         ValueError("wrong method: {}, accepted values are: 'ci', 'cc'".format(method))
@@ -167,13 +167,9 @@ def poly(p=0.0, z=3.0, twopoint=True):
 
     :math:`E(X) = E_{CBS} + \sum_{i}A_{i}\cdot (X + P)^{-B_{i}}`
 
-    Args:
-      x : int
-        Cardinal number of the basis set
-      e_cbs : float
-        Approximation to the energy value at the CBS limit
-      a : float or list of floats
-        Polynomial coefficient
+    Kwargs:
+      twpoint : bool
+        A flag for choosing the two point extrapolation
       z : float or list of floats
         Order of the polynomial, *default=3.0*
       p : float
@@ -181,12 +177,30 @@ def poly(p=0.0, z=3.0, twopoint=True):
     '''
 
     def poly3(x, e_cbs, a, z):
+        '''
+        Args:
+          x : int
+            Cardinal number of the basis set
+          e_cbs : float
+            Approximation to the energy value at the CBS limit
+          a : float or list of floats
+            Polynomial coefficient
+        '''
 
         a = np.array(a)
         z = np.array(z)
         return e_cbs + np.dot(a, np.power((x + p), -z))
 
     def poly2(x, e_cbs, a):
+        '''
+        Args:
+          x : int
+            Cardinal number of the basis set
+          e_cbs : float
+            Approximation to the energy value at the CBS limit
+          a : float or list of floats
+            Polynomial coefficient
+        '''
 
         a = np.array(a)
         zeta = np.array(z)

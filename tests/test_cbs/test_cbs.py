@@ -22,6 +22,7 @@ class TestPoly(unittest.TestCase):
     def test_poly_3point(self):
         f = cbs.poly(twopoint=False)
         eopt, ecov = curve_fit(f, self.x[-3:], self.ens[-3:])
+        self.assertAlmostEqual(-0.1070460458, eopt[0])
 
 class TestExpo(unittest.TestCase):
 
@@ -91,19 +92,57 @@ class TestExposum(unittest.TestCase):
         eopt, ecov = curve_fit(cbs.exposum, self.x[-3:], self.ens[-3:])
         self.assertAlmostEqual(-29.1341837985, eopt[0])
 
+
+class TestUsteCI(unittest.TestCase):
+
+    def setUp(self):
+        # Be atom E_corr in CVXZ FCI
+        self.x =[2, 3, 4, 5]
+        self.ens = [-0.0794940093, -0.0894929639, -0.0927120458, -0.0935254940]
+
+    def tearDown(self):
+        del self.x
+        del self.ens
+
+    def test_uste_ci(self):
+        f = cbs.uste('CI')
+        eopt, ecov = curve_fit(f, self.x[-2:], self.ens[-2:])
+        self.assertAlmostEqual(-0.0943071693, eopt[0])
+
+class TestUsteCC(unittest.TestCase):
+
+    def setUp(self):
+        # Be atom E_corr in CVXZ CCSD(T)
+        self.x =[2, 3, 4, 5]
+        self.ens = [-0.0794811580, -0.0894657703, -0.0926787765, -0.0934942304]
+
+    def tearDown(self):
+        del self.x
+        del self.ens
+
+    def test_uste_cc(self):
+        f = cbs.uste('CC')
+        eopt, ecov = curve_fit(f, self.x[-2:], self.ens[-2:])
+        self.assertAlmostEqual(-0.0942115430, eopt[0])
+
 class TestExporapolate(unittest.TestCase):
 
     def setUp(self):
-        pass
+        # VO Be_2 VXZ corr energies at R_e
+        self.x = [2, 3, 4, 5, 6]
+        self.ens = [-0.1006245329, -0.1047828536, -0.1062511383, -0.1066997691, -0.1068704347]
 
     def tearDown(self):
-        pass
+        del self.x
+        del self.ens
 
-    def test_poly_2point(self):
+    def test_poly_2point_default(self):
+        eopt = cbs.extrapolate(self.x[-2:], self.ens[-2:], 'poly')
+        self.assertAlmostEqual(-0.1071048655, eopt[0])
 
-        pass
-        #cbs.extrapolate(
-        #self.assertAlmostEqual(-0.1068704347,)
+    def test_poly_3point(self):
+        eopt = cbs.extrapolate(self.x[-3:], self.ens[-3:], 'poly', twopoint=False)
+        self.assertAlmostEqual(-0.1070460458, eopt[0])
 
 if __name__ == "__main__":
     unittest.main()
