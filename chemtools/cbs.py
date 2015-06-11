@@ -15,6 +15,10 @@ def extrapolate(x, energy, method, **kwargs):
         A vector of corresponding energies
       method : str
         Method/formula to use to perform the extrapolation
+
+    Kwargs:
+      Keyword arguments to be passed to the requested extrapolation function
+      using the `method` argument
     '''
 
     methods = {
@@ -49,6 +53,9 @@ def uste(method="CI"):
         Empirical A3 parameter
       method : str
         One of: *ci*, *cc*
+
+    Returns:
+      function object
     '''
     def uste_ci(x, e_cbs, a):
         # parameters calibrated for MRCI(Q)
@@ -82,6 +89,21 @@ def uste(method="CI"):
         ValueError("wrong method: {}, accepted values are: 'ci', 'cc'".format(method))
 
 def exposqrt(twopoint=True):
+    '''
+    Three-point formula for extrapolating the HF reference energy, as proposed
+    by *A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006), DOI: 10.1007/s00214-005-0028-6>*.
+
+    .. math::
+
+       E^{HF}(X) = E_{CBS} + a\cdot \exp(-b\sqrt{X})
+
+    Args:
+      twpoint : bool
+        A flag marking the use of two point extrapolation with `b=9.0`
+
+    Returns:
+      funtion object
+    '''
 
     def exposqrt2(x, e_cbs, a):
         '''
@@ -124,48 +146,74 @@ def exposqrt(twopoint=True):
     else:
         return exposqrt3
 
-def expo(x, e_cbs, a, b):
+def expo():
     '''
     CBS extrapolation formula by exponential Dunning-Feller relation.
 
-    :math:`E^{HF}(X) = E_{CBS} + A\cdot\exp(-BX)`
+    .. math::
 
-    Args:
-      x : int
-        Cardinal number of the basis set
-      e_cbs : float
-        Approximation to the energy value at the CBS limit
-      a : float
-        Pre-exponential empirical parameter
-      b : float
-        Exponential empirical parameter
+       E^{HF}(X) = E_{CBS} + a\cdot\exp(-bX)
+
+    Returns:
+      function object
     '''
 
-    return e_cbs + b * np.exp(-a*x)
+    def exponential(x, e_cbs, a, b):
+        '''
+        CBS extrapolation formula by exponential Dunning-Feller relation.
 
-def exposum(x, e_cbs, a, b):
+        Args:
+        x : int
+            Cardinal number of the basis set
+        e_cbs : float
+            Approximation to the energy value at the CBS limit
+        a : float
+            Pre-exponential empirical parameter
+        b : float
+            Exponential empirical parameter
+        '''
+
+        return e_cbs + b * np.exp(-a*x)
+
+    return exponential
+
+def exposum():
     '''
     Three point extrapolation through sum of exponentials expression
 
-    :math:`E(X) = E_{CBS} + A \cdot\exp(-(X-1)) + B\cdot\exp(-(X-1)^2)`
+    .. math::
 
-    Args:
-      x : int
-        Cardinal number of the basis set
-      e_cbs : float
-        Approximation to the energy value at the CBS limit
-      a : float
-        Empirical coefficent
-      b : float
-        Empirical coefficent
+       E(X) = E_{CBS} + a \cdot\exp(-(X-1)) + b\cdot\exp(-(X-1)^2)
+
     '''
-    return e_cbs + a*np.exp(-(x-1)) + b*np.exp(-(x-1)**2)
+
+    def exponentialssum(x, e_cbs, a, b):
+        '''
+        Three point extrapolation through sum of exponentials expression
+
+        :math:`E(X) = E_{CBS} + A \cdot\exp(-(X-1)) + B\cdot\exp(-(X-1)^2)`
+
+        Args:
+        x : int
+            Cardinal number of the basis set
+        e_cbs : float
+            Approximation to the energy value at the CBS limit
+        a : float
+            Empirical coefficent
+        b : float
+            Empirical coefficent
+        '''
+        return e_cbs + a*np.exp(-(x-1)) + b*np.exp(-(x-1)**2)
+
+    return exponentialssum
 
 def poly(p=0.0, z=3.0, twopoint=True):
     '''
     CBS extrapolation by polynomial relation.
 
-    :math:`E(X) = E_{CBS} + \sum_{i}A_{i}\cdot (X + P)^{-B_{i}}`
+    .. math::
+
+       E(X) = E_{CBS} + \sum_{i}a_{i}\cdot (X + P)^{-b_{i}}
 
     Kwargs:
       twpoint : bool
