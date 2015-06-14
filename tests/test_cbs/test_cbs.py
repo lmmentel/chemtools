@@ -29,21 +29,22 @@ class TestExpo(unittest.TestCase):
     def setUp(self):
         self.x = [2, 3, 4, 5, 6]
         self.ens = [-29.1322987785, -29.1337749163, -29.1340309055, -29.1341443009, -29.1341692835]
+        self.f = cbs.expo()
 
     def tearDown(self):
         del self.x
         del self.ens
 
     def test_expo_3point(self):
-        eopt, ecov = curve_fit(cbs.expo, self.x[2:], self.ens[2:])
+        eopt, ecov = curve_fit(self.f, self.x[2:], self.ens[2:])
         self.assertAlmostEqual(-29.1341763428, eopt[0])
 
     def test_expo_4point(self):
-        eopt, ecov = curve_fit(cbs.expo, self.x[1:], self.ens[1:])
+        eopt, ecov = curve_fit(self.f, self.x[1:], self.ens[1:])
         self.assertAlmostEqual(-29.1341981701, eopt[0])
 
     def test_expo_5point(self):
-        eopt, ecov = curve_fit(cbs.expo, self.x, self.ens)
+        eopt, ecov = curve_fit(self.f, self.x, self.ens)
         self.assertAlmostEqual(-29.1341546294, eopt[0])
 
 class TestExposqrt(unittest.TestCase):
@@ -87,11 +88,9 @@ class TestExposum(unittest.TestCase):
         del self.x
         del self.ens
 
-
     def test_exposum_default(self):
-        eopt, ecov = curve_fit(cbs.exposum, self.x[-3:], self.ens[-3:])
+        eopt, ecov = curve_fit(cbs.exposum(), self.x[-3:], self.ens[-3:])
         self.assertAlmostEqual(-29.1341837985, eopt[0])
-
 
 class TestUsteCI(unittest.TestCase):
 
