@@ -46,7 +46,7 @@ setup(
     license = open('LICENSE.rst').read(),
     long_description = readme(),
     name = 'chemtools',
-    packages = ['chemtools', 'chemtools/pescan', 'chemtools/elements'],
+    packages = ['chemtools', 'chemtools/pescan'],
     scripts = [
         'chemtools/submitgamess.py',
         'chemtools/submitmolpro.py',
