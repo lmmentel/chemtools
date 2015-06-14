@@ -10,19 +10,7 @@ from collections import OrderedDict
 import pickle
 
 
-_shells = ["s", "p", "d", "f", "g", "h", "i"]
-
-def splitlist(l, n):
-    if len(l) % n == 0:
-        splits = len(l)/n
-    elif len(l) % n != 0 and len(l) > n:
-        splits = len(l)/n+1
-    else:
-        splits = 1
-
-    for i in xrange(splits):
-        yield l[n*i:n*i+n]
-
+SHELLS = ["s", "p", "d", "f", "g", "h", "i", "j", "k"]
 
 def read_pickle(fname):
     '''Read a pickled BasisSet object from file
@@ -34,7 +22,6 @@ def read_pickle(fname):
 
     with open('fname', 'rb') as fil:
         return pickle.load(fil)
-
 
 def read_dict(dct):
     '''
@@ -57,7 +44,7 @@ def read_dict(dct):
         bs = BasisSet()
         for key, val in dct.items():
             if key == 'functions':
-                setattr(bs, key, OrderedDict(sorted(val.items(), key=lambda x: _shells.index(x[0]))))
+                setattr(bs, key, OrderedDict(sorted(val.items(), key=lambda x: SHELLS.index(x[0]))))
             else:
                 setattr(bs, key, val)
     return bs
@@ -69,7 +56,7 @@ class BasisSet:
     '''
 
 
-    def __init__(self, name, element, family=None, kind=None, model=None,
+    def __init__(self, name, element, family=None, kind=None,
                  functions=None, params=None):
         '''
         Args:
@@ -85,8 +72,6 @@ class BasisSet:
             basis set family
           functions : dict
             Dict of functions with *s*, *p*, *d*, *f*, ... as keys
-          model/scheme/generator/ : str
-            Name of the model from which the functions should be generated
           params : list of dicts
             Parameters for generating the functins according to the model
         '''
@@ -95,72 +80,99 @@ class BasisSet:
         self.element = element
         self.family = family
         self.kind = kind
-        self.model = model
         self.params = params
         self.functions = functions
 
-    def to_pickle(self, fname=None):
-        '''Save the basis set in pickle format under the filename `fname`
+
+    @classmethod
+    def from_optdict(cls, x0, functs):
+
+        total_nf = sum([x[1] for x in functs])
+        if len(x0) != total_nf:
+            raise ValueError('size mismatch {0} != {1}'.format(len(x0), total_nf))
+
+        funs = dict()
+        ni = 0; nt = 0
+        for shell, nf, _ in functs:
+            nt += nf
+            funs[shell] = dict()
+            funs[shell]['e'] = x0[ni:nt]
+            ni += nf
+        functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
+        return functions
+
+    @classmethod
+    def from_sequence(cls, formula=None, functs=None, name=None, element=None):
+        '''
+        Return a basis set object generated from a sequence based on the specified
+        arguments.
+
+        Args:
+          formula : str
+            Generative formula for the exponents, allowed values are:
+                - *eventemp*, *even*, *even tempered*
+                - *welltemp*, *well*, *well tempered*
+                - *legendre*
+          functs : list of tuples
+            A list of tuple specifying the shell type, number of functions and
+            parameters, e.g. `[('s', 4, (0.5, 2.0)), ('p', 3, (1.0, 3.0))]`
+          name : str
+            Name of the basis set
+          element : str
+            Chemical symbol of the element
+        '''
+
+        funs = dict()
+
+        if isinstance(formula, str):
+            formulas = [formula]*len(functs)
+        elif isinstance(formula, (list, tuple)):
+            formulas = formula
+        else:
+            raise ValueError('formula should be <str>, <list> or <tuple>, got: {}'.format(type(formula)))
+
+        for seqf, (shell, nf, params) in zip(formulas, functs):
+            funs[shell] = dict()
+            funs[shell]['e'] = generate_exponents(seqf, nf, params)
+        functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
+        bs = cls(name=name, element=element, functions=functions)
+        return bs
+
+    @classmethod
+    def from_file(cls, fname=None, fmt=None):
+        '''Read and parse a basis set from file and return a BasisSet object
 
         Args:
           fname : str
             File name
+          fmt : str
+            Format of the basis set in the file: *molpro*, *gamess*
         '''
 
-        if fname is None:
-            fname = self.name.strip().replace(' ', '_') + '.bas.pkl'
+        pass
 
-        with open(fname, 'wb') as fbas:
-            pickle.dump(self, fbas)
-
-    @classmethod
-    def from_optdict(cls, x0, bsoptdict):
-
-        icount  = 0
-        skipped = 0
-        functions = dict()
-        for lqn, nf in enumerate(bsoptdict["nfpshell"]):
-            if nf == 0:
-                skipped += 1
-                continue
-            functions[_shells[lqn]] = dict()
-            if bsoptdict["typ"].lower() in ["direxp", "direct", "exps", "exponents"]:
-                exps = list(exp(x) for x in x0[icount:icount+nf])
-                icount += nf
-                functions[_shells[lqn]]['exponents'] = exps
-            elif bsoptdict["typ"].lower() in ["even", "eventemp", "eventempered"]:
-                groups = group(x0, 2)
-                exps = eventemp(nf, groups[lqn-skipped])
-                functions[_shells[lqn]]['exponents'] = exps
-            elif bsoptdict["typ"].lower() in ["well", "welltemp", "welltempered"]:
-                groups = group(x0, 4)
-                exps = welltemp(nf, groups[lqn-skipped])
-                functions[_shells[lqn]]['exponents'] = exps
-            elif bsoptdict["typ"].lower() in ["legendre"]:
-                npar = len(bsoptdict["params"][lqn-skipped])
-                pars = x0[icount:icount+npar]
-                exps = legendre(nf, pars)
-                functions[_shells[lqn]]['exponents'] = exps
-                icount += npar
-        bs = cls(bsoptdict['name'], bsoptdict['element'])
-        setattr(bs, 'functions', cls.add_coeffs(functions))
-        for key in bsoptdict.keys():
-            if key != "functions":
-                setattr(bs, key, bsoptdict[key])
-        return bs
-
-    @staticmethod
-    def add_coeffs(functions):
+    def get_exponents(self, shell=None):
         '''
-        for every exponent in the "exponents" list add a 1 function with
-        contraction coefficient equal to 1.0
+        Return the exponents of a given shell or if the shell isn't specified
+        return all of the available exponents
         '''
 
-        for shell, fs in functions.items():
-            fs['contractedfs'] = list()
-            for i, expt in enumerate(fs['exponents']):
-                fs['contractedfs'].append({'indices' : [i], 'coefficients' : [1.0]})
-        return functions
+        if shell is None:
+            return chain.from_iterable([self.functions[k]['e'] for k in self.functions.keys()])
+        else:
+            return self.functions[shell]['e']
+
+    def uncontract(self):
+        '''
+        Uncontract the basis set. This replaces the contraction coefficients in
+        the current object.
+        '''
+
+        for shell, fs in self.functions.items():
+            #fs['cc'] = list()
+            #for i, expt in enumerate(fs['e']):
+            #    fs['cc'].append([tuple([i, 1.0])])
+            fs['cc'] = [[tuple([i, 1.0])] for i, _ in enumerate(fs['e'])]
 
     def __repr__(self):
         res = "<BasisSet(\n"
@@ -230,20 +242,10 @@ class BasisSet:
 
     def print_exponents(self):
 
-        for shell, fs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            for exp in fs['exponents']:
+        for shell, fs in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])):
+            for exp in fs['e']:
                 print("{s:10s}  {e:>25.10f}".format(s=shell, e=exp))
 
-    @staticmethod
-    def common_floats(lof, reflof):
-
-        c = decimal.Context(prec=6)
-        decimal.setcontext(c)
-        D = decimal.Decimal
-
-        l    = [D(x)*1 for x in lof]
-        refl = [D(x)*1 for x in reflof]
-        return any(D('0') == x.compare(y) for x in l for y in refl)
 
     @staticmethod
     def merge_list_of_floats(lof, lof2add, prec=6):
@@ -286,7 +288,7 @@ class BasisSet:
                 lof.append(addexp)
         return lof, newidx
 
-    def write_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
+    def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
         Return a string with the basis set in (new) CFOUR format.
 
@@ -306,10 +308,10 @@ class BasisSet:
         '''
 
         am, ne, cf = [], [], []
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            am.append(_shells.index(shell))
-            ne.append(len(shellfs["exponents"]))
-            cf.append(len(shellfs["contractedfs"]))
+        for shell, shellfs in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])):
+            am.append(SHELLS.index(shell))
+            ne.append(len(shellfs["e"]))
+            cf.append(len(shellfs["cc"]))
 
         res = "\n{e}:{s}\n{c}\n\n".format(e=self.element, s=self.name, c=comment)
         res += "{0:3d}\n".format(len(self.functions.keys()))
@@ -318,18 +320,18 @@ class BasisSet:
         res += "".join(["{0:5d}".format(x) for x in cf]) + "\n"
         res += "\n"
 
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            for lst in splitlist(shellfs["exponents"], 5):
+        for shell, fs in self.functions.items():
+            for lst in splitlist(fs['e'], 5):
                 res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst])  + "\n"
             res += "\n"
-            for i, expt in enumerate(shellfs["exponents"]):
-                cc = [cfs["coefficients"][cfs["indices"].index(i)] if i in cfs["indices"] else 0.0 for cfs in shellfs["contractedfs"]]
+            for i, expt in enumerate(fs['e']):
+                cc = [t[1] if t[0] == i else 0.0 for csf in fs['cc'] for t in csf]
                 for lst in splitlist(cc, 5):
                     res += "{c}".format(c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in lst])) + "\n"
             res += "\n"
         return res
 
-    def write_dalton(self, efmt="20.10f", cfmt="15.8f"):
+    def to_dalton(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in DALTON format.
 
@@ -347,15 +349,15 @@ class BasisSet:
         '''
 
         res = "! {s}\n".format(s=self.name)
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
+        for shell, fs in self.functions.items():
             res += "! {s} functions\n".format(s=shell)
-            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f="F", p=len(shellfs["exponents"]), c=len(shellfs["contractedfs"]))
-            for i, expt in enumerate(shellfs["exponents"]):
-                cc = [cfs["coefficients"][cfs["indices"].index(i)] if i in cfs["indices"] else 0.0 for cfs in shellfs["contractedfs"]]
+            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f="F", p=len(fs['e']), c=len(fs['cc']))
+            for i, expt in enumerate(fs['e']):
+                cc = [t[1] if t[0] == i else 0.0 for csf in fs['cc'] for t in csf]
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cc])) + "\n"
         return res
 
-    def write_gamess(self, efmt="20.10f", cfmt="15.8f"):
+    def to_gamess(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in GAMESS(US) format.
 
@@ -373,14 +375,14 @@ class BasisSet:
         '''
 
         res = ""
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            for contraction in shellfs["contractedfs"]:
-                res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(), n=len(contraction["indices"]))
-                for i, (idx, coeff) in enumerate(zip(contraction["indices"], contraction["coefficients"]), start=1):
-                    res += "{i:3d}{e:>{efmt}}{c:>{cfmt}}".format(i=i, e=shellfs["exponents"][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
+        for shell, fs in self.functions.items():
+            for contraction in fs["cc"]:
+                res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(), n=len(contraction))
+                for i, (idx, coeff) in enumerate(contraction, start=1):
+                    res += "{i:3d}{e:>{efmt}}{c:>{cfmt}}".format(i=i, e=fs['e'][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
         return res + "\n"
 
-    def write_molpro(self, efmt="20.10f", cfmt="15.8f"):
+    def to_molpro(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in MOLPRO format.
 
@@ -398,16 +400,17 @@ class BasisSet:
         '''
 
         res = ""
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            exps = ", ".join(["{0:>{efmt}}".format(e, efmt=efmt).lstrip() for e in shellfs["exponents"]])
+        for shell, fs in self.functions.items():
+            exps = ", ".join(["{0:>{efmt}}".format(e, efmt=efmt).lstrip() for e in fs['e']])
             res += "{s:>s}, {e:>s}, ".format(s=shell, e=self.element) + exps + '\n'
-            for contraction in shellfs["contractedfs"]:
-                coeffs = ", ".join(["{0:>{cfmt}}".format(c, cfmt=cfmt).lstrip() for c in contraction["coefficients"]])
-                res += "c, {0:d}.{1:d}, ".format(min(contraction["indices"])+1, max(contraction["indices"])+1) + coeffs + '\n'
+            for contraction in fs['cc']:
+                indices = [c[0] for c in contraction]
+                coeffs = ", ".join(["{0:>{cfmt}}".format(c[1], cfmt=cfmt).lstrip() for c in contraction])
+                res += "c, {0:d}.{1:d}, ".format(min(indices)+1, max(indices)+1) + coeffs + '\n'
         return res
 
 
-    def write_nwchem(self, efmt="20.10f", cfmt="15.8f"):
+    def to_nwchem(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in NWChem format.
 
@@ -425,12 +428,26 @@ class BasisSet:
         '''
 
         res = 'BASIS "ao basis" PRINT\n'
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
+        for shell, fs in self.functions.items():
             res += "{e} {s}\n".format(e=self.element, s=shell)
-            for i, expt in enumerate(shellfs["exponents"]):
-                cc = [cfs["coefficients"][cfs["indices"].index(i)] if i in cfs["indices"] else 0.0 for cfs in shellfs["contractedfs"]]
+            for i, expt in enumerate(fs['e']):
+                cc = [t[1] if t[0] == i else 0.0 for csf in fs['cc'] for t in csf]
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cc])) + '\n'
         return res + "END\n"
+
+    def to_pickle(self, fname=None):
+        '''Save the basis set in pickle format under the filename `fname`
+
+        Args:
+          fname : str
+            File name
+        '''
+
+        if fname is None:
+            fname = self.name.strip().replace(' ', '_') + '.bas.pkl'
+
+        with open(fname, 'wb') as fbas:
+            pickle.dump(self, fbas)
 
     def contraction_scheme(self):
         '''
@@ -438,29 +455,13 @@ class BasisSet:
         '''
 
         cs, ec = [], []
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            cs.append((shell, len(shellfs["exponents"]), len(shellfs["contractedfs"])))
-            ec.append([len(cfs["indices"]) for cfs in shellfs["contractedfs"]])
+        for shell, fs in self.functions.items():
+            cs.append((shell, len(fs['e']), len(fs['cc'])))
+            ec.append([len(cfs) for cfs in fs['cc']])
         return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
-                p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
-                c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
+                p=" ".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
+                c=" ".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
                 ec="/".join(["".join(["{0:d}".format(c) for c in x]) for x in ec]))
-
-    @staticmethod
-    def get_spherical(l):
-        '''
-        Calculate the number of spherical components of a function with a given angular
-        momentum value *l*.
-        '''
-        return 2*l+1
-
-    @staticmethod
-    def get_cartesian(l):
-        '''
-        Calculate the number of cartesian components of a function with a given angular
-        momentum value *l*.
-        '''
-        return int((l+1)*(l+2)/2)
 
     def nf(self, spherical=True):
         '''
@@ -477,18 +478,9 @@ class BasisSet:
         '''
 
         if spherical:
-            return sum(self.get_spherical(_shells.index(shell))*len(shellfs["contractedfs"]) for shell, shellfs in self.functions.items())
+            return sum(self.get_spherical(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
         else:
-            return sum(self.get_cartesian(_shells.index(shell))*len(shellfs["contractedfs"]) for shell, shellfs in self.functions.items())
-
-    def uncontract(self):
-        '''
-        Uncontract the basis set. This replaces the contraction coefficients in
-        the current object.
-        '''
-
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: _shells.index(x[0])):
-            shellfs["contractedfs"] = [{"indices" : [i], "coefficients" : [1.0]} for i, e in enumerate(shellfs["exponents"])]
+            return sum(self.get_cartesian(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
 
     @classmethod
     def uncontracted(cls, bs):
@@ -496,18 +488,18 @@ class BasisSet:
         Return a new BasisSet object with uncotracted version of the basis.
         '''
         bsnew = copy.deepcopy(bs)
-        for shell, shellfs in sorted(bsnew.functions.items(), key=lambda x: _shells.index(x[0])):
+        for shell, shellfs in sorted(bsnew.functions.items(), key=lambda x: SHELLS.index(x[0])):
             shellfs["contractedfs"] = [{"indices" : [i], "coefficients" : [1.0]} for i, e in enumerate(shellfs["exponents"])]
         return bsnew
 
     def primitives_per_shell(self):
-        return [len(f["exponents"]) for s, f in sorted(self.functions.items(), key=lambda x: _shells.index(x[0]))]
+        return [len(f["exponents"]) for s, f in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0]))]
 
     def contractions_per_shell(self):
-        return [len(f["contractedfs"]) for s, f in sorted(self.functions.items(), key=lambda x: _shells.index(x[0]))]
+        return [len(f["contractedfs"]) for s, f in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0]))]
 
     def primitives_per_contraction(self):
-        return [[len(c["indices"]) for c in f["contractedfs"]] for s, f in sorted(self.functions.items(), key=lambda x: _shells.index(x[0]))]
+        return [[len(c["indices"]) for c in f["contractedfs"]] for s, f in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0]))]
 
     def contraction_type(self):
         '''
@@ -543,6 +535,20 @@ class BasisSet:
             res.append(bscopy)
         return res
 
+def nspherical(l):
+    '''
+    Calculate the number of spherical components of a function with a given angular
+    momentum value *l*.
+    '''
+    return 2*l+1
+
+def ncartesian(l):
+    '''
+    Calculate the number of cartesian components of a function with a given angular
+    momentum value *l*.
+    '''
+    return int((l+1)*(l+2)/2)
+
 def zetas2legendre(zetas, kmax):
     '''
     From a set of exponents "zetas", using least square fit calculate the
@@ -572,6 +578,17 @@ def zetas2legendre(zetas, kmax):
             a[j, k] = leg.basis(k)(arg)
 
     return np.linalg.lstsq(a, np.log(zetas))[0]
+
+def generate_exponents(formula, nf, params):
+
+    if formula.lower() in ["even", "eventemp", "even tempered"]:
+        return eventemp(nf, params)
+    elif formula.lower() in ["well", "welltemp", "well tempered"]:
+        return welltemp(nf, params)
+    elif formula.lower() in ["legendre"]:
+        return legendre(nf, params)
+    else:
+        raise ValueError('unknown sequence name: {}'.format(formula))
 
 def eventemp(nf, params):
     '''
@@ -669,3 +686,25 @@ def get_x0(basisopt):
     '''
 
     return list(chain.from_iterable(basisopt["params"]))
+
+def splitlist(l, n):
+    if len(l) % n == 0:
+        splits = len(l)/n
+    elif len(l) % n != 0 and len(l) > n:
+        splits = len(l)/n+1
+    else:
+        splits = 1
+
+    for i in range(splits):
+        yield l[n*i:n*i+n]
+
+def common_floats(lof, reflof):
+
+    c = decimal.Context(prec=6)
+    decimal.setcontext(c)
+    D = decimal.Decimal
+
+    l    = [D(x)*1 for x in lof]
+    refl = [D(x)*1 for x in reflof]
+    return any(D('0') == x.compare(y) for x in l for y in refl)
+
