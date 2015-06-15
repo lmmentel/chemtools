@@ -341,8 +341,8 @@ class BasisSet:
         res = "\n{e}:{s}\n{c}\n\n".format(e=self.element, s=self.name, c=comment)
         res += "{0:3d}\n".format(len(self.functions.keys()))
         res += "".join(["{0:5d}".format(x) for x in am]) + "\n"
-        res += "".join(["{0:5d}".format(x) for x in ne]) + "\n"
         res += "".join(["{0:5d}".format(x) for x in cf]) + "\n"
+        res += "".join(["{0:5d}".format(x) for x in ne]) + "\n"
         res += "\n"
 
         for shell, fs in self.functions.items():
@@ -628,8 +628,8 @@ def eventemp(nf, params):
         params : tuple of floats
             alpha and beta parameters
     Returns:
-        res : list
-            list of generated exponents (floats)
+        res : numpy array
+            array of generated exponents (floats)
     '''
     if not isinstance(nf, int):
         raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
@@ -637,7 +637,7 @@ def eventemp(nf, params):
         raise ValueError('"params" tuple should have exactly 2 entries, got {}'.format(len(params)))
 
     alpha, beta = params
-    return [alpha * np.power(beta, i) for i in range(nf)]
+    return alpha * np.power(beta, np.arange(nf))
 
 def welltemp(nf, params):
     '''
@@ -652,8 +652,8 @@ def welltemp(nf, params):
         params : tuple of floats
             alpha, beta, gamma and delta parameters
     Returns:
-        res : list of floats
-            list of generated exponents (floats)
+        res : numpy array
+            array of generated exponents (floats)
     '''
     if not isinstance(nf, int):
         raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
@@ -661,7 +661,7 @@ def welltemp(nf, params):
         raise ValueError('"params" tuple should have exactly 4 entries, got {}'.format(len(params)))
 
     alpha, beta, gamma, delta = params
-    return [alpha*np.power(beta, i)*(1+gamma*np.power((i+1)/nf, delta)) for i in range(nf)]
+    return alpha*np.power(beta, np.arange(nf))*(1+gamma*np.power(np.arange(1, nf+1)/nf, delta))
 
 def legendre(nf, coeffs):
     '''
@@ -677,8 +677,8 @@ def legendre(nf, coeffs):
         params : tuple of floats
             polynomial coefficients (expansion parameters)
     Returns:
-        res : list of floats
-            list of generated exponents (floats)
+        res : numpy array
+            array of generated exponents (floats)
     '''
 
     if not isinstance(nf, int):
@@ -692,7 +692,7 @@ def legendre(nf, coeffs):
 
     poly = np.polynomial.legendre.Legendre(coeffs)
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]
-    return [np.exp(x) for x in zetas]
+    return np.exp(zetas)
 
 def group(lst, n):
     """group([0,3,4,10,2,3], 2) => [(0,3), (4,10), (2,3)]
@@ -714,9 +714,9 @@ def get_x0(basisopt):
 
 def splitlist(l, n):
     if len(l) % n == 0:
-        splits = len(l)/n
+        splits = len(l)//n
     elif len(l) % n != 0 and len(l) > n:
-        splits = len(l)/n+1
+        splits = len(l)//n+1
     else:
         splits = 1
 
@@ -866,7 +866,6 @@ def parse_gamess_basis(string):
             if atom != "":
                 functions = dict()
                 elem = element(atom.capitalize())
-                print(elem.symbol)
                 bslines = basis.split("\n")
                 for i, line in enumerate(bslines):
                     match = pat.search(line)
