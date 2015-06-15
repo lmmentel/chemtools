@@ -8,7 +8,9 @@ import numpy as np
 from itertools import chain
 from collections import OrderedDict
 import pickle
-
+import re
+import os
+from elements import element
 
 SHELLS = ["s", "p", "d", "f", "g", "h", "i", "j", "k"]
 
@@ -20,7 +22,7 @@ def read_pickle(fname):
         File name containing the BasisSet
     '''
 
-    with open('fname', 'rb') as fil:
+    with open(fname, 'rb') as fil:
         return pickle.load(fil)
 
 def read_dict(dct):
@@ -83,9 +85,8 @@ class BasisSet:
         self.params = params
         self.functions = functions
 
-
     @classmethod
-    def from_optdict(cls, x0, functs):
+    def from_optdict(cls, x0, functs, name=None, element=None):
 
         total_nf = sum([x[1] for x in functs])
         if len(x0) != total_nf:
@@ -99,7 +100,8 @@ class BasisSet:
             funs[shell]['e'] = x0[ni:nt]
             ni += nf
         functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
-        return functions
+        bs = cls(name=name, element=element, functions=functions)
+        return bs
 
     @classmethod
     def from_sequence(cls, formula=None, functs=None, name=None, element=None):
@@ -139,7 +141,7 @@ class BasisSet:
         return bs
 
     @classmethod
-    def from_file(cls, fname=None, fmt=None):
+    def from_file(cls, fname=None, fmt=None, name=None):
         '''Read and parse a basis set from file and return a BasisSet object
 
         Args:
@@ -149,7 +151,33 @@ class BasisSet:
             Format of the basis set in the file: *molpro*, *gamess*
         '''
 
-        pass
+        if name is None:
+            name = os.path.splitext(fname)[0]
+
+        formats = ['molpro', 'gamessus']
+
+        if fmt.lower() not in formats:
+            raise ValueError("<fmt> should be one of: {}".format(", ".join(formats)))
+
+        with open(fname, 'r') as fobj:
+            basstr = fobj.read()
+
+        res = dict()
+        if fmt == 'molpro':
+            bsd = parse_molpro_basis(basstr)
+        elif fmt == 'gamessus':
+            bsd = parse_gamess_basis(basstr)
+        # return a BasisSet object if only one basis parsed or dict of BasisSet
+        # objects with atomic symbol as key
+
+        if len(bsd.keys()) == 1:
+            return BasisSet(name=name, element=atom,
+                    functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
+        else:
+            for atom, fs in bsd.items():
+                res[atom] = BasisSet(name=name, element=atom,
+                        functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
+            return res
 
     def get_exponents(self, shell=None):
         '''
@@ -169,9 +197,6 @@ class BasisSet:
         '''
 
         for shell, fs in self.functions.items():
-            #fs['cc'] = list()
-            #for i, expt in enumerate(fs['e']):
-            #    fs['cc'].append([tuple([i, 1.0])])
             fs['cc'] = [[tuple([i, 1.0])] for i, _ in enumerate(fs['e'])]
 
     def __repr__(self):
@@ -459,9 +484,9 @@ class BasisSet:
             cs.append((shell, len(fs['e']), len(fs['cc'])))
             ec.append([len(cfs) for cfs in fs['cc']])
         return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
-                p=" ".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
-                c=" ".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
-                ec="/".join(["".join(["{0:d}".format(c) for c in x]) for x in ec]))
+                p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
+                c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
+                ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
 
     def nf(self, spherical=True):
         '''
@@ -478,9 +503,9 @@ class BasisSet:
         '''
 
         if spherical:
-            return sum(self.get_spherical(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
+            return sum(nspherical(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
         else:
-            return sum(self.get_cartesian(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
+            return sum(ncartesian(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
 
     @classmethod
     def uncontracted(cls, bs):
@@ -493,13 +518,13 @@ class BasisSet:
         return bsnew
 
     def primitives_per_shell(self):
-        return [len(f["exponents"]) for s, f in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0]))]
+        return [len(f['e']) for s, f in self.functions.items()]
 
     def contractions_per_shell(self):
-        return [len(f["contractedfs"]) for s, f in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0]))]
+        return [len(f['cc']) for s, f in self.functions.items()]
 
     def primitives_per_contraction(self):
-        return [[len(c["indices"]) for c in f["contractedfs"]] for s, f in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0]))]
+        return [[len(cc) for cc in f['cc']] for s, f in self.functions.items()]
 
     def contraction_type(self):
         '''
@@ -707,4 +732,174 @@ def common_floats(lof, reflof):
     l    = [D(x)*1 for x in lof]
     refl = [D(x)*1 for x in reflof]
     return any(D('0') == x.compare(y) for x in l for y in refl)
+
+def parse_molpro_basis(string):
+    '''
+    Parse basis set from a string in Molpro format.
+    '''
+
+    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL|re.IGNORECASE)
+
+    m = bas_re.search(string)
+    if m:
+        lines = m.group(1).split("\n")
+    else:
+        raise ValueError("basis string not found")
+
+    start = []
+    for i, line in enumerate(lines):
+        if line.split(",")[0].lower() in SHELLS:
+            start.append(i)
+    if len(start) == 0:
+        return None
+
+    startstop = []
+    for i in range(len(start)-1):
+        startstop.append((start[i], start[i+1]))
+    startstop.append((start[-1], len(lines)))
+
+    bs = {}
+    for i in startstop:
+        at_symbol, shell = parse_shell(lines[i[0]], lines[i[0]+1:i[1]])
+        if at_symbol in bs.keys():
+            bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
+        else:
+            bs[at_symbol] = shell
+    return bs
+
+def parse_shell(expsline, coeffs):
+    '''
+    Parse functions of one shell in molpro format.
+    '''
+
+    # remove empty strings and whitespace line breaks and tabs
+    coeffs = [x.strip() for x in coeffs if x.strip() not in ['', '\n', '\t']]
+
+    fs = {}
+
+    shell  = expsline.split(",")[0]
+    at_symbol = expsline.split(",")[1].strip().capitalize()
+    exps   = [float(x) for x in expsline.rstrip(";").split(",")[2:]]
+
+    fs[shell.lower()] = {'e' : exps, 'cc' : []}
+    if len(coeffs) != 0:
+        for line in coeffs:
+            lsp = line.rstrip(";").split(",")
+            if lsp[0] == "c":
+                i, j = [int(x) for x in lsp[1].split(".")]
+                coeffs = [float(x) for x in lsp[2:]]
+                fs[shell.lower()]['cc'].append(list(zip(list(range(i-1, j)), coeffs)))
+    else:
+        for i in range(len(exps)):
+            fs[shell.lower()]['cc'].append([tuple([i, 1.0])])
+    return at_symbol, fs
+
+def parse_ecp(ecpstring):
+
+    ecp_re = re.compile(r'\!\s*Effective core Potentials.*-{25}\s*\n(.*?)\n\s*\n', flags=re.DOTALL)
+
+    lines = ecpstring.split("\n")
+
+    start = []
+    for i, line in enumerate(lines):
+        if line.split(",")[0].lower() == 'ecp':
+            start.append(i)
+
+    if len(start) == 0:
+        return None
+
+    startstop = []
+    for i in range(len(start)-1):
+        startstop.append((start[i], start[i+1]))
+    startstop.append((start[-1], len(lines)))
+
+    ecp = {}
+    for i in startstop:
+        ecp = dict(list(ecp.items()) + list(parse_coeffs(lines[i[0] : i[1]]).items()))
+    return ecp
+
+def parse_coeffs(lines):
+
+    firstl = lines[0].replace(';', '').split(',')
+    element = firstl[1].strip().capitalize()
+    nele = firstl[2]
+    lmax = firstl[3]
+
+    liter = iter(x for x in lines[1:] if x != '')
+
+    ecp = {element : {"nele" : nele, "lmax" : lmax, "shells" : []}}
+
+    while True:
+        try:
+            temp = next(liter)
+        except StopIteration as err:
+            break
+        nlmax = int(temp.split(";")[0])
+        comment = temp.split(";")[1].replace("!", "")
+        tt = {'comment' : comment, 'parameters' : []}
+        for i in range(nlmax):
+            param = next(liter).replace(";", "").split(",")
+            tt['parameters'].append({'m' : float(param[0]), 'gamma' : float(param[1]),'c' : float(param[2])})
+        ecp[element]['shells'].append(tt)
+    return ecp
+
+def parse_gamess_basis(string):
+    '''
+    Parse the basis set into a list of dictionaries from a string in
+    gamess format.
+    '''
+
+    bas_re = re.compile(r'\$DATA\n(.*?)\$END', flags=re.DOTALL|re.IGNORECASE)
+
+    m = bas_re.search(string)
+    if m:
+        basisstr = m.group(1)
+    else:
+        raise ValueError("basis string not found")
+
+    pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
+    res = dict()
+
+    for item in basisstr.split('\n\n'):
+        if len(item) > 0:
+            atom, basis = item.split('\n', 1)
+            if atom != "":
+                functions = dict()
+                elem = element(atom.capitalize())
+                print(elem.symbol)
+                bslines = basis.split("\n")
+                for i, line in enumerate(bslines):
+                    match = pat.search(line)
+                    if match:
+                        shell, nf = match.group("shell").lower(), match.group("nf")
+                        exps, indxs, coeffs = parse_function(bslines[i+1:i+int(nf)+1])
+                        if shell in functions.keys():
+                            lasti = len(functions[shell]['e'])
+                            functions[shell]['e'].extend(exps)
+                            functions[shell]['cc'].append(list(zip([lasti + i - 1 for i in indxs], coeffs)))
+                        else:
+                            functions[shell] = dict()
+                            functions[shell]['e'] = exps
+                            functions[shell]['cc'] = list()
+                            functions[shell]['cc'].append(list(zip([i - 1 for i in indxs], coeffs)))
+                res[elem.symbol] = functions
+    return res
+
+def parse_function(los):
+    '''
+    Parse a basis set function information from list of strings into
+    three lists containg: exponents, indices, coefficients.
+
+    Remeber that python doesn't recognise the `1.0d-3` format where `d` or
+    `D` is used to the regex subsitution has to take care of that.
+    '''
+
+    real = re.compile(r'[dD]')
+
+    indxs = [int(item.split()[0]) for item in los]
+    exps = [float(real.sub('E', item.split()[1])) for item in los]
+    coeffs = [float(real.sub('E', item.split()[2])) for item in los]
+
+    return (exps, indxs, coeffs)
+
 
