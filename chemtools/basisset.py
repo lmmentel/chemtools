@@ -1,6 +1,6 @@
 #import pymongo
 
-from __future__ import division
+from __future__ import division, print_function
 
 import copy
 import decimal
@@ -13,6 +13,7 @@ import os
 from elements import element
 
 SHELLS = ["s", "p", "d", "f", "g", "h", "i", "j", "k"]
+CFDTYPE = [('idx', 'i4'), ('cc', 'f8')]
 
 def read_pickle(fname):
     '''Read a pickled BasisSet object from file
@@ -97,7 +98,7 @@ class BasisSet:
         for shell, nf, _ in functs:
             nt += nf
             funs[shell] = dict()
-            funs[shell]['e'] = x0[ni:nt]
+            funs[shell]['e'] = np.array(x0[ni:nt])
             ni += nf
         functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
         bs = cls(name=name, element=element, functions=functions)
@@ -148,34 +149,54 @@ class BasisSet:
           fname : str
             File name
           fmt : str
-            Format of the basis set in the file: *molpro*, *gamess*
+            Format of the basis set in the file: *molpro*, *gamessus*
+         name : str
+           Name of the basis set
         '''
 
         if name is None:
             name = os.path.splitext(fname)[0]
+
+        with open(fname, 'r') as fobj:
+            basstr = fobj.read()
+
+        return self.from_str(basstr, fmt=fmt, name=name)
+
+    @classmethod
+    def from_str(cls, string, fmt=None, name=None):
+        '''
+        Parse a basis set from string
+
+        Args:
+          string : str
+            A string with the basis set
+          fmt : str
+            Format of the basis set in the file: *molpro*, *gamessus*
+         name : str
+           Name of the basis set
+        '''
 
         formats = ['molpro', 'gamessus']
 
         if fmt.lower() not in formats:
             raise ValueError("<fmt> should be one of: {}".format(", ".join(formats)))
 
-        with open(fname, 'r') as fobj:
-            basstr = fobj.read()
-
-        res = dict()
         if fmt == 'molpro':
-            bsd = parse_molpro_basis(basstr)
+            bsd = parse_molpro_basis(string)
         elif fmt == 'gamessus':
-            bsd = parse_gamess_basis(basstr)
+            bsd = parse_gamess_basis(string)
+
         # return a BasisSet object if only one basis parsed or dict of BasisSet
         # objects with atomic symbol as key
 
-        if len(bsd.keys()) == 1:
-            return BasisSet(name=name, element=atom,
+        res = dict()
+        if len(bsd) == 1:
+            atom, fs = bsd.items()[0]
+            return cls(name=name, element=bsd.keys()[0],
                     functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
         else:
             for atom, fs in bsd.items():
-                res[atom] = BasisSet(name=name, element=atom,
+                res[atom] = cls(name=name, element=atom,
                         functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
             return res
 
@@ -197,7 +218,7 @@ class BasisSet:
         '''
 
         for shell, fs in self.functions.items():
-            fs['cc'] = [[tuple([i, 1.0])] for i, _ in enumerate(fs['e'])]
+            fs['cc'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
 
     def __repr__(self):
         res = "<BasisSet(\n"
@@ -213,105 +234,36 @@ class BasisSet:
         res += ")>"
         return res
 
-    def __add__(self, bs2add):
+    def __add__(self, other):
+        '''Add functions from another BasisSet object
 
-        if not isinstance(bs2add, BasisSet):
-            raise TypeError('only instances of "BasisSet" class can be added')
+        Args:
+          other : BasisSet
+            BasisSet object whose functions will be added to the existing ones
 
-        for oshell, ofs in bs2add.functions.items():
+        Returns:
+          BasisSet instance with functions from `self` and `other` merged
+        '''
+
+        funcs = self.functions.copy()
+        for oshell, ofs in other.functions.items():
             if oshell.lower() in self.functions.keys():
-                if self.common_floats(self.functions[oshell]['exponents'], ofs['exponents']):
-                    exps, indx = self.merge_list_of_floats(self.functions[oshell.lower()]['exponents'], ofs['exponents'])
-                    self.functions[oshell.lower()]['exponents'] = exps
-                    for cf in ofs['contractedfs']:
-                        newc = copy.copy(cf)
-                        newc['indices'] = [indx[i] for i in newc['indices']]
-                        self.functions[oshell.lower()]['contractedfs'].append(newc)
-                else:
-                    nexp = len(self.functions[oshell.lower()]['exponents'])
-                    self.functions[oshell.lower()]['exponents'].extend(ofs['exponents'])
-                    for cf in ofs['contractedfs']:
-                        newc = copy.copy(cf)
-                        newc['indices'] = [i + nexp for i in newc['indices']]
-                        self.functions[oshell.lower()]['contractedfs'].append(newc)
+                exps, idxs, idxo = merge_exponents(self.functions[oshell]['e'], ofs['e'])
+                funcs[oshell]['e'] = exps
+                for cf in funcs[oshell]['cc']:
+                    cf['idx'] = idxs[cf['idx']]
+                for cf in ofs['cc']:
+                    cf['idx'] = idxo[cf['idx']]
+                funcs[oshell]['cc'].extend(ofs['cc'])
             else:
                 self.functions[oshell] = ofs
-
-    def add(self, bs2add):
-        '''
-        Merge functions to the BasisSet object "functions" attribute from
-        another BasisSet object if the "element" atrribute has the same value.
-        '''
-
-        if bs2add is not None and self.element == bs2add.element:
-            for oshell, ofs in bs2add.functions.items():
-                if oshell.lower() in self.functions.keys():
-                    if self.common_floats(self.functions[oshell]['exponents'], ofs['exponents']):
-                        exps, indx = self.merge_list_of_floats(self.functions[oshell.lower()]['exponents'], ofs['exponents'])
-                        self.functions[oshell.lower()]['exponents'] = exps
-                        for cf in ofs['contractedfs']:
-                            newc = copy.copy(cf)
-                            newc['indices'] = [indx[i] for i in newc['indices']]
-                            self.functions[oshell.lower()]['contractedfs'].append(newc)
-                    else:
-                        nexp = len(self.functions[oshell.lower()]['exponents'])
-                        self.functions[oshell.lower()]['exponents'].extend(ofs['exponents'])
-                        for cf in ofs['contractedfs']:
-                            newc = copy.copy(cf)
-                            newc['indices'] = [i + nexp for i in newc['indices']]
-                            self.functions[oshell.lower()]['contractedfs'].append(newc)
-                else:
-                    self.functions[oshell] = ofs
-        else:
-            return
+        return BasisSet(name=self.name, element=self.element, functions=funcs)
 
     def print_exponents(self):
 
         for shell, fs in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])):
             for exp in fs['e']:
                 print("{s:10s}  {e:>25.10f}".format(s=shell, e=exp))
-
-
-    @staticmethod
-    def merge_list_of_floats(lof, lof2add, prec=6):
-        '''
-        merge a list of floats "lof2add" into a reference list
-        of floats "lof" ommitting duplicate floats and return
-        merged list and indices of newly added floats in the reference list.
-
-        Args:
-            lof (list of floats)
-                reference list of floats to which new floats will be appended
-            lof2add (list of floats)
-                list of floats to be added to the reference list
-            prec (int)
-                precision (number of significant digits used in float comparison
-                default=6
-        Returns:
-            lof (list of floats)
-                appended list of floats
-            newidx (list of integers)
-                list of integers corresponding to the indices of newly added floats
-        '''
-
-        c = decimal.Context(prec=prec)
-        decimal.setcontext(c)
-        D = decimal.Decimal
-
-        expref  = [D(x)*1 for x in lof]
-        exp2add = [D(x)*1 for x in lof2add]
-        nexp = len(lof)
-        newidx = list()
-        for addexp in exp2add:
-            if addexp in expref:
-                newidx.append(expref.index(addexp))
-            else:
-                expref.append(addexp)
-                newidx.append(expref.index(addexp))
-        for addidx, addexp in zip(newidx, lof2add):
-            if addidx > nexp:
-                lof.append(addexp)
-        return lof, newidx
 
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
@@ -349,10 +301,14 @@ class BasisSet:
             for lst in splitlist(fs['e'], 5):
                 res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst])  + "\n"
             res += "\n"
-            for i, expt in enumerate(fs['e']):
-                cc = [t[1] if t[0] == i else 0.0 for csf in fs['cc'] for t in csf]
-                for lst in splitlist(cc, 5):
-                    res += "{c}".format(c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in lst])) + "\n"
+            cc = list()
+            for cf in fs['cc']:
+                zeros = np.zeros_like(fs['e'])
+                zeros[cf['idx']] = cf['cc']
+                cc.append(zeros)
+            for row in zip(*cc):
+                for splitrow in splitlist(row, 5):
+                    res += "{c}".format(c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in splitrow])) + "\n"
             res += "\n"
         return res
 
@@ -723,15 +679,44 @@ def splitlist(l, n):
     for i in range(splits):
         yield l[n*i:n*i+n]
 
-def common_floats(lof, reflof):
+def have_equal_floats(a, b):
+    '''
+    Check if the arrays a and b have equal items
 
-    c = decimal.Context(prec=6)
-    decimal.setcontext(c)
-    D = decimal.Decimal
+    Pairwise compare all the item from a with all the items form b
 
-    l    = [D(x)*1 for x in lof]
-    refl = [D(x)*1 for x in reflof]
-    return any(D('0') == x.compare(y) for x in l for y in refl)
+    Args:
+      a : numpy.array
+      b : numpy.array
+
+    Returns:
+      res : bool
+        - True if there are common items in `a` and `b`
+        - False if there are no common items
+    '''
+
+    x = np.array([x for x in product(a, b)])
+    return np.any(np.isclose(x[:, 0], x[:, 1]))
+
+def merge_exponents(a, b):
+    '''
+    Concatenate the arrays `a` and `b` using only the unique items from both arrays
+
+    Args:
+      a : numpy.array
+      b : numpy.array
+
+    Returns:
+      res : 3-tuple of numpy arrays
+        - res[0] sorted union of `a` and `b`
+        - res[1] indices of `a` items in res[0]
+        - res[2] indices of `b` items in res[0]
+    '''
+
+    u = np.union1d(a, b)
+    idxa = np.where(np.in1d(u, a))[0]
+    idxb = np.where(np.in1d(u, b))[0]
+    return u, idxa, idxb
 
 def parse_molpro_basis(string):
     '''
@@ -777,21 +762,21 @@ def parse_shell(expsline, coeffs):
 
     fs = {}
 
-    shell  = expsline.split(",")[0]
+    shell  = expsline.split(",")[0].lower()
     at_symbol = expsline.split(",")[1].strip().capitalize()
-    exps   = [float(x) for x in expsline.rstrip(";").split(",")[2:]]
+    exps   = np.array([float(x) for x in expsline.rstrip(";").split(",")[2:]])
 
-    fs[shell.lower()] = {'e' : exps, 'cc' : []}
+    fs[shell] = {'e' : exps, 'cc' : []}
     if len(coeffs) != 0:
         for line in coeffs:
             lsp = line.rstrip(";").split(",")
             if lsp[0] == "c":
                 i, j = [int(x) for x in lsp[1].split(".")]
                 coeffs = [float(x) for x in lsp[2:]]
-                fs[shell.lower()]['cc'].append(list(zip(list(range(i-1, j)), coeffs)))
+                fs[shell]['cc'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
     else:
         for i in range(len(exps)):
-            fs[shell.lower()]['cc'].append([tuple([i, 1.0])])
+            fs[shell]['cc'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
     return at_symbol, fs
 
 def parse_ecp(ecpstring):
