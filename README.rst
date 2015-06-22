@@ -16,8 +16,19 @@ Documentation
 
 The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
 
-.. toctree::
-   :maxdepth: 2
+Funding
+=======
+
+This project was realized through support from National Science Center (Poland) grant number
+UMO-2012/07/B/ST4/01347.
+
+Citing
+======
+
+If you use *Chemtools* in a scientific publication, please cite the software as 
+
+|    L. M. Mentel, *Chemtools*, 2014. Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
+
 
 License
 =======
