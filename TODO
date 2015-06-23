@@ -24,9 +24,6 @@
     * add formatters for different file formats: tex, html, xml
     * write a function to transform the orbital expansion coefficient from
       cartesian to pure spherial gaussians
-    * change initialization of the BasisSet to allow reading pickle and ascii
-      and saving those formats, allow initializing the BasisSet through
-      even-tempered, well-tempered, legendre parameters,
 
 ## pescan
 
@@ -39,3 +36,7 @@
 
 DONE
 ====
+## basisset
+    * change initialization of the BasisSet to allow reading pickle and ascii
+      and saving those formats, allow initializing the BasisSet through
+      even-tempered, well-tempered, legendre parameters,

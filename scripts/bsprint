@@ -2,18 +2,21 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser
-from chemtools.basisset import BasisSet
+from chemtools import basisset
 from collections import OrderedDict
 
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument("file", help=".bas file with a BasisSet object")
-    parser.add_argument("-f", "--format", choices=["gamess", "molpro", "dalton", "nwchem", "cfour"], default="gamess")
+    parser.add_argument("file", help="file name with a pickled BasisSet object")
+    parser.add_argument("-f", "--format",
+                        choices=["cfour", "dalton", "gamessus", "gaussian",
+                                 "molpro", "nwchem"],
+                        default="gamessus")
     args = parser.parse_args()
 
-    writer = "write_" + args.format
-    bs = BasisSet.from_dict(eval(open(args.file, "rb").read()))
+    writer = "to_" + args.format
+    bs = basisset.read_pickle(args.file)
     method = getattr(bs, writer)
 
     print(method())

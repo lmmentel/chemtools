@@ -26,10 +26,13 @@ Current Modules
   molecules
 
 
+Tutorials
+---------
+
 .. toctree::
    :maxdepth: 2
 
-   Tutorials <tutorials>
+   basisset <basisset>
    Module Reference <_reference/modules>
 
 Download and Installation

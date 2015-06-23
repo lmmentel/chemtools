@@ -139,6 +139,7 @@ class BasisSet:
             funs[shell]['e'] = generate_exponents(seqf, nf, params)
         functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
         bs = cls(name=name, element=element, functions=functions)
+        bs.uncontract()
         return bs
 
     @classmethod
@@ -160,7 +161,7 @@ class BasisSet:
         with open(fname, 'r') as fobj:
             basstr = fobj.read()
 
-        return self.from_str(basstr, fmt=fmt, name=name)
+        return BasisSet.from_str(basstr, fmt=fmt, name=name)
 
     @classmethod
     def from_str(cls, string, fmt=None, name=None):
@@ -218,12 +219,15 @@ class BasisSet:
         '''
 
         for shell, fs in self.functions.items():
-            fs['cc'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
+            fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
 
     def __repr__(self):
+        keys = ['name', 'element', 'family', 'kind']
+
         res = "<BasisSet(\n"
-        for key, val in self.__dict__.items():
-            res += "\t{k:<20s} = {v}\n".format(k=key, v=val)
+        for key in keys:
+            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
+        res += self.print_functions()
         res += ")>"
         return res
 
@@ -245,50 +249,44 @@ class BasisSet:
           BasisSet instance with functions from `self` and `other` merged
         '''
 
-        funcs = self.functions.copy()
-        for oshell, ofs in other.functions.items():
-            if oshell.lower() in self.functions.keys():
-                exps, idxs, idxo = merge_exponents(self.functions[oshell]['e'], ofs['e'])
-                funcs[oshell]['e'] = exps
-                for cf in funcs[oshell]['cc']:
+        selffuncs = copy.deepcopy(self.functions)
+        otherfuncs = copy.deepcopy(other.functions)
+        for oshell, ofs in otherfuncs.items():
+            if oshell.lower() in selffuncs.keys():
+                exps, idxs, idxo = merge_exponents(selffuncs[oshell]['e'], ofs['e'])
+                selffuncs[oshell]['e'] = exps
+                for cf in selffuncs[oshell]['cf']:
                     cf['idx'] = idxs[cf['idx']]
-                for cf in ofs['cc']:
+                for cf in ofs['cf']:
                     cf['idx'] = idxo[cf['idx']]
-                funcs[oshell]['cc'].extend(ofs['cc'])
+                selffuncs[oshell]['cf'].extend(ofs['cf'])
             else:
-                self.functions[oshell] = ofs
-        return BasisSet(name=self.name, element=self.element, functions=funcs)
-
-    def print_exponents(self):
-
-        for shell, fs in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])):
-            for exp in fs['e']:
-                print("{s:10s}  {e:>25.10f}".format(s=shell, e=exp))
+                selffuncs[oshell] = ofs
+        return BasisSet(name=self.name, element=self.element, functions=selffuncs)
 
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
         Return a string with the basis set in (new) CFOUR format.
 
         Args:
-            comment (str)
-                comment string
-            efmt (str)
-                string describing output format for the exponents, default:
-                "20.10f"
-            cfmt (str)
-                string describing output format for the contraction
-                coefficients, default: "15.8f"
+          comment : str
+            comment string
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
 
         Returns:
-            res (str)
-                basis set string
+          res : str
+            basis set string in Cfour format
         '''
 
         am, ne, cf = [], [], []
         for shell, shellfs in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])):
             am.append(SHELLS.index(shell))
             ne.append(len(shellfs["e"]))
-            cf.append(len(shellfs["cc"]))
+            cf.append(len(shellfs["cf"]))
 
         res = "\n{e}:{s}\n{c}\n\n".format(e=self.element, s=self.name, c=comment)
         res += "{0:3d}\n".format(len(self.functions.keys()))
@@ -301,12 +299,11 @@ class BasisSet:
             for lst in splitlist(fs['e'], 5):
                 res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst])  + "\n"
             res += "\n"
-            cc = list()
-            for cf in fs['cc']:
-                zeros = np.zeros_like(fs['e'])
-                zeros[cf['idx']] = cf['cc']
-                cc.append(zeros)
-            for row in zip(*cc):
+            # create an array with all the contraction coefficients for a given shell
+            cc = np.zeros((fs['e'].size, len(fs['cf'])))
+            for i, cf in enumerate(fs['cf']):
+                cc[cf['idx'], i] = cf['cc']
+            for row in cc:
                 for splitrow in splitlist(row, 5):
                     res += "{c}".format(c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in splitrow])) + "\n"
             res += "\n"
@@ -317,104 +314,186 @@ class BasisSet:
         Return a string with the basis set in DALTON format.
 
         Args:
-            efmt (str)
-                string describing output format for the exponents, default:
-                "20.10f"
-            cfmt (str)
-                string describing output format for the contraction
-                coefficients, default: "15.8f"
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
 
         Returns:
-            res (str)
-                basis set string
+          res : str
+            basis set string in Dalton format
         '''
 
         res = "! {s}\n".format(s=self.name)
         for shell, fs in self.functions.items():
             res += "! {s} functions\n".format(s=shell)
-            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f="F", p=len(fs['e']), c=len(fs['cc']))
-            for i, expt in enumerate(fs['e']):
-                cc = [t[1] if t[0] == i else 0.0 for csf in fs['cc'] for t in csf]
-                res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cc])) + "\n"
+            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f="F", p=len(fs['e']), c=len(fs['cf']))
+            # create an array with all the contraction coefficients for a given shell
+            cc = np.zeros((fs['e'].size, len(fs['cf'])))
+            for i, cf in enumerate(fs['cf']):
+                cc[cf['idx'], i] = cf['cc']
+            for expt, cfc in zip(fs['e'], cc):
+                res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
         return res
 
-    def to_gamess(self, efmt="20.10f", cfmt="15.8f"):
+    def to_gamessus(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in GAMESS(US) format.
 
         Args:
-            efmt (str)
-                string describing output format for the exponents, default:
-                "20.10f"
-            cfmt (str)
-                string describing output format for the contraction
-                coefficients, default: "15.8f"
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
 
         Returns:
-            res (str)
-                basis set string
+          res : str
+            basis set string in Gamess(US) format
         '''
 
         res = ""
         for shell, fs in self.functions.items():
-            for contraction in fs["cc"]:
+            for contraction in fs["cf"]:
                 res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(), n=len(contraction))
                 for i, (idx, coeff) in enumerate(contraction, start=1):
                     res += "{i:3d}{e:>{efmt}}{c:>{cfmt}}".format(i=i, e=fs['e'][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
         return res + "\n"
 
-    def to_molpro(self, efmt="20.10f", cfmt="15.8f"):
+    def to_gaussian(self, efmt="20.10f", cfmt="15.8f"):
+        '''
+        Return a string with the basis set in Gaussian format.
+
+        Args:
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
+
+        Returns:
+          res : str
+            basis set string in Gaussian format
+        '''
+
+        res = "****\n{e:<7s}0\n".format(e=self.element)
+        for shell, fs in self.functions.items():
+            for contraction in fs["cf"]:
+                res += "{s:<1s}{n:>4d}{i:>7.2f}\n".format(s=shell.upper(), n=len(contraction),i=1.0)
+                for idx, coeff in contraction:
+                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=fs['e'][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
+        return res + "****\n"
+
+    def to_molpro(self, pars=False, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in MOLPRO format.
 
         Args:
-            efmt (str)
-                string describing output format for the exponents, default:
-                "20.10f"
-            cfmt (str)
-                string describing output format for the contraction
-                coefficients, default: "15.8f"
+          pars : bool
+            a flag to indicate whether to wrap the basis with "basis={ }" string
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
 
         Returns:
-            res (str)
-                basis set string
+          res : str
+            basis set string
         '''
 
         res = ""
         for shell, fs in self.functions.items():
             exps = ", ".join(["{0:>{efmt}}".format(e, efmt=efmt).lstrip() for e in fs['e']])
             res += "{s:>s}, {e:>s}, ".format(s=shell, e=self.element) + exps + '\n'
-            for contraction in fs['cc']:
-                indices = [c[0] for c in contraction]
-                coeffs = ", ".join(["{0:>{cfmt}}".format(c[1], cfmt=cfmt).lstrip() for c in contraction])
-                res += "c, {0:d}.{1:d}, ".format(min(indices)+1, max(indices)+1) + coeffs + '\n'
+            for cf in fs['cf']:
+                coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cf['cc']])
+                res += "c, {0:d}.{1:d}, ".format(cf['idx'].min()+1, cf['idx'].max()+1) + coeffs + '\n'
+        if pars:
+            res = 'basis={\n' + res + '}'
         return res
-
 
     def to_nwchem(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in NWChem format.
 
         Args:
-            efmt (str)
-                string describing output format for the exponents, default:
-                "20.10f"
-            cfmt (str)
-                string describing output format for the contraction
-                coefficients, default: "15.8f"
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
 
         Returns:
-            res (str)
-                basis set string
+          res : str
+            basis set string in NwChem format
         '''
 
         res = 'BASIS "ao basis" PRINT\n'
         for shell, fs in self.functions.items():
-            res += "{e} {s}\n".format(e=self.element, s=shell)
-            for i, expt in enumerate(fs['e']):
-                cc = [t[1] if t[0] == i else 0.0 for csf in fs['cc'] for t in csf]
-                res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cc])) + '\n'
+            # create an array with all the contraction coefficients for a given shell
+            cc = np.zeros((fs['e'].size, len(fs['cf'])))
+            for i, cf in enumerate(fs['cf']):
+                cc[cf['idx'], i] = cf['cc']
+
+            # select columns with more than 1 non zero coefficients
+            nonzerocolmask = np.array([np.count_nonzero(col) > 1 for col in cc.T])
+            nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
+            if np.any(nonzerocolmask):
+                res += "{e} {s}\n".format(e=self.element, s=shell)
+                for expt, cfc in zip(fs['e'], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
+                    res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
+
+            if np.any(np.logical_not(nonzerocolmask)):
+                for colidx in np.where(np.logical_not(nonzerocolmask))[0]:
+                    res += "{e} {s}\n".format(e=self.element, s=shell)
+                    nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, colidx]])
+                    e = fs['e'][nonzerorowmask][0]
+                    c = cc[nonzerorowmask, :][0][colidx]
+                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
         return res + "END\n"
+
+    def print_functions(self, efmt="20.10f", cfmt="15.8f"):
+        '''
+        Return a string with the basis set.
+
+        Args:
+          efmt : str
+            string describing output format for the exponents, default: "20.10f"
+          cfmt : str
+            string describing output format for the contraction coefficients,
+            default: "15.8f"
+
+        Returns:
+          res : str
+            basis set string
+        '''
+
+        res = ''
+        for shell, fs in self.functions.items():
+            # create an array with all the contraction coefficients for a given shell
+            res += "\n" + "{s} shell".format(s=shell).center(40, '=') + "\n"
+            cc = np.zeros((fs['e'].size, len(fs['cf'])))
+            for i, cf in enumerate(fs['cf']):
+                cc[cf['idx'], i] = cf['cc']
+
+            # select columns with more than 1 non zero coefficients
+            nonzerocolmask = np.array([np.count_nonzero(col) > 1 for col in cc.T])
+            nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
+            if np.any(nonzerocolmask):
+                res += 'Contracted:\n'
+                for expt, cfc in zip(fs['e'], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
+                    res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
+
+            if np.any(np.logical_not(nonzerocolmask)):
+                res += 'Uncontracted:\n'
+                for colidx in np.where(np.logical_not(nonzerocolmask))[0]:
+                    nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, colidx]])
+                    e = fs['e'][nonzerorowmask][0]
+                    c = cc[nonzerorowmask, :][0][colidx]
+                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
+        return res
 
     def to_pickle(self, fname=None):
         '''Save the basis set in pickle format under the filename `fname`
@@ -430,38 +509,25 @@ class BasisSet:
         with open(fname, 'wb') as fbas:
             pickle.dump(self, fbas)
 
-    def contraction_scheme(self):
-        '''
-        Return a string describing the contraction scheme.
-        '''
-
-        cs, ec = [], []
-        for shell, fs in self.functions.items():
-            cs.append((shell, len(fs['e']), len(fs['cc'])))
-            ec.append([len(cfs) for cfs in fs['cc']])
-        return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
-                p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
-                c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
-                ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
 
     def nf(self, spherical=True):
         '''
         Calculate the number of basis functions
 
         Args:
-            spherical : bool
-                flag indicating if spherical or cartesian functions should be
-                used, default: True
+          spherical : bool
+            flag indicating if spherical or cartesian functions should be used,
+            default: True
 
         Returns:
-            res : int
-                number of basis functions
+          res : int
+            number of basis functions
         '''
 
         if spherical:
-            return sum(nspherical(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
+            return sum(nspherical(SHELLS.index(shell))*len(fs['cf']) for shell, fs in self.functions.items())
         else:
-            return sum(ncartesian(SHELLS.index(shell))*len(fs['cc']) for shell, fs in self.functions.items())
+            return sum(ncartesian(SHELLS.index(shell))*len(fs['cf']) for shell, fs in self.functions.items())
 
     @classmethod
     def uncontracted(cls, bs):
@@ -473,14 +539,28 @@ class BasisSet:
             shellfs["contractedfs"] = [{"indices" : [i], "coefficients" : [1.0]} for i, e in enumerate(shellfs["exponents"])]
         return bsnew
 
+    def contraction_scheme(self):
+        '''
+        Return a string describing the contraction scheme.
+        '''
+
+        cs, ec = [], []
+        for shell, fs in self.functions.items():
+            cs.append((shell, len(fs['e']), len(fs['cf'])))
+            ec.append([len(cfs) for cfs in fs['cf']])
+        return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
+                p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
+                c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
+                ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
+
     def primitives_per_shell(self):
         return [len(f['e']) for s, f in self.functions.items()]
 
     def contractions_per_shell(self):
-        return [len(f['cc']) for s, f in self.functions.items()]
+        return [len(f['cf']) for s, f in self.functions.items()]
 
     def primitives_per_contraction(self):
-        return [[len(cc) for cc in f['cc']] for s, f in self.functions.items()]
+        return [[len(cc) for cc in f['cf']] for s, f in self.functions.items()]
 
     def contraction_type(self):
         '''
@@ -536,14 +616,14 @@ def zetas2legendre(zetas, kmax):
     expansion coefficients into the legendre polynomials of the order "kmax".
 
     Args:
-        kmax (int)
-            length of the legendre expansion
-        zetas (list)
-            list of exponents (floats) to be fitted
+      kmax : int
+        length of the legendre expansion
+      zetas : list
+        list of exponents (floats) to be fitted
 
     Returns:
-        coeff (np.array)
-            numpy array of legendre expansion coeffcients of length kmax
+      coeff : numpy.array
+        numpy array of legendre expansion coeffcients of length kmax
     '''
 
     # exponents should be sorted in the acsending order
@@ -576,40 +656,45 @@ def eventemp(nf, params):
     Generate a sequence of nf even tempered exponents accodring to
     the even tempered formula
 
-    :math:`\\zeta_i = \\alpha \cdot \\beta^{i-1}`.
+    .. math::
+       \\zeta_i = \\alpha \cdot \\beta^{i-1}
 
     Args:
-        nf : int
-            number fo exponents to generate
-        params : tuple of floats
-            alpha and beta parameters
+      nf : int
+        number fo exponents to generate
+      params : tuple of floats
+        alpha and beta parameters
     Returns:
-        res : numpy array
-            array of generated exponents (floats)
+      res : numpy array
+        array of generated exponents (floats)
     '''
+
     if not isinstance(nf, int):
         raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
     if len(params) !=  2:
         raise ValueError('"params" tuple should have exactly 2 entries, got {}'.format(len(params)))
 
     alpha, beta = params
-    return alpha * np.power(beta, np.arange(nf))
+    zetas = alpha * np.power(beta, np.arange(nf))
+    return zetas[::-1]
 
 def welltemp(nf, params):
     '''
     Generate a sequence of nf well tempered exponents accodring to
     the well tempered fromula
 
-    :math:`\\zeta_i = \\alpha \cdot \\beta^{i-1} \cdot \\left[1 + \\gamma \cdot \\left(\\frac{i}{N}\\right)^{\delta}\\right]`.
+    ..math::
+      \\zeta_i = \\alpha \cdot \\beta^{i-1} \cdot \\left[1 + \\gamma \cdot \\left(\\frac{i}{N}\\right)^{\delta}\\right]
 
     Args:
-        nf : int
-            number fo exponents to generate
-        params : tuple of floats
-            alpha, beta, gamma and delta parameters
+      nf : int
+        number fo exponents to generate
+      params : tuple of floats
+        alpha, beta, gamma and delta parameters
+
     Returns:
-        res : numpy array
-            array of generated exponents (floats)
+      res : numpy.array
+        array of generated exponents (floats)
     '''
     if not isinstance(nf, int):
         raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
@@ -617,7 +702,9 @@ def welltemp(nf, params):
         raise ValueError('"params" tuple should have exactly 4 entries, got {}'.format(len(params)))
 
     alpha, beta, gamma, delta = params
-    return alpha*np.power(beta, np.arange(nf))*(1+gamma*np.power(np.arange(1, nf+1)/nf, delta))
+    zetas = alpha*np.power(beta, np.arange(nf))*(1+gamma*np.power(np.arange(1, nf+1)/nf, delta))
+    zetas.sort()
+    return zetas[::-1]
 
 def legendre(nf, coeffs):
     '''
@@ -625,16 +712,18 @@ def legendre(nf, coeffs):
     legendre polynomials as described in: Peterson, G. A. et.al J. Chem. Phys.,
     Vol. 118, No. 3 (2003), eq. (7).
 
-    :math:`\ln \\zeta_i = \\sum^{k_{\max}}_{k=0} A_k P_k \\left(\\frac{2j-2}{N-1}-1\\right)`
+    .. math::
+       \ln \\zeta_i = \\sum^{k_{\max}}_{k=0} A_k P_k \\left(\\frac{2j-2}{N-1}-1\\right)
 
     Args:
-        nf : int
-            number fo exponents to generate
-        params : tuple of floats
-            polynomial coefficients (expansion parameters)
+      nf : int
+        number fo exponents to generate
+      params : tuple of floats
+        polynomial coefficients (expansion parameters)
+
     Returns:
-        res : numpy array
-            array of generated exponents (floats)
+      res : numpy array
+        array of generated exponents (floats)
     '''
 
     if not isinstance(nf, int):
@@ -648,7 +737,7 @@ def legendre(nf, coeffs):
 
     poly = np.polynomial.legendre.Legendre(coeffs)
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]
-    return np.exp(zetas)
+    return np.exp(zetas[::-1])
 
 def group(lst, n):
     """group([0,3,4,10,2,3], 2) => [(0,3), (4,10), (2,3)]
@@ -713,7 +802,7 @@ def merge_exponents(a, b):
         - res[2] indices of `b` items in res[0]
     '''
 
-    u = np.union1d(a, b)
+    u = np.union1d(a, b)[::-1]
     idxa = np.where(np.in1d(u, a))[0]
     idxb = np.where(np.in1d(u, b))[0]
     return u, idxa, idxb
@@ -745,14 +834,14 @@ def parse_molpro_basis(string):
 
     bs = {}
     for i in startstop:
-        at_symbol, shell = parse_shell(lines[i[0]], lines[i[0]+1:i[1]])
+        at_symbol, shell = parse_molpro_shell(lines[i[0]], lines[i[0]+1:i[1]])
         if at_symbol in bs.keys():
             bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
         else:
             bs[at_symbol] = shell
     return bs
 
-def parse_shell(expsline, coeffs):
+def parse_molpro_shell(expsline, coeffs):
     '''
     Parse functions of one shell in molpro format.
     '''
@@ -766,14 +855,14 @@ def parse_shell(expsline, coeffs):
     at_symbol = expsline.split(",")[1].strip().capitalize()
     exps   = np.array([float(x) for x in expsline.rstrip(";").split(",")[2:]])
 
-    fs[shell] = {'e' : exps, 'cc' : []}
+    fs[shell] = {'e' : exps, 'cf' : []}
     if len(coeffs) != 0:
         for line in coeffs:
             lsp = line.rstrip(";").split(",")
             if lsp[0] == "c":
                 i, j = [int(x) for x in lsp[1].split(".")]
                 coeffs = [float(x) for x in lsp[2:]]
-                fs[shell]['cc'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
+                fs[shell]['cf'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
     else:
         for i in range(len(exps)):
             fs[shell]['cc'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
