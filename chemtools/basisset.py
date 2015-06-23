@@ -235,6 +235,7 @@ class BasisSet:
         res = "<BasisSet(\n"
         for key, val in self.__dict__.items():
             res += "\t{k:<20s} = {v}\n".format(k=key, v=val)
+        res += self.print_functions()
         res += ")>"
         return res
 
@@ -442,7 +443,7 @@ class BasisSet:
             nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
             if np.any(nonzerocolmask):
                 res += "{e} {s}\n".format(e=self.element, s=shell)
-                for expt, cfc in zip(fs['e'], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
+                for expt, cfc in zip(fs['e'][nonzerorowmask], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
                     res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
 
             if np.any(np.logical_not(nonzerocolmask)):
@@ -483,7 +484,7 @@ class BasisSet:
             nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
             if np.any(nonzerocolmask):
                 res += 'Contracted:\n'
-                for expt, cfc in zip(fs['e'], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
+                for expt, cfc in zip(fs['e'][nonzerorowmask], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
                     res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
 
             if np.any(np.logical_not(nonzerocolmask)):
@@ -581,6 +582,28 @@ class BasisSet:
         # one function per shell case
         if all(all(x == 1 for x in shell) for shell in ppc):
             return "uncontracted 1fps"
+
+    def sort(self, reverse=False):
+        '''
+        Sort the exponents in each shell
+
+        Args:
+          reverse : bool
+            If `False` sort in the descending order (default), else sort in
+            ascending order
+        '''
+
+        for shell, fs in self.functions.items():
+            if reverse:
+                idx = np.argsort(fs['e'])
+            else:
+                idx = np.argsort(fs['e'])[::-1]
+
+            # actually sort the exponents and coefficients
+            fs['e'] = fs['e'][idx]
+            for cf in fs['cf']:
+                cf['idx'] = idx[cf['idx']]
+                cf.sort(order='idx')
 
     def partial_wave_expand(self):
         """
