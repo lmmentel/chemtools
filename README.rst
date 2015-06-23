@@ -19,7 +19,7 @@ The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/
 Funding
 =======
 
-This project was realized through support from National Science Center (Poland) grant number
+This project was realized through the support from the National Science Center (Poland) grant number
 UMO-2012/07/B/ST4/01347.
 
 Citing
