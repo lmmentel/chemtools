@@ -13,7 +13,7 @@ import os
 from elements import element
 
 SHELLS = ["s", "p", "d", "f", "g", "h", "i", "j", "k"]
-CFDTYPE = [('idx', 'i4'), ('cc', 'f8')]
+CFDTYPE = [('idx', np.int32), ('cc', np.float64)]
 
 def read_pickle(fname):
     '''Read a pickled BasisSet object from file
@@ -185,7 +185,7 @@ class BasisSet:
         if fmt == 'molpro':
             bsd = parse_molpro_basis(string)
         elif fmt == 'gamessus':
-            bsd = parse_gamess_basis(string)
+            bsd = parse_gamessus_basis(string)
 
         # return a BasisSet object if only one basis parsed or dict of BasisSet
         # objects with atomic symbol as key
@@ -201,26 +201,6 @@ class BasisSet:
                         functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
             return res
 
-    def get_exponents(self, shell=None):
-        '''
-        Return the exponents of a given shell or if the shell isn't specified
-        return all of the available exponents
-        '''
-
-        if shell is None:
-            return chain.from_iterable([self.functions[k]['e'] for k in self.functions.keys()])
-        else:
-            return self.functions[shell]['e']
-
-    def uncontract(self):
-        '''
-        Uncontract the basis set. This replaces the contraction coefficients in
-        the current object.
-        '''
-
-        for shell, fs in self.functions.items():
-            fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
-
     def __repr__(self):
         keys = ['name', 'element', 'family', 'kind']
 
@@ -232,9 +212,11 @@ class BasisSet:
         return res
 
     def __str__(self):
+        keys = ['name', 'element', 'family', 'kind']
+
         res = "<BasisSet(\n"
-        for key, val in self.__dict__.items():
-            res += "\t{k:<20s} = {v}\n".format(k=key, v=val)
+        for key in keys:
+            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
         res += self.print_functions()
         res += ")>"
         return res
@@ -264,6 +246,26 @@ class BasisSet:
             else:
                 selffuncs[oshell] = ofs
         return BasisSet(name=self.name, element=self.element, functions=selffuncs)
+
+    def get_exponents(self, shell=None):
+        '''
+        Return the exponents of a given shell or if the shell isn't specified
+        return all of the available exponents
+        '''
+
+        if shell is None:
+            return chain.from_iterable([self.functions[k]['e'] for k in self.functions.keys()])
+        else:
+            return self.functions[shell]['e']
+
+    def uncontract(self):
+        '''
+        Uncontract the basis set. This replaces the contraction coefficients in
+        the current object.
+        '''
+
+        for shell, fs in self.functions.items():
+            fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
 
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
@@ -664,6 +666,23 @@ def zetas2legendre(zetas, kmax):
     return np.linalg.lstsq(a, np.log(zetas))[0]
 
 def generate_exponents(formula, nf, params):
+    '''
+    Generate a sequence of exponents from a specified formula
+
+    Args:
+      formula : str
+        name of the sequence from which the exponents are generated, one of:
+        - *even*, *eventemp*, *even tempered*
+        - *well*, *welltemp*, *well tempered*
+        - *legendre*
+      nf : int
+        number of exponents
+      params : tuple
+        parameters for the formula
+
+    Returns:
+      numpy.array with exponents
+    '''
 
     if formula.lower() in ["even", "eventemp", "even tempered"]:
         return eventemp(nf, params)
@@ -761,17 +780,6 @@ def legendre(nf, coeffs):
     poly = np.polynomial.legendre.Legendre(coeffs)
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]
     return np.exp(zetas[::-1])
-
-def group(lst, n):
-    """group([0,3,4,10,2,3], 2) => [(0,3), (4,10), (2,3)]
-
-    Group a list into consecutive n-tuples. Incomplete tuples are
-    discarded e.g.
-
-    >>> group(range(10), 3)
-    [(0, 1, 2), (3, 4, 5), (6, 7, 8)]
-    """
-    return list(zip(*[lst[i::n] for i in range(n)]))
 
 def get_x0(basisopt):
     '''
@@ -940,7 +948,7 @@ def parse_coeffs(lines):
         ecp[element]['shells'].append(tt)
     return ecp
 
-def parse_gamess_basis(string):
+def parse_gamessus_basis(string):
     '''
     Parse the basis set into a list of dictionaries from a string in
     gamess format.
@@ -970,14 +978,17 @@ def parse_gamess_basis(string):
                         shell, nf = match.group("shell").lower(), match.group("nf")
                         exps, indxs, coeffs = parse_function(bslines[i+1:i+int(nf)+1])
                         if shell in functions.keys():
-                            lasti = len(functions[shell]['e'])
-                            functions[shell]['e'].extend(exps)
-                            functions[shell]['cc'].append(list(zip([lasti + i - 1 for i in indxs], coeffs)))
+                            sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
+                            functions[shell]['e'] = sexp
+                            for cf in functions[shell]['cf']:
+                                cf['idx'] = idxs[cf['idx']]
+                            newcf = np.array(zip(idxo[indxs-1], coeffs), dtype=CFDTYPE)
+                            functions[shell]['cf'].append(newcf)
                         else:
                             functions[shell] = dict()
+                            functions[shell]['cf'] = list()
                             functions[shell]['e'] = exps
-                            functions[shell]['cc'] = list()
-                            functions[shell]['cc'].append(list(zip([i - 1 for i in indxs], coeffs)))
+                            functions[shell]['cf'].append(np.array(zip(indxs-1, coeffs), dtype=CFDTYPE))
                 res[elem.symbol] = functions
     return res
 
@@ -992,10 +1003,9 @@ def parse_function(los):
 
     real = re.compile(r'[dD]')
 
-    indxs = [int(item.split()[0]) for item in los]
-    exps = [float(real.sub('E', item.split()[1])) for item in los]
-    coeffs = [float(real.sub('E', item.split()[2])) for item in los]
+    indxs = np.array([int(item.split()[0]) for item in los], dtype=np.int32)
+    exps = np.array([float(real.sub('E', item.split()[1])) for item in los], dtype=np.float64)
+    coeffs = np.array([float(real.sub('E', item.split()[2])) for item in los], dtype=np.float64)
 
     return (exps, indxs, coeffs)
-
 
