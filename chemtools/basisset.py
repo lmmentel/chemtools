@@ -3,10 +3,10 @@
 from __future__ import division, print_function
 
 import copy
-import decimal
 import numpy as np
 from itertools import chain
 from collections import OrderedDict
+from scipy.linalg import sqrtm, inv
 import pickle
 import re
 import os
@@ -303,9 +303,7 @@ class BasisSet:
                 res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst])  + "\n"
             res += "\n"
             # create an array with all the contraction coefficients for a given shell
-            cc = np.zeros((fs['e'].size, len(fs['cf'])))
-            for i, cf in enumerate(fs['cf']):
-                cc[cf['idx'], i] = cf['cc']
+            cc = self.contraction_matrix(shell)
             for row in cc:
                 for splitrow in splitlist(row, 5):
                     res += "{c}".format(c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in splitrow])) + "\n"
@@ -333,12 +331,34 @@ class BasisSet:
             res += "! {s} functions\n".format(s=shell)
             res += "{f:1s}{p:>4d}{c:>4d}\n".format(f="F", p=len(fs['e']), c=len(fs['cf']))
             # create an array with all the contraction coefficients for a given shell
-            cc = np.zeros((fs['e'].size, len(fs['cf'])))
-            for i, cf in enumerate(fs['cf']):
-                cc[cf['idx'], i] = cf['cc']
+            cc = self.contraction_matrix(shell)
             for expt, cfc in zip(fs['e'], cc):
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
         return res
+
+    def contraction_matrix(self, shell):
+        '''
+        Return the contraction coefficients for a given shell in a matrix form
+        with size ne*nc, where ne is the number of exponents and nc is the number
+        of contracted functions
+
+        Args:
+          shell : str
+            shell label, *s*, *p*, *d*, ...
+
+        Returns:
+          out : 2D numpy.array
+            2D array with contraction coefficients
+        '''
+
+        if shell in self.functions.keys():
+            fs = self.functions[shell]
+            out = np.zeros((fs['e'].size, len(fs['cf'])))
+            for i, cf in enumerate(fs['cf']):
+                out[cf['idx'], i] = cf['cc']
+            return out
+        else:
+            raise ValueError("shell '{}' is not present in the BasisSet".format(shell))
 
     def to_gamessus(self, efmt="20.10f", cfmt="15.8f"):
         '''
@@ -436,9 +456,7 @@ class BasisSet:
         res = 'BASIS "ao basis" PRINT\n'
         for shell, fs in self.functions.items():
             # create an array with all the contraction coefficients for a given shell
-            cc = np.zeros((fs['e'].size, len(fs['cf'])))
-            for i, cf in enumerate(fs['cf']):
-                cc[cf['idx'], i] = cf['cc']
+            cc = self.contraction_matrix(shell)
 
             # select columns with more than 1 non zero coefficients
             nonzerocolmask = np.array([np.count_nonzero(col) > 1 for col in cc.T])
@@ -620,6 +638,74 @@ class BasisSet:
             bscopy.functions = {k:v for k, v in self.functions.items() if k in shells[:i]}
             res.append(bscopy)
         return res
+
+    def completeness_profile(self, zetas):
+        '''
+        Calculate the completeness profile of each shell of the basis set
+
+        Args:
+          zetas : numpy.array
+            Scaning exponents
+
+        Returns:
+          out : numpy.array
+            numpy array with values of the profile (shells, zetas)
+        '''
+
+        out = np.zeros((zetas.size, len(self.functions.keys())))
+
+        for i, (shell, fs) in enumerate(self.functions.items()):
+            cc = self.contraction_matrix(shell)
+            # calculate the overlap matrix
+            S = self.shell_overlap(shell)
+            # calculate the inverse square root of S
+            X = inv(sqrtm(S))
+            SO = primitive_overlap(SHELLS.index(shell), fs['e'], zetas)
+            J = np.dot(np.dot(cc, X).T, SO)
+            Y = np.sum(np.square(J), axis=0)
+            out[:, i] = Y
+        return out
+
+    def shell_overlap(self, shell):
+        '''
+        Calculate the overlap integrals for a given shell
+
+        Args:
+          shell : str
+            Shell
+
+        Returns:
+          out : numpy.array
+            Overlap integral matrix
+        '''
+
+        exps = self.functions[shell]['e']
+        S = primitive_overlap(SHELLS.index(shell), exps, exps)
+        cc = self.contraction_matrix(shell)
+        return np.dot(cc.T, np.dot(S, cc))
+
+def primitive_overlap(l, a, b):
+    '''
+    Calculate the overlap integrals for a given shell `l` and two sets of exponents
+
+    .. math::
+
+       S(\zeta_i, \zeta_j) = \frac{2^{l + \frac{3}{2}} \left(\zeta_{1} \zeta_{2}\right)^{\frac{l}{2} + \frac{3}{4}}}{\left(\zeta_{1} + \zeta_{2}\right)^{l + \frac{3}{2}}}
+
+    Args:
+      l : int
+        Angular momentum quantum number of the shell
+      a (M,) : numpy.array
+        First vector of exponents
+      b (N,) : numpy.array
+        Second vector of exponents
+
+    Returns:
+      out (M, N) : numpy.array
+        Overlap integrals
+    '''
+
+    return np.power(2.0*np.sqrt(np.outer(a, b))/np.add.outer(a, b), l + 1.5)
 
 def nspherical(l):
     '''
@@ -1008,4 +1094,5 @@ def parse_function(los):
     coeffs = np.array([float(real.sub('E', item.split()[2])) for item in los], dtype=np.float64)
 
     return (exps, indxs, coeffs)
+
 
