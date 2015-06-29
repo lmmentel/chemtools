@@ -278,15 +278,6 @@ class BasisSet:
             for shell, fs in self.functions.items():
                 fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
 
-    @classmethod
-    def uncontracted(cls, bs):
-        '''
-        Return a new BasisSet object with uncotracted version of the basis.
-        '''
-        for shell, shellfs in sorted(bsnew.functions.items(), key=lambda x: SHELLS.index(x[0])):
-            shellfs["contractedfs"] = [{"indices" : [i], "coefficients" : [1.0]} for i, e in enumerate(shellfs["exponents"])]
-        return bsnew
-
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
         Return a string with the basis set in (new) CFOUR format.
@@ -585,17 +576,37 @@ class BasisSet:
                 ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
 
     def primitives_per_shell(self):
+        '''
+        Calculate how many primitive functions are in each shell.
+
+        Returns:
+          out : list of ints
+        '''
+
         return [len(f['e']) for s, f in self.functions.items()]
 
     def contractions_per_shell(self):
+        '''
+        Calculate how many contracted functions are in each shell.
+
+        Returns:
+          out : list of ints
+        '''
+
         return [len(f['cf']) for s, f in self.functions.items()]
 
     def primitives_per_contraction(self):
+        '''
+        Calculate how many primities are used in each contracted function.
+
+        Returns:
+          out : list of ints
+        '''
         return [[len(cc) for cc in f['cf']] for s, f in self.functions.items()]
 
     def contraction_type(self):
         '''
-        Determine the contraction type: segmented, general, uncontracted, unknown
+        Try to determine the contraction type: segmented, general, uncontracted, unknown.
         '''
 
         pps = self.primitives_per_shell()
@@ -703,7 +714,7 @@ def primitive_overlap(l, a, b):
 
     .. math::
 
-       S(\zeta_i, \zeta_j) = \frac{2^{l + \frac{3}{2}} \left(\zeta_{1} \zeta_{2}\right)^{\frac{l}{2} + \frac{3}{4}}}{\left(\zeta_{1} + \zeta_{2}\right)^{l + \frac{3}{2}}}
+       S(\zeta_i, \zeta_j) = \\frac{2^{l + \\frac{3}{2}} \left(\zeta_{1} \zeta_{2}\\right)^{\\frac{l}{2} + \\frac{3}{4}}}{\left(\zeta_{1} + \zeta_{2}\\right)^{l + \\frac{3}{2}}}
 
     Args:
       l : int
@@ -736,8 +747,8 @@ def ncartesian(l):
 
 def zetas2legendre(zetas, kmax):
     '''
-    From a set of exponents "zetas", using least square fit calculate the
-    expansion coefficients into the legendre polynomials of the order "kmax".
+    From a set of exponents (`zetas`), using least square fit calculate the
+    expansion coefficients into the legendre polynomials of the order `kmax`.
 
     Args:
       kmax : int
@@ -771,9 +782,9 @@ def generate_exponents(formula, nf, params):
     Args:
       formula : str
         name of the sequence from which the exponents are generated, one of:
-        - *even*, *eventemp*, *even tempered*
-        - *well*, *welltemp*, *well tempered*
-        - *legendre*
+          - *even*, *eventemp*, *even tempered*
+          - *well*, *welltemp*, *well tempered*
+          - *legendre*
       nf : int
         number of exponents
       params : tuple
@@ -824,8 +835,9 @@ def welltemp(nf, params):
     Generate a sequence of nf well tempered exponents accodring to
     the well tempered fromula
 
-    ..math::
-      \\zeta_i = \\alpha \cdot \\beta^{i-1} \cdot \\left[1 + \\gamma \cdot \\left(\\frac{i}{N}\\right)^{\delta}\\right]
+    .. math::
+
+       \\zeta_i = \\alpha \cdot \\beta^{i-1} \cdot \\left[1 + \\gamma \cdot \\left(\\frac{i}{N}\\right)^{\delta}\\right]
 
     Args:
       nf : int
@@ -1076,7 +1088,7 @@ def parse_gamessus_basis(string):
                     match = pat.search(line)
                     if match:
                         shell, nf = match.group("shell").lower(), match.group("nf")
-                        exps, indxs, coeffs = parse_function(bslines[i+1:i+int(nf)+1])
+                        exps, indxs, coeffs = parse_gamessus_function(bslines[i+1:i+int(nf)+1])
                         if shell in functions.keys():
                             sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
                             functions[shell]['e'] = sexp
@@ -1092,7 +1104,7 @@ def parse_gamessus_basis(string):
                 res[elem.symbol] = functions
     return res
 
-def parse_function(los):
+def parse_gamessus_function(los):
     '''
     Parse a basis set function information from list of strings into
     three lists containg: exponents, indices, coefficients.

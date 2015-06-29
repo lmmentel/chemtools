@@ -18,7 +18,7 @@ The `BasisSet` class can be instantiated through three basic mechanisms:
 - by directly specyfinig the `functions`
 
 Initialize from a sequence
-------------------------
+--------------------------
 
 There are three kinds of sequences that can be used to generate exponents:
 - even tempered expansion,
