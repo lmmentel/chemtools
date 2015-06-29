@@ -2,7 +2,7 @@
 
 from __future__ import division, print_function
 
-import copy
+from copy import deepcopy
 import numpy as np
 from itertools import chain
 from collections import OrderedDict
@@ -214,11 +214,11 @@ class BasisSet:
     def __str__(self):
         keys = ['name', 'element', 'family', 'kind']
 
-        res = "<BasisSet(\n"
+        res = ''
         for key in keys:
-            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
+            res += "{k:<20s} = {v}\n".format(k=key.capitalize(), v=getattr(self, key))
+        res += 'Functions:\n'
         res += self.print_functions()
-        res += ")>"
         return res
 
     def __add__(self, other):
@@ -232,8 +232,8 @@ class BasisSet:
           BasisSet instance with functions from `self` and `other` merged
         '''
 
-        selffuncs = copy.deepcopy(self.functions)
-        otherfuncs = copy.deepcopy(other.functions)
+        selffuncs = deepcopy(self.functions)
+        otherfuncs = deepcopy(other.functions)
         for oshell, ofs in otherfuncs.items():
             if oshell.lower() in selffuncs.keys():
                 exps, idxs, idxo = merge_exponents(selffuncs[oshell]['e'], ofs['e'])
@@ -258,14 +258,34 @@ class BasisSet:
         else:
             return self.functions[shell]['e']
 
-    def uncontract(self):
+    def uncontract(self, copy=False):
         '''
         Uncontract the basis set. This replaces the contraction coefficients in
         the current object.
+
+        Args:
+          copy : bool
+            If `True` return an uncontracted copy of the basis set rather than
+            uncontracting in place, default is `False`.
         '''
 
-        for shell, fs in self.functions.items():
-            fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
+        if copy:
+            res = deepcopy(self)
+            for shell, fs in res.functions.items():
+                fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
+            return res
+        else:
+            for shell, fs in self.functions.items():
+                fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
+
+    @classmethod
+    def uncontracted(cls, bs):
+        '''
+        Return a new BasisSet object with uncotracted version of the basis.
+        '''
+        for shell, shellfs in sorted(bsnew.functions.items(), key=lambda x: SHELLS.index(x[0])):
+            shellfs["contractedfs"] = [{"indices" : [i], "coefficients" : [1.0]} for i, e in enumerate(shellfs["exponents"])]
+        return bsnew
 
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
@@ -495,25 +515,25 @@ class BasisSet:
         for shell, fs in self.functions.items():
             # create an array with all the contraction coefficients for a given shell
             res += "\n" + "{s} shell".format(s=shell).center(40, '=') + "\n"
-            cc = np.zeros((fs['e'].size, len(fs['cf'])))
-            for i, cf in enumerate(fs['cf']):
-                cc[cf['idx'], i] = cf['cc']
-
+            cc = self.contraction_matrix(shell)
+            count = 0
             # select columns with more than 1 non zero coefficients
             nonzerocolmask = np.array([np.count_nonzero(col) > 1 for col in cc.T])
             nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
             if np.any(nonzerocolmask):
                 res += 'Contracted:\n'
                 for expt, cfc in zip(fs['e'][nonzerorowmask], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
-                    res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
+                    count += 1
+                    res += "{i:5d}{e:>{efmt}}{c}".format(i=count, e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
 
             if np.any(np.logical_not(nonzerocolmask)):
                 res += 'Uncontracted:\n'
                 for colidx in np.where(np.logical_not(nonzerocolmask))[0]:
+                    count += 1
                     nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, colidx]])
                     e = fs['e'][nonzerorowmask][0]
                     c = cc[nonzerorowmask, :][0][colidx]
-                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
+                    res += "{i:5d}{e:>{efmt}}{c:>{cfmt}}".format(i=count, e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
         return res
 
     def to_pickle(self, fname=None):
@@ -549,16 +569,6 @@ class BasisSet:
             return sum(nspherical(SHELLS.index(shell))*len(fs['cf']) for shell, fs in self.functions.items())
         else:
             return sum(ncartesian(SHELLS.index(shell))*len(fs['cf']) for shell, fs in self.functions.items())
-
-    @classmethod
-    def uncontracted(cls, bs):
-        '''
-        Return a new BasisSet object with uncotracted version of the basis.
-        '''
-        bsnew = copy.deepcopy(bs)
-        for shell, shellfs in sorted(bsnew.functions.items(), key=lambda x: SHELLS.index(x[0])):
-            shellfs["contractedfs"] = [{"indices" : [i], "coefficients" : [1.0]} for i, e in enumerate(shellfs["exponents"])]
-        return bsnew
 
     def contraction_scheme(self):
         '''
@@ -605,13 +615,16 @@ class BasisSet:
 
     def sort(self, reverse=False):
         '''
-        Sort the exponents in each shell
+        Sort shells in the order of increasing angular momentum and for each
+        shell sort the exponents.
 
         Args:
           reverse : bool
-            If `False` sort in the descending order (default), else sort in
-            ascending order
+            If `False` sort the exponents in each shell in the descending order
+            (default), else sort exponents in ascending order
         '''
+
+        self.functions = OrderedDict(sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])))
 
         for shell, fs in self.functions.items():
             if reverse:
@@ -963,6 +976,7 @@ def parse_molpro_shell(expsline, coeffs):
     Parse functions of one shell in molpro format.
     '''
 
+    real = re.compile(r'[dD]')
     # remove empty strings and whitespace line breaks and tabs
     coeffs = [x.strip() for x in coeffs if x.strip() not in ['', '\n', '\t']]
 
@@ -970,7 +984,7 @@ def parse_molpro_shell(expsline, coeffs):
 
     shell  = expsline.split(",")[0].lower()
     at_symbol = expsline.split(",")[1].strip().capitalize()
-    exps   = np.array([float(x) for x in expsline.rstrip(";").split(",")[2:]])
+    exps   = np.array([float(real.sub('E', x)) for x in expsline.rstrip(";").split(",")[2:]])
 
     fs[shell] = {'e' : exps, 'cf' : []}
     if len(coeffs) != 0:
@@ -978,7 +992,7 @@ def parse_molpro_shell(expsline, coeffs):
             lsp = line.rstrip(";").split(",")
             if lsp[0] == "c":
                 i, j = [int(x) for x in lsp[1].split(".")]
-                coeffs = [float(x) for x in lsp[2:]]
+                coeffs = [float(real.sub('E', x)) for x in lsp[2:]]
                 fs[shell]['cf'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
     else:
         for i in range(len(exps)):
