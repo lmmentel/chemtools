@@ -113,7 +113,7 @@ class Molpro(Code):
                         "\texecutable={},".format(self.executable),
                         "\tscratch={},".format(self.scratch),
                         "\trunopts={},".format(str(self.runopts)),
-                        ")>"])
+                        ")>\n"])
 
 class MolproInput(object):
     '''
@@ -125,7 +125,7 @@ class MolproInput(object):
         self.fname = fname
         self.template = template
 
-    def write_input(self, template=None, mol=None, bs=None, core=""):
+    def write_input(self, template=None, mol=None, bs=None, core=None):
         '''
         Write the molpro input to "fname" file based on the information from the
         keyword arguments.
@@ -134,12 +134,14 @@ class MolproInput(object):
         temp = MolproTemplate(self.template)
 
         if isinstance(bs, list):
-            bs_str = "".join(x.write_molpro() for x in bs)
+            bs_str = "".join(x.to_molpro() for x in bs)
         else:
-            bs_str = bs.write_molpro()
+            bs_str = bs.to_molpro()
 
-        if core != "":
+        if core is not None:
             core = "core,{0:s}\n".format(",".join([str(x) for x in core]))
+        else:
+            core = ''
 
         subs = {
             'geometry' : mol.molpro_rep(),

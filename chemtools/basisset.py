@@ -87,56 +87,67 @@ class BasisSet:
         self.functions = functions
 
     @classmethod
-    def from_optdict(cls, x0, functs, name=None, element=None):
-
-        total_nf = sum([x[1] for x in functs])
-        if len(x0) != total_nf:
-            raise ValueError('size mismatch {0} != {1}'.format(len(x0), total_nf))
-
-        funs = dict()
-        ni = 0; nt = 0
-        for shell, nf, _ in functs:
-            nt += nf
-            funs[shell] = dict()
-            funs[shell]['e'] = np.array(x0[ni:nt])
-            ni += nf
-        functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
-        bs = cls(name=name, element=element, functions=functions)
-        return bs
-
-    @classmethod
-    def from_sequence(cls, formula=None, functs=None, name=None, element=None):
+    def from_optpars(cls, x0, functs=None, name=None, element=None):
         '''
         Return a basis set object generated from a sequence based on the specified
         arguments.
 
         Args:
-          formula : str
-            Generative formula for the exponents, allowed values are:
-                - *eventemp*, *even*, *even tempered*
-                - *welltemp*, *well*, *well tempered*
-                - *legendre*
+          x0 : list or numpy.array
+            Parameters to generate the basis set as a contonuous list or array
           functs : list of tuples
             A list of tuple specifying the shell type, number of functions and
-            parameters, e.g. `[('s', 4, (0.5, 2.0)), ('p', 3, (1.0, 3.0))]`
+            parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3, (1.0, 3.0))]`
           name : str
             Name of the basis set
           element : str
             Chemical symbol of the element
+
+        Returns:
+          out : BasisSet
+        '''
+
+        funs = dict()
+        ni = 0; nt = 0
+        for shell, seq, nf, params in functs:
+            funs[shell] = dict()
+            if seq in ["exp", "exponents"]:
+                nt += nf
+                funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
+                ni += nf
+            else:
+                nt += len(params)
+                funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
+                ni += len(params)
+        functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
+        bs = cls(name=name, element=element, functions=functions)
+        bs.uncontract()
+        return bs
+
+    @classmethod
+    def from_sequence(cls, functs=None, name=None, element=None):
+        '''
+        Return a basis set object generated from a sequence based on the specified
+        arguments.
+
+        Args:
+          functs : list of tuples
+            A list of tuple specifying the shell type, number of functions and
+            parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3, (1.0, 3.0))]`
+          name : str
+            Name of the basis set
+          element : str
+            Chemical symbol of the element
+
+        Returns:
+          out : BasisSet
         '''
 
         funs = dict()
 
-        if isinstance(formula, str):
-            formulas = [formula]*len(functs)
-        elif isinstance(formula, (list, tuple)):
-            formulas = formula
-        else:
-            raise ValueError('formula should be <str>, <list> or <tuple>, got: {}'.format(type(formula)))
-
-        for seqf, (shell, nf, params) in zip(formulas, functs):
+        for shell, seq, nf, params in functs:
             funs[shell] = dict()
-            funs[shell]['e'] = generate_exponents(seqf, nf, params)
+            funs[shell]['e'] = generate_exponents(seq, nf, params)
         functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
         bs = cls(name=name, element=element, functions=functions)
         bs.uncontract()
@@ -246,6 +257,45 @@ class BasisSet:
             else:
                 selffuncs[oshell] = ofs
         return BasisSet(name=self.name, element=self.element, functions=selffuncs)
+
+    def add(self, other):
+        '''Add functions from another BasisSet object
+
+        Args:
+          other : BasisSet
+            BasisSet object whose functions will be added to the existing ones
+        '''
+
+        for oshell, ofs in other.functions.items():
+            if oshell.lower() in self.functions.keys():
+                exps, idxs, idxo = merge_exponents(self.functions[oshell]['e'], ofs['e'])
+                self.functions[oshell]['e'] = exps
+                for cf in self.functions[oshell]['cf']:
+                    cf['idx'] = idxs[cf['idx']]
+                for cf in np.copy(ofs['cf']):
+                    cf['idx'] = idxo[cf['idx']]
+                    self.functions[oshell]['cf'].append(cf)
+            else:
+                self.functions[oshell] = ofs
+
+    def append(self, other):
+        '''Append functions from another BasisSet object
+
+        Args:
+          other : BasisSet
+            BasisSet object whose functions will be added to the existing ones
+        '''
+
+        otherfuncs = deepcopy(other.functions)
+        for oshell, ofs in otherfuncs.items():
+            if oshell.lower() in self.functions.keys():
+                i = self.functions[oshell]['e'].size
+                self.functions[oshell]['e'] = np.concatenate((self.functions[oshell]['e'], ofs['e']))
+                for cf in ofs['cf']:
+                    cf['idx'] = cf['idx'] + i
+                    self.functions[oshell]['cf'].append(cf)
+            else:
+                self.functions[oshell] = ofs
 
     def get_exponents(self, shell=None):
         '''
@@ -761,7 +811,7 @@ def zetas2legendre(zetas, kmax):
         numpy array of legendre expansion coeffcients of length kmax
     '''
 
-    # exponents should be sorted in the acsending order
+    # exponents should be sorted in the ascending order
     zetas = sorted(zetas)
     c = np.asarray([1.0]*kmax, dtype=float)
 
@@ -775,6 +825,23 @@ def zetas2legendre(zetas, kmax):
 
     return np.linalg.lstsq(a, np.log(zetas))[0]
 
+def zetas2eventemp(zetas):
+    '''
+    From a set of exponents (`zetas`), using least square fit calculate the
+    approximate $\\alpha$ and $\\beta$ parameters from the even tempered
+    expansion.
+
+    Args:
+      zetas : list
+        list of exponents (floats) to be fitted
+
+    Returns:
+      coeff : numpy.array
+        numpy array of legendre expansion coeffcients of length kmax
+    '''
+
+    return min(zetas), np.power(max(zetas)/min(zetas), 1.0/(len(zetas)-1))
+
 def generate_exponents(formula, nf, params):
     '''
     Generate a sequence of exponents from a specified formula
@@ -785,6 +852,7 @@ def generate_exponents(formula, nf, params):
           - *even*, *eventemp*, *even tempered*
           - *well*, *welltemp*, *well tempered*
           - *legendre*
+          - *exp*, *exponents*
       nf : int
         number of exponents
       params : tuple
@@ -794,12 +862,14 @@ def generate_exponents(formula, nf, params):
       numpy.array with exponents
     '''
 
-    if formula.lower() in ["even", "eventemp", "even tempered"]:
+    if formula.lower() in ["et", "even", "eventemp", "even tempered"]:
         return eventemp(nf, params)
-    elif formula.lower() in ["well", "welltemp", "well tempered"]:
+    elif formula.lower() in ["wt", "well", "welltemp", "well tempered"]:
         return welltemp(nf, params)
-    elif formula.lower() in ["legendre"]:
+    elif formula.lower() in ["le", "legendre"]:
         return legendre(nf, params)
+    elif formula.lower() in ["exp", "exponents"]:
+        return np.sort(np.array(params))[::-1]
     else:
         raise ValueError('unknown sequence name: {}'.format(formula))
 
@@ -892,13 +962,6 @@ def legendre(nf, coeffs):
     zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]
     return np.exp(zetas[::-1])
 
-def get_x0(basisopt):
-    '''
-    Collect all the parameters in a consecutive list of elements.
-    '''
-
-    return list(chain.from_iterable(basisopt["params"]))
-
 def splitlist(l, n):
     if len(l) % n == 0:
         splits = len(l)//n
@@ -909,6 +972,15 @@ def splitlist(l, n):
 
     for i in range(splits):
         yield l[n*i:n*i+n]
+
+def sliceinto(l, s):
+    '''slice a list into chunks with sizes defined in s'''
+
+    if len(l) != sum(s):
+        raise ValueError('cannot slice list, size mismatch {}!={}'.format(len(l), sum(s)))
+
+    si = [sum(s[:i]) for i in range(0, len(s))]
+    return [l[i:i+s] for i, s in zip(si, sizes)]
 
 def have_equal_floats(a, b):
     '''

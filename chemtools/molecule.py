@@ -60,9 +60,14 @@ class Atom(object):
         return out
 
     def __repr__(self):
-        outs = "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}".format(
+        out = "{0:<10s} {1:5.1f}\t{2:15.5f}{3:15.5f}{4:15.5f}".format(
                 self.symbol, float(self.atomic_number), self.xyz[0], self.xyz[1], self.xyz[2])
-        return outs
+        return out
+
+    def __str__(self):
+        out = "{0:<10s} {1:14.2f}\t{2:15.5f}{3:15.5f}{4:15.5f}\n".format(
+                self.symbol, float(self.atomic_number), self.xyz[0], self.xyz[1], self.xyz[2])
+        return out
 
 class Molecule(object):
 
@@ -122,15 +127,6 @@ class Molecule(object):
                 nelectrons += atom.atomic_number
         return nelectrons - self.charge
 
-    def print_molecule(self):
-
-        '''Print formatted molecule data.'''
-
-        print("Molecule: {n:<10s} Charge: {c:<10d} Multiplicty: {m:<10d} Electrons: {e:<10d}\n".format(
-              n=self.name, c=self.charge, m=self.multiplicity, e=self.nele()))
-        print("{0:<10s} {1:14s}\t{2:^10s}{3:^10s}{4:^10s}\n".format("Element", "Nuclear Charge", "x", "y", "z"))
-        for atom in self.atoms:
-            print(atom)
 
     def get_distance(self, atom1, atom2):
 
@@ -166,3 +162,14 @@ class Molecule(object):
         out += ")>"
         return out
 
+    def __str__(self):
+
+        '''Print formatted molecule data.'''
+
+        out = 'Name: {n:<10s} Charge: {c:<10d} Multiplicty: {m:<10d} Electrons: {e:<10d}\n'.format(
+              n=self.name, c=self.charge, m=self.multiplicity, e=self.nele())
+        out += 'Atoms:\n'
+        out += '{0:<10s} {1:^14s}\t{2:^15s}{3:^15s}{4:^15s}\n'.format("Element", "Nuclear Charge", "x", "y", "z")
+        for atom in self.atoms:
+            out += str(atom)
+        return out

@@ -131,7 +131,7 @@ class Gamess(Code):
                         "\tversion={},".format(self.version),
                         "\tscratch={},".format(self.scratch),
                         "\trunopts={},".format(str(self.runopts)),
-                        ")>"])
+                        ")>\n"])
 
 class GamessInput(object):
     '''
@@ -289,7 +289,7 @@ class GamessInput(object):
         if mol is not None:
             for atom in mol.unique():
                 data += atom.gamess_rep()
-                data += bsd[atom.symbol].write_gamess()
+                data += bsd[atom.symbol].to_gamess()
         data += self.end
         return data
 
