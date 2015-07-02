@@ -125,10 +125,18 @@ class MolproInput(object):
         self.fname = fname
         self.template = template
 
-    def write_input(self, template=None, mol=None, bs=None, core=None):
+    def write_input(self, mol=None, bs=None, core=None):
         '''
         Write the molpro input to "fname" file based on the information from the
         keyword arguments.
+
+        Args:
+          mol : chemtools.molecule.Molecule
+            Molecule object instance
+          bs : chemtools.basisset.BasisSet
+            BasisSet class instance or list of those instances
+          core : list of ints
+            Molpro core specification
         '''
 
         temp = MolproTemplate(self.template)
@@ -266,20 +274,3 @@ class MolproOutputParser(object):
             return False
         else:
             return True
-
-    def get_basis(self):
-
-        with open(self.output, 'r') as fout:
-            for line in fout:
-                if line[1:11] == "BASIS DATA":
-
-                    print("skipped: ", next(fout), end='')
-                    print("skipped: ", next(fout), end='')
-                    print("skipped: ", next(fout), end='')
-
-                    line = "dummy"
-                    while line.strip() != "":
-                        line = next(fout)
-                        print(line, end='')
-
-

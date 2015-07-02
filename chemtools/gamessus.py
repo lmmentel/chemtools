@@ -17,16 +17,17 @@ import re
 import sys
 
 
-class Gamess(Code):
+class GamessUS(Code):
 
     '''Container object for Gamess-us jobs.'''
 
-    def __init__(self, name="GamessUS", version="00", **kwargs):
-        super(Gamess, self).__init__(**kwargs)
+    def __init__(self, name="GamessUS", version="00", runopts=None, **kwargs):
+        super(GamessUS, self).__init__(**kwargs)
         self.name = name
         self.rungms = self.executable
         self.gmspath = os.path.dirname(self.executable)
         self.version = version
+        self.runopts = runopts
 
         if os.path.isfile(os.path.join(self.gmspath, 'ddikick.x')):
             self.ddikick = os.path.join(self.gmspath, 'ddikick.x')
@@ -61,13 +62,13 @@ class Gamess(Code):
             os.remove(os.path.join(self.scratch, datfile))
 
 
-    def run(self, inpfile, logfile=None):
+    def run(self, inpfile, logfile=None, remove_dat=True):
         '''
         Run a single gamess job interactively - without submitting to the
         queue.
         '''
 
-        if self.runopts["remove_dat"]:
+        if remove_dat:
             self.remove_dat(inpfile)
 
         if logfile is None:
