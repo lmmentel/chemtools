@@ -247,36 +247,14 @@ class BasisSet:
         otherfuncs = deepcopy(other.functions)
         for oshell, ofs in otherfuncs.items():
             if oshell.lower() in selffuncs.keys():
-                exps, idxs, idxo = merge_exponents(selffuncs[oshell]['e'], ofs['e'])
-                selffuncs[oshell]['e'] = exps
-                for cf in selffuncs[oshell]['cf']:
-                    cf['idx'] = idxs[cf['idx']]
+                i = self.functions[oshell]['e'].size
+                selffuncs[oshell]['e'] = np.concatenate((selffuncs[oshell]['e'], ofs['e']))
                 for cf in ofs['cf']:
-                    cf['idx'] = idxo[cf['idx']]
-                selffuncs[oshell]['cf'].extend(ofs['cf'])
-            else:
-                selffuncs[oshell] = ofs
-        return BasisSet(name=self.name, element=self.element, functions=selffuncs)
-
-    def add(self, other):
-        '''Add functions from another BasisSet object
-
-        Args:
-          other : BasisSet
-            BasisSet object whose functions will be added to the existing ones
-        '''
-
-        for oshell, ofs in other.functions.items():
-            if oshell.lower() in self.functions.keys():
-                exps, idxs, idxo = merge_exponents(self.functions[oshell]['e'], ofs['e'])
-                self.functions[oshell]['e'] = exps
-                for cf in self.functions[oshell]['cf']:
-                    cf['idx'] = idxs[cf['idx']]
-                for cf in np.copy(ofs['cf']):
-                    cf['idx'] = idxo[cf['idx']]
-                    self.functions[oshell]['cf'].append(cf)
+                    cf['idx'] = cf['idx'] + i
+                    selffuncs[oshell]['cf'].append(cf)
             else:
                 self.functions[oshell] = ofs
+        return BasisSet(name=self.name, element=self.element, functions=selffuncs)
 
     def append(self, other):
         '''Append functions from another BasisSet object
@@ -757,6 +735,33 @@ class BasisSet:
         S = primitive_overlap(SHELLS.index(shell), exps, exps)
         cc = self.contraction_matrix(shell)
         return np.dot(cc.T, np.dot(S, cc))
+
+def merge(first, other):
+    '''Merge functions from two BasisSet objects
+
+    Args:
+      first : BasisSet
+      other : BasisSet
+        BasisSet object whose functions will be added to the existing ones
+
+    Returns:
+        BasisSet instance with functions from `self` and `other` merged
+    '''
+
+    selffuncs = deepcopy(first.functions)
+    otherfuncs = deepcopy(other.functions)
+    for oshell, ofs in otherfuncs.items():
+        if oshell.lower() in selffuncs.keys():
+            exps, idxs, idxo = merge_exponents(selffuncs[oshell]['e'], ofs['e'])
+            selffuncs[oshell]['e'] = exps
+            for cf in selffuncs[oshell]['cf']:
+                cf['idx'] = idxs[cf['idx']]
+            for cf in ofs['cf']:
+                cf['idx'] = idxo[cf['idx']]
+            selffuncs[oshell]['cf'].extend(ofs['cf'])
+        else:
+            selffuncs[oshell] = ofs
+    return BasisSet(name=first.name, element=first.element, functions=selffuncs)
 
 def primitive_overlap(l, a, b):
     '''
