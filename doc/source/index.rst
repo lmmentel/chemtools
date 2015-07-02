@@ -32,7 +32,7 @@ Tutorials
 .. toctree::
    :maxdepth: 2
 
-   basisset <basisset>
+   Tutorials <tutorials>
    Module Reference <_reference/modules>
 
 Download and Installation

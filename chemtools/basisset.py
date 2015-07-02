@@ -161,9 +161,13 @@ class BasisSet:
           fname : str
             File name
           fmt : str
-            Format of the basis set in the file: *molpro*, *gamessus*
-         name : str
-           Name of the basis set
+            Format of the basis set in the file (*molpro*, *gamessus*)
+          name : str
+            Name of the basis set
+
+        Returns:
+          out : BasisSet or dict
+            Basisset object parsed from file or dictionary of BasisSet objects
         '''
 
         if name is None:
@@ -184,8 +188,13 @@ class BasisSet:
             A string with the basis set
           fmt : str
             Format of the basis set in the file: *molpro*, *gamessus*
-         name : str
-           Name of the basis set
+          name : str
+            Name of the basis set
+
+        Returns:
+          out : BasisSet or dict
+            Basisset object parsed from string or dictionary of BasisSet
+            objects
         '''
 
         formats = ['molpro', 'gamessus']
@@ -737,15 +746,18 @@ class BasisSet:
         return np.dot(cc.T, np.dot(S, cc))
 
 def merge(first, other):
-    '''Merge functions from two BasisSet objects
+    '''
+    Merge functions from two BasisSet objects
 
     Args:
       first : BasisSet
+        First `BasisSet` object to merge
       other : BasisSet
-        BasisSet object whose functions will be added to the existing ones
+        Second `BasisSet` object to merge
 
     Returns:
-        BasisSet instance with functions from `self` and `other` merged
+      our : BasisSet
+        BasisSet instance with functions from `first` and `other` merged
     '''
 
     selffuncs = deepcopy(first.functions)
