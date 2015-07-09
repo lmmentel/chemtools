@@ -7,6 +7,7 @@ import numpy as np
 from itertools import chain
 from collections import OrderedDict
 from scipy.linalg import sqrtm, inv
+from scipy.special import factorial, factorial2, binom
 import pickle
 import re
 import os
@@ -396,6 +397,34 @@ class BasisSet:
             for expt, cfc in zip(fs['e'], cc):
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
         return res
+
+    def normalze(self):
+        '''
+        Normalize contraction coefficients for each contracted functions based
+        on the primitive overlaps so that the norm is equal to 1.
+        '''
+
+        for shell, fs in bs.functions.items():
+            cc = bs.contraction_matrix(shell)
+            po = primitive_overlap(SHELLS.index(shell), fs['e'], fs['e'])
+            for col in range(cc.shape[1]):
+                norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
+                fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col]/np.sqrt(norm2)
+
+    def normalzation(self):
+        '''
+        For each function (contracted) calculate the norm and return a list of
+        tuples containing the shell, function index and the norm respectively.
+        '''
+
+        out = list()
+        for shell, fs in self.functions.items():
+            cc = self.contraction_matrix(shell)
+            po = primitive_overlap(SHELLS.index(shell), fs['e'], fs['e'])
+            for col in range(cc.shape[1]):
+                norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
+                out.append(tuple([shell, col, norm2]))
+        return out
 
     def contraction_matrix(self, shell):
         '''
