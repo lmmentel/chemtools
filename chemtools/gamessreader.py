@@ -14,7 +14,7 @@ import sys
 # classes
 
 # fortran modules nedded for GamessReader Class
-from gamessusfortranext import twoe
+#from gamessusfortranext import twoe
 
 class GamessFortranReader(object):
     '''
@@ -313,28 +313,24 @@ class SequentialFile(BinaryFile):
     def readseq(self, buff_size=15000, int_size=8, mos=False, skip_first=False):
         '''
         Read FORTRAN sequential unformatted file with two-electron quantities:
-            * two electron integrals over AO's: .F08 file
-            * two electron integrals over MO's: .F09 file
-            * elements of the two particle density matrix: .F15 file
+            - two electron integrals over AO's: .F08 file
+            - two electron integrals over MO's: .F09 file
+            - elements of the two particle density matrix: .F15 file
 
-        Input
-        =====
-            filename (str)
-                name of the file to read,
-            buffSize (int)
+        Args:
+            buff_size : int
                 size of the buffer holding values to be read, in gamessus it is
-                stored under "NINTMX" variable and in Linux version is equal to
+                stored under ``NINTMX`` variable and in Linux version is equal to
                 15000 which is the default value,
-            large_labels (bool)
+            large_labels : bool
                 a flag indicating if large labels should were used, if largest
-                label "i" (of the MO) is i<255 then large_labels should be False
-                (case "LABSIZ=1" in gamessus), otherwise set to True (case
-                "LABSIZ=2" in gamess(us),
-            skip_first (bool)
+                label ``i`` (of the MO) is ``i<255`` then large_labels should be False
+                (case ``LABSIZ=1`` in gamessus), otherwise set to True (case
+                ``LABSIZ=2`` in gamess(us),
+            skip_first : bool
                 skips the first record of the file is set to True,
 
-        Output
-        ======
+        Returns:
             numpy 1D array holding the values
         '''
 
@@ -425,10 +421,9 @@ class SequentialFile(BinaryFile):
 class GamessReader(object):
     '''
     Class for holding method for reading gamess binary files:
-        $JOB.F08 : two electron integrals over AO's,
-        $JOB.F09 : two electron integrals over MO's,
-        $JOB.F10 : the dictionary file with 1-e integrals, orbitals etc.,
-        $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
+        - $JOB.F08 : two electron integrals over AO's,
+        - $JOB.F09 : two electron integrals over MO's,
+        - $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
 
     TODO:
         CI coefficients, and CI hamiltonian matrix elements.
@@ -551,24 +546,25 @@ records = {
 
 class DictionaryFile(BinaryFile):
     '''
-    Wrapper for reading GAMESS(US) dictionary file (*.F10).
+    Wrapper for reading GAMESS(US) dictionary file (\*.F10).
     '''
 
     def __init__(self, filename, irecln=4090, int_size=8):
         """
-        Args:
 
-            irecln: int, is the record length that is used by GAMESS(US) when
-                writing the dicitonary file. It is a platform dependent
-                variable that is called IRECLN in the GAMESS(US) code. In
-                GAMESS(US) it is set by the function NRASIZ(UNIT) in iolib.src
-                and for dictionary file (unit=10) and UNX it is equal to 4090,
-                for all other files and UNX it is equal to 2048. If you use
-                GAMESS(US) on a different platform check the NRASIZ(UNIT)
-                function for the proper value and supply it when instantiating
-                the class.
-            int_size: int, is the integer size (in bytes) that the GAMESS(US)
-                was compiled with.
+        Args:
+          irecln: int
+            Rrecord length that is used by GAMESS(US) when
+            writing the dicitonary file. It is a platform dependent
+            variable that is called IRECLN in the GAMESS(US) code. In
+            GAMESS(US) it is set by the function NRASIZ(UNIT) in iolib.src
+            and for dictionary file (unit=10) and UNX it is equal to 4090,
+            for all other files and UNX it is equal to 2048. If you use
+            GAMESS(US) on a different platform check the NRASIZ(UNIT)
+            function for the proper value and supply it when instantiating
+            the class.
+          int_size: int
+            Integer size (in bytes) that the GAMESS(US) was compiled with.
         """
         super(DictionaryFile, self).__init__(filename)
 

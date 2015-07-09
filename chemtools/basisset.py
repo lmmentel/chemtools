@@ -58,9 +58,23 @@ class BasisSet:
     as a API for mongoDB basis set repository.
     '''
 
+    #__tablename__ = 'basissets'
+
+    #id = Column(Integer, primary_key=True)
+    #name = Column(String)
+    #element = Column(String)
+    #kind = Column(String)
+    #family = Column(String)
+    #functions = Column(Pickle)
+    #publishedin = Column(String)
+    #authors = relationship() # should be a separate table fot authors
+    #comments = Column(String)
+    #lastModified = Column(DateTime)
+    #status = Column(String)
+    #hasECP = Column(Bool)
 
     def __init__(self, name, element, family=None, kind=None,
-                 functions=None, params=None):
+                 functions=None):
         '''
         Args:
           name : str
@@ -76,14 +90,13 @@ class BasisSet:
           functions : dict
             Dict of functions with *s*, *p*, *d*, *f*, ... as keys
           params : list of dicts
-            Parameters for generating the functins according to the model
+            Parameters for generating the functions according to the model
         '''
 
         self.name = name
         self.element = element
         self.family = family
         self.kind = kind
-        self.params = params
         self.functions = functions
 
     @classmethod
@@ -1210,4 +1223,119 @@ def parse_gamessus_function(los):
 
     return (exps, indxs, coeffs)
 
+def xyzlist(l):
+    '''
+    Generate an array of :math:`l_x`, :math:`l_y`, :math:`l_z` components of
+    cartesian gaussian with a given angular momentum value in canonical order.
+
+    For exampe:
+      - ``l = 0`` generates the result ``array([[0, 0, 0]])``
+      - ``l = 1`` generates ``array([[1, 0, 0], [0, 1, 0], [0, 0, 1])``
+      - etc.
+
+    The functions are coded by triples of powers of *x*, *y*, *z*, namely
+    ``[1, 2, 3]`` corresponds to :math:`xy^{2}z^{3}`.
+
+    Args:
+      l : int
+        Angular momentum value
+
+    Returns:
+      out ((l+1)*(l+2)/2, 3) : numpy.array
+        Array of monomial powers, where columns correspond to *x*, *y*, and *z*
+        respectively and rows correspond to functions.
+    '''
+
+    ncart = (l + 1)*(l + 2) // 2
+    out = np.zeros((ncart, 3), dtype=np.int32)
+    index = 0
+    for i in range(l + 1):
+        for j in range(i + 1):
+            out[index,:] = [l - i, i - j, j]
+            index += 1
+    return out
+
+def zlmtoxyz(l):
+    '''
+    Generates the expansion coefficients of the real spherical harmonics in
+    terms of products of cartesian components. Method based on [1]_
+
+    .. [1] Schlegel, H. B., & Frisch, M. J. (1995). "Transformation between
+       Cartesian and pure spherical harmonic Gaussians". International Journal
+       of Quantum Chemistry, 54(2), 83–87. `doi:10.1002/qua.560540202 <http:www.dx.doi.org/10.1002/qua.560540202>`_
+
+    Args:
+      l : int
+        Angular momentum value
+
+    Returns:
+      out ((l+1)*(l+2)/2, 2*l + 1) : numpy.array
+        Expansion coefficients of real spherical harmonics in terms of cartesian
+        gaussians
+    '''
+
+    ncart = (l + 1)*(l + 2)//2
+    nspher = 2*l + 1
+
+    out = np.zeros((ncart, nspher))
+
+    cartc = xyzlist(l)
+
+    m = 0
+    for icart in range(ncart):
+        kx = cartc[icart, 0]
+        ky = cartc[icart, 1]
+        kz = cartc[icart, 2]
+        if kx + ky % 2 == 1:
+            continue
+        j = (kx + ky) / 2
+        tmpc = factorial2(2*kx - 1)*factorial2(2*ky - 1)*factorial2(2*kz - 1)/factorial2(2*l - 1)
+        tmpc = np.sqrt(tmpc)/factorial(j)
+        for i in range(l//2 + 1):
+            if j > i:
+                continue
+            if kx % 2 == 1:
+                continue
+            k = kx//2
+            if k > j:
+                continue
+            tmpi = tmpc*factorial2(2*l - 2*i - 1)/factorial(l - 2*i)/factorial(i - j)/2.0**i
+            if i % 2 == 1:
+                tmpi = -tmpi
+            out[icart, l] += binom(j, k)*tmpi
+
+    for m in range(1, l + 1):
+        for icart in range(ncart):
+            kx = cartc[icart, 0]
+            ky = cartc[icart, 1]
+            kz = cartc[icart, 2]
+            jj = kx + ky - m
+            if jj % 2 == 1:
+                continue
+            if  jj < 0:
+                continue
+            j = jj//2
+            tmpc = factorial2(2*kx - 1)*factorial2(2*ky - 1)*factorial2(2*kz - 1)/factorial2(2*l - 1)
+            tmpc = np.sqrt(2.0*tmpc*factorial(l-m)/factorial(l+m))/factorial(j)
+            for i in range((l-m)//2 + 1):
+                if j > i:
+                    continue
+                tmpi = tmpc*factorial2(2*l - 2*i-1)/factorial(l-m-2*i)/factorial(i - j)/2.0**i
+                if i % 2 == 1:
+                    tmpi = -tmpi
+                for k in range(j + 1):
+                    kk = kx - 2*k
+                    if kk < 0 or kk > m:
+                        continue
+                    tmpk = tmpi*binom(j, k)*binom(m, kk)
+                    kkk = m - kk
+                    if kkk % 4 == 0:
+                        out[icart, m + l] += tmpk
+                    elif kkk % 4 == 1:
+                        out[icart, -m + l] += tmpk
+                    elif kkk % 4 == 2:
+                        out[icart, m + l] -= tmpk
+                    else:
+                        out[icart, -m + l] -= tmpk
+    return out
 

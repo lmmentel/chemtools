@@ -41,8 +41,12 @@ def extrapolate(x, energy, method, **kwargs):
 
 def uste(method="CI"):
     '''
-    CBS extrapolation using USTE shceme based on
-    A. J. C. Varandas, JPCA 114, 8505-8516 (2010).
+    CBS extrapolation using uniform singlet and triplet pair extrapolation
+    (USTE) scheme [1]_.
+
+    .. [1] Varandas, A. J. C. (2007). "Extrapolating to the one-electron
+       basis-set limit in electronic structure calculations. The Journal of
+       Chemical Physics, 126(24), 244105. `doi:10.1063/1.2741259 <http://www.dx.doi.org/10.1063/1.2741259>`_
 
     Args:
       x : int
@@ -90,8 +94,12 @@ def uste(method="CI"):
 
 def exposqrt(twopoint=True):
     '''
-    Three-point formula for extrapolating the HF reference energy, as proposed
-    by *A. Karton and J. M. L. Martin, Theor. Chem. Acc. 115, 330.  (2006), DOI: 10.1007/s00214-005-0028-6>*.
+    Three-point formula for extrapolating the HF reference energy [2]_.
+
+    .. [2] Karton, A., & Martin, J. M. L. (2006). Comment on: “Estimating the
+       Hartree-Fock limit from finite basis set calculations” [Jensen F (2005)
+       Theor Chem Acc 113:267]. Theoretical Chemistry Accounts, 115, 330–333.
+       `doi:10.1007/s00214-005-0028-6 <http://www.dx.doi.org/10.1007/s00214-005-0028-6>`_
 
     .. math::
 
