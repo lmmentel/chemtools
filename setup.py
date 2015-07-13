@@ -55,7 +55,7 @@ setup(
         'scripts/bsconvert',
                ],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
-    version = '0.5.0',
+    version = '0.6.0',
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
