@@ -64,8 +64,8 @@ class TestBasisSetInitialization(unittest.TestCase):
 
     def test_init_eventemp_s(self):
 
-        f = [('s', 5, (0.5, 2.0)), ('p', 4, (1.0, 3.0))]
-        bs = BasisSet.from_sequence(formula='eventemp', functs=f, element='H', name='small et')
+        f = [('s', 'et', 5, (0.5, 2.0))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small et')
         self.assertIsInstance(bs, BasisSet)
         self.assertEqual(bs.name, 'small et')
         self.assertEqual(bs.element, 'H')
@@ -74,8 +74,8 @@ class TestBasisSetInitialization(unittest.TestCase):
 
     def test_init_eventemp_sp(self):
 
-        f = [('s', 5, (0.5, 2.0)), ('p', 4, (1.0, 3.0))]
-        bs = BasisSet.from_sequence(formula='eventemp', functs=f, element='H', name='small et')
+        f = [('s', 'et', 5, (0.5, 2.0)), ('p', 'et', 4, (1.0, 3.0))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small et')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['s']['e'],
             np.array([8.0, 4.0, 2.0, 1.0, 0.5])))
@@ -84,8 +84,8 @@ class TestBasisSetInitialization(unittest.TestCase):
 
     def test_init_eventemp_df(self):
 
-        f = [('d', 4, (0.5, 2.0)), ('f', 3, (1.0, 3.0))]
-        bs = BasisSet.from_sequence(formula='eventemp', functs=f, element='H', name='small et')
+        f = [('d', 'et', 4, (0.5, 2.0)), ('f', 'et', 3, (1.0, 3.0))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small et')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['d']['e'],
             np.array([4.0, 2.0, 1.0, 0.5])))
@@ -94,8 +94,8 @@ class TestBasisSetInitialization(unittest.TestCase):
 
     def test_init_welltemp_s(self):
 
-        f = [('s', 4, (0.5, 2.0, 3.0, 4.0))]
-        bs = BasisSet.from_sequence(formula='welltemp', functs=f, element='H', name='small wt')
+        f = [('s', 'wt', 4, (0.5, 2.0, 3.0, 4.0))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small wt')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['s']['e'],
             np.array([16.000, 3.8984375, 1.1875, 0.50585938])))
@@ -105,8 +105,8 @@ class TestBasisSetInitialization(unittest.TestCase):
         wt_s = np.array([30.4,  13.78515502,   6.21305899,   2.78349551,
                          1.24082247,   0.55241203])
         wt_p = np.array([72.9, 21.58054659, 6.35310115, 1.86463574, 0.54936271])
-        f = [('s', 6, (0.5, 2.0, 0.9, 1.2)), ('p', 5, (0.5, 3.0, 0.8, 1.3))]
-        bs = BasisSet.from_sequence(formula='welltemp', functs=f, element='H', name='small wt')
+        f = [('s', 'wt', 6, (0.5, 2.0, 0.9, 1.2)), ('p', 'wt', 5, (0.5, 3.0, 0.8, 1.3))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small wt')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['s']['e'], wt_s))
         self.assertTrue(np.allclose(bs.functions['p']['e'], wt_p))
@@ -115,8 +115,8 @@ class TestBasisSetInitialization(unittest.TestCase):
 
         le_s = np.array([ 20.08553692,   5.29449005,   1.39561243,   0.36787944])
 
-        f = [('s', 4, (1.0, 2.0))]
-        bs = BasisSet.from_sequence(formula='legendre', functs=f, element='H', name='small et')
+        f = [('s', 'le', 4, (1.0, 2.0))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small et')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['s']['e'], le_s))
 
@@ -125,9 +125,9 @@ class TestBasisSetInitialization(unittest.TestCase):
         leg_s = np.array([1.48029993e+03,   7.57611094e+00,   1.22140276e+00,
                           6.53769785e-01,   1.22456428e-01])
         leg_p = np.array([330.29955991,    5.21663132,    4.70275331,    1.8221188])
-        leg_d = np.array([36.59823444,   1.56831219,   1.8221188])
-        f = [('s', 5, (1.0, 3.5, 1.6, 1.2)), ('p', 4, (2.0, 1.5, 1.2, 1.1)), ('d', 3, (1.0, 1.5, 1.1))]
-        bs = BasisSet.from_sequence(formula='legendre', functs=f, element='H', name='small et')
+        leg_d = np.array([36.59823444,   1.8221188,   1.56831219])
+        f = [('s', 'le', 5, (1.0, 3.5, 1.6, 1.2)), ('p', 'le', 4, (2.0, 1.5, 1.2, 1.1)), ('d', 'le', 3, (1.0, 1.5, 1.1))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small et')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['s']['e'], leg_s))
         self.assertTrue(np.allclose(bs.functions['p']['e'], leg_p))
@@ -137,10 +137,9 @@ class TestBasisSetInitialization(unittest.TestCase):
 
         et_s = np.array([8.0, 4.0, 2.0, 1.0, 0.5])
         wt_p = np.array([16.000, 3.8984375, 1.1875, 0.50585938])
-        leg_d = np.array([36.59823444, 1.56831219, 1.8221188])
-        formulas = ['even', 'well', 'legendre']
-        f = [('s', 5, (0.5, 2.0)), ('p', 4, (0.5, 2.0, 3.0, 4.0)), ('d', 3, (1.0, 1.5, 1.1))]
-        bs = BasisSet.from_sequence(formula=formulas, functs=f, element='H', name='small et')
+        leg_d = np.array([36.59823444,   1.8221188,   1.56831219])
+        f = [('s', 'et', 5, (0.5, 2.0)), ('p', 'wt', 4, (0.5, 2.0, 3.0, 4.0)), ('d', 'le', 3, (1.0, 1.5, 1.1))]
+        bs = BasisSet.from_sequence(functs=f, element='H', name='small et')
         self.assertIsInstance(bs, BasisSet)
         self.assertTrue(np.allclose(bs.functions['s']['e'], et_s))
         self.assertTrue(np.allclose(bs.functions['p']['e'], wt_p))
@@ -150,15 +149,16 @@ class TestBasisSetPrintingFormatsUncontracted(unittest.TestCase):
 
     def setUp(self):
 
-        fs = [('s', 4, (0.5, 2.0)), ('p', 3, (1.0, 3.0)), ('d', 2, (1.5, 4.0))]
-        self.bs = BasisSet.from_sequence(name='test', element='H', functs=fs, formula='even')
+        fs = [('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3, (1.0, 3.0)), ('d', 'et', 2, (1.5, 4.0))]
+        self.bs = BasisSet.from_sequence(name='test', element='H', functs=fs)
 
     def tearDown(self):
         del self.bs
 
     def test_printing_to_gamessus(self):
 
-        bsstr = '''S  1
+        bsstr = '''H
+S  1
   1        4.0000000000     1.00000000
 S  1
   1        2.0000000000     1.00000000

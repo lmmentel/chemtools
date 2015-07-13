@@ -1,4 +1,4 @@
-''' Chemtools '''
+''' Chemtools setup script'''
 
 from setuptools.command.test import test as TestCommand
 import sys
@@ -41,6 +41,7 @@ setup(
         'sqlalchemy',
         'scipy >= 0.11',
         'numpy >= 1.7',
+        'mendeleev',
     ],
 
     license = open('LICENSE.rst').read(),
@@ -64,7 +65,7 @@ setup(
         'Topic :: Scientific/Engineering :: Chemistry',
         'Topic :: Scientific/Engineering :: Physics',
     ],
-    keywords = 'basis set optimization quantum chemistry molecular physics',
+    keywords = ['basis set', 'optimization', 'quantum chemistry', 'molecular physics'],
     tests_require=['tox', 'pytest'],
     cmdclass = {'test': Tox},
 )

@@ -1,51 +1,62 @@
+#The MIT License (MIT)
+#
+#Copyright (c) 2014 Lukasz Mentel
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
+
 from __future__ import print_function
 
 from argparse import ArgumentParser
 from chemtools.basisset import BasisSet
-from chemtools.gamessus import GamessInput
-from chemtools.molecule import ELEMENTS, element_from_name
 import os
-
-def get_basis_sets(filename):
-    '''
-    Read all basis sets from a file and return a list of BasisSet objects.
-
-    Args
-    ----
-    path : str
-    filename : str
-    '''
-
-    gi = GamessInput()
-
-    bsets = []
-
-    with open(filename, "r") as finp:
-        contents = finp.read()
-        bsname = os.path.splitext(os.path.basename(filename))[0]
-        for item in contents.split('\n\n'):
-            if not ((item.startswith("!") or item.startswith(" ")) or len(item) == 0):
-                element_name, basis = item.split('\n', 1)
-                if element_name != "":
-                    element_symbol, _ = element_from_name(element_name)
-                    bsets.append(BasisSet.from_dict({"name" : bsname, "element" : element_symbol,
-                                                     "functions" : gi.parse_gamess_basis(basis)}))
-    return bsets
 
 def main():
 
-    parser = ArgumentParser()
-    parser.add_argument("filename", help="file with a basis sets in gamess format")
-    parser.add_argument("-if", "--inputformat", choices=["gamessus", "molpro"], default="gamessus")
-    parser.add_argument("-of", "--outputformat", choices=["cfour", "dalton", "gamessus", "gaussian", "molpro", "nwchem"], default="gamessus")
+    parser = ArgumentParser(description='Convert basis set between formats of different programs')
+    parser.add_argument("filename", help="file name with a basis set")
+    parser.add_argument("-if",
+                        "--inputformat",
+                        choices=["gamessus", "gaussian", "molpro"],
+                        help="Basis set input format",
+                        default="gamessus")
+    parser.add_argument("-of",
+                        "--outputformat",
+                        choices=["cfour", "dalton", "gamessus", "gaussian", "molpro", "nwchem"],
+                        help="Basis set output format",
+                        default="gamessus")
     args = parser.parse_args()
 
-    bsets = get_basis_sets(args.filename)
+    name = os.path.splitext(args.filename)[0]
+    bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat, name=name)
 
     writer = "to_" + args.outputformat
-    for bset in bsets:
-        method = getattr(bset, writer)
+
+    if isinstance(bsets, dict):
+        for elem, bset in bsets.items():
+            method = getattr(bset, writer)
+            print(method())
+    elif isinstance(bsets, BasisSet):
+        method = getattr(bsets, writer)
         print(method())
+    else:
+        raise ValueError('Something went wrong')
+
 
 if __name__ == "__main__":
     main()

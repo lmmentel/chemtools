@@ -1,4 +1,24 @@
-#import pymongo
+#The MIT License (MIT)
+#
+#Copyright (c) 2014 Lukasz Mentel
+#
+#Permission is hereby granted, free of charge, to any person obtaining a copy
+#of this software and associated documentation files (the "Software"), to deal
+#in the Software without restriction, including without limitation the rights
+#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+#copies of the Software, and to permit persons to whom the Software is
+#furnished to do so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+#SOFTWARE.
 
 from __future__ import division, print_function
 
@@ -11,10 +31,8 @@ from scipy.special import factorial, factorial2, binom
 import pickle
 import re
 import os
-from elements import element
-
-SHELLS = ["s", "p", "d", "f", "g", "h", "i", "j", "k"]
-CFDTYPE = [('idx', np.int32), ('cc', np.float64)]
+from mendeleev import element
+from chemtools.basisparse import parse_basis, CFDTYPE, SHELLS
 
 def read_pickle(fname):
     '''Read a pickled BasisSet object from file
@@ -40,6 +58,7 @@ def read_dict(dct):
           - element
           - functions
     '''
+
     required = set(['name', 'element', 'functions'])
     if isinstance(dct, dict):
         if not required.issubset(set(d.keys())):
@@ -53,7 +72,7 @@ def read_dict(dct):
                 setattr(bs, key, val)
     return bs
 
-class BasisSet:
+class BasisSet(object):
     '''
     Basis set module supporting basic operation on basis sets and can be used
     as a API for mongoDB basis set repository.
@@ -165,6 +184,7 @@ class BasisSet:
         functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
         bs = cls(name=name, element=element, functions=functions)
         bs.uncontract()
+        bs.sort()
         return bs
 
     @classmethod
@@ -211,29 +231,20 @@ class BasisSet:
             objects
         '''
 
-        formats = ['molpro', 'gamessus']
-
-        if fmt.lower() not in formats:
-            raise ValueError("<fmt> should be one of: {}".format(", ".join(formats)))
-
-        if fmt == 'molpro':
-            bsd = parse_molpro_basis(string)
-        elif fmt == 'gamessus':
-            bsd = parse_gamessus_basis(string)
-
+        res = parse_basis(string, fmt=fmt)
         # return a BasisSet object if only one basis parsed or dict of BasisSet
         # objects with atomic symbol as key
 
-        res = dict()
-        if len(bsd) == 1:
-            atom, fs = bsd.items()[0]
-            return cls(name=name, element=bsd.keys()[0],
+        out = dict()
+        if len(res) == 1:
+            atom, fs = res.items()[0]
+            return cls(name=name, element=res.keys()[0],
                     functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
         else:
-            for atom, fs in bsd.items():
-                res[atom] = cls(name=name, element=atom,
+            for atom, fs in res.items():
+                out[atom] = cls(name=name, element=atom,
                         functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
-            return res
+            return out
 
     def __repr__(self):
         keys = ['name', 'element', 'family', 'kind']
@@ -404,8 +415,8 @@ class BasisSet:
         on the primitive overlaps so that the norm is equal to 1.
         '''
 
-        for shell, fs in bs.functions.items():
-            cc = bs.contraction_matrix(shell)
+        for shell, fs in self.functions.items():
+            cc = self.contraction_matrix(shell)
             po = primitive_overlap(SHELLS.index(shell), fs['e'], fs['e'])
             for col in range(cc.shape[1]):
                 norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
@@ -466,7 +477,7 @@ class BasisSet:
             basis set string in Gamess(US) format
         '''
 
-        res = ""
+        res = "{0:s}\n".format(self.element)
         for shell, fs in self.functions.items():
             for contraction in fs["cf"]:
                 res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(), n=len(contraction))
@@ -1060,197 +1071,6 @@ def have_equal_floats(a, b):
     x = np.array([x for x in product(a, b)])
     return np.any(np.isclose(x[:, 0], x[:, 1]))
 
-def merge_exponents(a, b):
-    '''
-    Concatenate the arrays `a` and `b` using only the unique items from both arrays
-
-    Args:
-      a : numpy.array
-      b : numpy.array
-
-    Returns:
-      res : 3-tuple of numpy arrays
-        - res[0] sorted union of `a` and `b`
-        - res[1] indices of `a` items in res[0]
-        - res[2] indices of `b` items in res[0]
-    '''
-
-    u = np.union1d(a, b)[::-1]
-    idxa = np.where(np.in1d(u, a))[0]
-    idxb = np.where(np.in1d(u, b))[0]
-    return u, idxa, idxb
-
-def parse_molpro_basis(string):
-    '''
-    Parse basis set from a string in Molpro format.
-    '''
-
-    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL|re.IGNORECASE)
-
-    m = bas_re.search(string)
-    if m:
-        lines = m.group(1).split("\n")
-    else:
-        raise ValueError("basis string not found")
-
-    start = []
-    for i, line in enumerate(lines):
-        if line.split(",")[0].lower() in SHELLS:
-            start.append(i)
-    if len(start) == 0:
-        return None
-
-    startstop = []
-    for i in range(len(start)-1):
-        startstop.append((start[i], start[i+1]))
-    startstop.append((start[-1], len(lines)))
-
-    bs = {}
-    for i in startstop:
-        at_symbol, shell = parse_molpro_shell(lines[i[0]], lines[i[0]+1:i[1]])
-        if at_symbol in bs.keys():
-            bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
-        else:
-            bs[at_symbol] = shell
-    return bs
-
-def parse_molpro_shell(expsline, coeffs):
-    '''
-    Parse functions of one shell in molpro format.
-    '''
-
-    real = re.compile(r'[dD]')
-    # remove empty strings and whitespace line breaks and tabs
-    coeffs = [x.strip() for x in coeffs if x.strip() not in ['', '\n', '\t']]
-
-    fs = {}
-
-    shell  = expsline.split(",")[0].lower()
-    at_symbol = expsline.split(",")[1].strip().capitalize()
-    exps   = np.array([float(real.sub('E', x)) for x in expsline.rstrip(";").split(",")[2:]])
-
-    fs[shell] = {'e' : exps, 'cf' : []}
-    if len(coeffs) != 0:
-        for line in coeffs:
-            lsp = line.rstrip(";").split(",")
-            if lsp[0] == "c":
-                i, j = [int(x) for x in lsp[1].split(".")]
-                coeffs = [float(real.sub('E', x)) for x in lsp[2:]]
-                fs[shell]['cf'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
-    else:
-        for i in range(len(exps)):
-            fs[shell]['cc'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
-    return at_symbol, fs
-
-def parse_ecp(ecpstring):
-
-    ecp_re = re.compile(r'\!\s*Effective core Potentials.*-{25}\s*\n(.*?)\n\s*\n', flags=re.DOTALL)
-
-    lines = ecpstring.split("\n")
-
-    start = []
-    for i, line in enumerate(lines):
-        if line.split(",")[0].lower() == 'ecp':
-            start.append(i)
-
-    if len(start) == 0:
-        return None
-
-    startstop = []
-    for i in range(len(start)-1):
-        startstop.append((start[i], start[i+1]))
-    startstop.append((start[-1], len(lines)))
-
-    ecp = {}
-    for i in startstop:
-        ecp = dict(list(ecp.items()) + list(parse_coeffs(lines[i[0] : i[1]]).items()))
-    return ecp
-
-def parse_coeffs(lines):
-
-    firstl = lines[0].replace(';', '').split(',')
-    element = firstl[1].strip().capitalize()
-    nele = firstl[2]
-    lmax = firstl[3]
-
-    liter = iter(x for x in lines[1:] if x != '')
-
-    ecp = {element : {"nele" : nele, "lmax" : lmax, "shells" : []}}
-
-    while True:
-        try:
-            temp = next(liter)
-        except StopIteration as err:
-            break
-        nlmax = int(temp.split(";")[0])
-        comment = temp.split(";")[1].replace("!", "")
-        tt = {'comment' : comment, 'parameters' : []}
-        for i in range(nlmax):
-            param = next(liter).replace(";", "").split(",")
-            tt['parameters'].append({'m' : float(param[0]), 'gamma' : float(param[1]),'c' : float(param[2])})
-        ecp[element]['shells'].append(tt)
-    return ecp
-
-def parse_gamessus_basis(string):
-    '''
-    Parse the basis set into a list of dictionaries from a string in
-    gamess format.
-    '''
-
-    bas_re = re.compile(r'\$DATA\n(.*?)\$END', flags=re.DOTALL|re.IGNORECASE)
-
-    m = bas_re.search(string)
-    if m:
-        basisstr = m.group(1)
-    else:
-        raise ValueError("basis string not found")
-
-    pat = re.compile(r'^\s*(?P<shell>[SPDFGHIspdfghi])\s*(?P<nf>[1-9]+)')
-    res = dict()
-
-    for item in basisstr.split('\n\n'):
-        if len(item) > 0:
-            atom, basis = item.split('\n', 1)
-            if atom != "":
-                functions = dict()
-                elem = element(atom.capitalize())
-                bslines = basis.split("\n")
-                for i, line in enumerate(bslines):
-                    match = pat.search(line)
-                    if match:
-                        shell, nf = match.group("shell").lower(), match.group("nf")
-                        exps, indxs, coeffs = parse_gamessus_function(bslines[i+1:i+int(nf)+1])
-                        if shell in functions.keys():
-                            sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
-                            functions[shell]['e'] = sexp
-                            for cf in functions[shell]['cf']:
-                                cf['idx'] = idxs[cf['idx']]
-                            newcf = np.array(zip(idxo[indxs-1], coeffs), dtype=CFDTYPE)
-                            functions[shell]['cf'].append(newcf)
-                        else:
-                            functions[shell] = dict()
-                            functions[shell]['cf'] = list()
-                            functions[shell]['e'] = exps
-                            functions[shell]['cf'].append(np.array(zip(indxs-1, coeffs), dtype=CFDTYPE))
-                res[elem.symbol] = functions
-    return res
-
-def parse_gamessus_function(los):
-    '''
-    Parse a basis set function information from list of strings into
-    three lists containg: exponents, indices, coefficients.
-
-    Remeber that python doesn't recognise the `1.0d-3` format where `d` or
-    `D` is used to the regex subsitution has to take care of that.
-    '''
-
-    real = re.compile(r'[dD]')
-
-    indxs = np.array([int(item.split()[0]) for item in los], dtype=np.int32)
-    exps = np.array([float(real.sub('E', item.split()[1])) for item in los], dtype=np.float64)
-    coeffs = np.array([float(real.sub('E', item.split()[2])) for item in los], dtype=np.float64)
-
-    return (exps, indxs, coeffs)
 
 def xyzlist(l):
     '''
