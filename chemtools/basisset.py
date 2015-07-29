@@ -647,9 +647,33 @@ class BasisSet(object):
         '''
 
         if spherical:
-            return sum(nspherical(SHELLS.index(shell))*len(fs['cf']) for shell, fs in self.functions.items())
+            return sum(nspherical(get_l(shell))*len(fs['cf']) for shell, fs in self.functions.items())
         else:
-            return sum(ncartesian(SHELLS.index(shell))*len(fs['cf']) for shell, fs in self.functions.items())
+            return sum(ncartesian(get_l(shell))*len(fs['cf']) for shell, fs in self.functions.items())
+
+    def nprimitive(self, spherical=True):
+        '''
+        Return the number of primitive functions assuming sphrical or cartesian
+        gaussians.
+
+        Args:
+          spherical : bool
+            A flag to select either spherical or cartesian gaussians
+
+        Returns:
+          out : int
+            Number of primitive function in the basis set
+        '''
+
+        if spherical:
+            # calculate the number of spherical components per shell
+            ncomp = [nspherical(get_l(shell)) for shell in self.functions.keys()]
+        else:
+            # calculate the number of cartesian components per shell
+            ncomp = [ncartesian(get_l(shell)) for shell in self.functions.keys()]
+
+        return sum([prim*nc for prim, nc in zip(self.primitives_per_shell(), ncomp)])
+
 
     def contraction_scheme(self):
         '''
@@ -797,6 +821,11 @@ class BasisSet(object):
         S = primitive_overlap(SHELLS.index(shell), exps, exps)
         cc = self.contraction_matrix(shell)
         return np.dot(cc.T, np.dot(S, cc))
+
+def get_l(shell):
+    '''Return the angular momentum value of a given shell'''
+
+    return SHELLS.index(shell)
 
 def merge(first, other):
     '''
