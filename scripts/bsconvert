@@ -23,7 +23,7 @@
 from __future__ import print_function
 
 from argparse import ArgumentParser
-from chemtools.basisset import BasisSet
+from chemtools.basisset import BasisSet, read_pickle
 import os
 
 def main():
@@ -32,30 +32,41 @@ def main():
     parser.add_argument("filename", help="file name with a basis set")
     parser.add_argument("-if",
                         "--inputformat",
-                        choices=["gamessus", "gaussian", "molpro"],
+                        choices=["gamessus", "gaussian", "molpro", "pickle"],
                         help="Basis set input format",
                         default="gamessus")
     parser.add_argument("-of",
                         "--outputformat",
-                        choices=["cfour", "dalton", "gamessus", "gaussian", "molpro", "nwchem"],
+                        choices=["cfour", "dalton", "gamessus", "gaussian", "molpro", "nwchem", "pickle"],
                         help="Basis set output format",
                         default="gamessus")
     args = parser.parse_args()
 
     name = os.path.splitext(args.filename)[0]
-    bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat, name=name)
 
-    writer = "to_" + args.outputformat
-
-    if isinstance(bsets, dict):
-        for elem, bset in bsets.items():
-            method = getattr(bset, writer)
-            print(method())
-    elif isinstance(bsets, BasisSet):
-        method = getattr(bsets, writer)
-        print(method())
+    if args.inputformat == "pickle":
+        bsets = read_pickle(args.filename)
     else:
-        raise ValueError('Something went wrong')
+        bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat, name=name)
+
+    if args.outputformat == "pickle":
+        if isinstance(bsets, dict):
+            for elem, bset in bsets.items():
+                bset.to_pickle(name + '_' + elem + '.pkl')
+        elif isinstance(bsets, BasisSet):
+            bsets.to_pickle(name + '_' + bsets.element + '.pkl')
+    else:
+        writer = "to_" + args.outputformat
+
+        if isinstance(bsets, dict):
+            for elem, bset in bsets.items():
+                method = getattr(bset, writer)
+                print(method())
+        elif isinstance(bsets, BasisSet):
+            method = getattr(bsets, writer)
+            print(method())
+        else:
+            raise ValueError('Something went wrong')
 
 
 if __name__ == "__main__":

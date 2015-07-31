@@ -277,6 +277,10 @@ def run_total_energy(x0, *args):
             if diff_atoms:
                 for atom in diff_atoms:
                     bsdict[atom] = bso.staticbs[atom]
+        #elif isinstance(bso.staticbs, BasisSet):
+        #    if
+    else:
+        pass
 
     bso.code.write_input(fname=bso.fname, template=bso.template, bs=bsdict.values(), mol=bso.mol, core=bso.core)
     output = bso.code.run(bso.fname)
