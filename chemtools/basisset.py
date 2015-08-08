@@ -47,33 +47,6 @@ def read_pickle(fname):
     with open(fname, 'rb') as fil:
         return pickle.load(fil)
 
-def read_dict(dct):
-    '''
-    Initialize the BasisSet object from a general dictionary with an
-    assumed structure of "functions" entry. This method can be used to
-    initialize the BasisSet object directly from mongoDB database.
-
-    Args:
-      dct : dict
-        Dictionary with the basis set data, required keys are:
-          - name
-          - element
-          - functions
-    '''
-
-    required = set(['name', 'element', 'functions'])
-    if isinstance(dct, dict):
-        if not required.issubset(set(d.keys())):
-            missing = list(required.difference(set(dct.keys())))
-            raise ValueError('Following keys are required: {0}'.format(", ".join(missing)))
-        bs = BasisSet()
-        for key, val in dct.items():
-            if key == 'functions':
-                setattr(bs, key, OrderedDict(sorted(val.items(), key=lambda x: SHELLS.index(x[0]))))
-            else:
-                setattr(bs, key, val)
-    return bs
-
 class BasisSet(object):
     '''
     Basis set module supporting basic operation on basis sets and can be used

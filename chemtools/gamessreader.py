@@ -618,17 +618,19 @@ class DictionaryFile(BinaryFile):
         else:
             return self.read(records[nrec].dtype, shape=(self.ifilen[nrec-1],))
 
-def tri2full(vector, shape):
+def tri2full(vector):
     '''
     Convert a triagonal matrix whose elements are stored in the `vector` into a 
     rectangular matrix of the shape given by `shape` tuple.
     '''
 
-    nrow, ncol = shape
-    matrix = np.zeros((nrow, ncol), dtype=float, order='F')
+    # get the shape of the symmetric matrix from solving n^2 + n - 2s = 0 equation
+    # where n is the number of rows/columns and s is the size of 1D vector
+    n = int((np.sqrt(8.0*vector.size +1) - 1.0)/2.0)
+    matrix = np.zeros((n, n), dtype=float, order='F')
 
     ij = -1
-    for i in range(nrow):
+    for i in range(n):
         for j in range(i + 1):
             ij += 1
             matrix[i, j] = matrix[j, i] = vector[ij]
