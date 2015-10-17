@@ -28,6 +28,7 @@ import numpy as np
 from scipy.special import factorial, factorial2, gamma
 from chemtools.basisset import ncartesian, get_l
 from numba import jit, int32, float64
+from scipy.linalg import sqrtm, inv
 
 @jit(float64(int32, float64))
 def norm(n, a):

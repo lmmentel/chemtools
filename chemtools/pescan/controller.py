@@ -159,15 +159,15 @@ def new_db(path):
     db_session = sessionmaker(bind=engine)
     return db_session()
 
-def connect_db(path):
+def get_session(dbpath):
     '''
     Connect to a database under the name stored in "path" and return the
     session.
     '''
 
-    if not os.path.exists(path):
+    if not os.path.exists(dbpath):
         raise OSError("database {0} does not exist".format(path))
 
-    engine = create_engine("sqlite:///{path:s}".format(path=path), echo=False)
+    engine = create_engine("sqlite:///{path:s}".format(path=dbpath), echo=False)
     db_session = sessionmaker(bind=engine)
     return db_session()

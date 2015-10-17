@@ -1,4 +1,6 @@
 
+What about using ASE Atom, Atoms classes instead of molecule?
+
 # TODO
 
     1. integrate multiprocessing module in order to able able to run multiple jobs at once
