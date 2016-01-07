@@ -43,7 +43,11 @@ setup(
         'numpy >= 1.7',
         'mendeleev',
     ],
-
+    entry_points = {
+        'console_scripts' : [
+            'writeorbinp = chemtools.gamessus:writeorbinp',
+        ]
+    },
     license = open('LICENSE.rst').read(),
     long_description = readme(),
     name = 'chemtools',
