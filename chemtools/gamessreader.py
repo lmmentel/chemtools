@@ -330,6 +330,7 @@ class SequentialFile(BinaryFile):
         Based on the four orbital indices i,j,k,l return the address
         in the 1d vector.
         '''
+
         ij = max(i, j)*(max(i, j) - 1)/2 + min(i, j)
         kl = max(k, l)*(max(k, l) - 1)/2 + min(k, l)
         return max(ij, kl)*(max(ij, kl) - 1)/2 + min(ij, kl) - 1
@@ -442,6 +443,22 @@ class SequentialFile(BinaryFile):
             self.seek(pos+4)
         return ints
 
+    def read_ci_coeffs(self):
+        '''
+        Read CI coefficients from file NFT12 and return them as a numpy array of floats.
+        '''
+
+        self.seek(4)
+        nstates = self.read('i8')
+        nconfs = self.read('i8')
+
+        title = self.read('a80', shape=(2,))
+
+        # advance 4 bytes for the end of the record and additional
+        # 4 for the start of the new record
+        self.seek(self.tell() + 8)
+        return self.read('f8', shape=(nconfs * nstates,))
+
 class GamessReader(object):
     '''
     Class for holding method for reading gamess binary files:
@@ -500,7 +517,6 @@ class GamessReader(object):
         '''Read the two electron integrals from the gamess-us file'''
 
         ints = np.zeros(self.get_twoe_size(), dtype=float)
-
 
 from collections import namedtuple
 
@@ -626,7 +642,7 @@ def tri2full(vector, sym=True):
 
     # get the shape of the symmetric matrix from solving n^2 + n - 2s = 0 equation
     # where n is the number of rows/columns and s is the size of 1D vector
-    n = int((np.sqrt(8.0*vector.size +1) - 1.0)/2.0)
+    n = int((np.sqrt(8.0*vector.size + 1) - 1.0)/2.0)
     matrix = np.zeros((n, n), dtype=float, order='F')
 
     ij = -1
