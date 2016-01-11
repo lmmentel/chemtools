@@ -28,13 +28,14 @@ Module with convenience functions for parsing files
 
 from __future__ import print_function
 
+import itertools
 from collections import defaultdict
 
 def contains(string, query):
     'Check if `string` contains `query`'
     return string.find(query) > -1
 
-def locate_lines(filename, strings):
+def locatelinenos(filename, tolocate):
     '''
     Given a file and a list of strings return a dict with string as keys
     and line numbers in which they appear a values.
@@ -42,52 +43,81 @@ def locate_lines(filename, strings):
     Args:
       filename : str
         Name of the file
-      string : dict
-        Dictionary with labels as keys and strings to find (queries) as values
+      tolocate : list of tuples
+        List of tuples with strings to find (queries) as first elements and
+        integer offset values as second
 
     Returns:
       out : dict
-        Dictionary whose keys are passed string and values are lists of line
-        numbers in which those string appear
+        Dictionary whose keys are indices corresponding to item in input list
+        and values are lists of line numbers in which those string appear
 
     TODO:
         - add option to ignore the case of the strings to search
-        - add option to specify offset
     '''
 
     out = defaultdict(list)
     for lineno, line in enumerate(open(filename, 'r')):
-        for label, query in strings.items():
+        for idx, (query, offset) in enumerate(tolocate):
             if contains(line, query):
-                out[label].append(lineno)
+                out[idx].append(lineno + offset)
     return out
 
-def get_chunk(filename, start, end):
+def getlines(filename, tolocate):
     '''
-    Get a list of lines from a file between specified line numbers `start` and
-    `end`.
+    Return the lines from the files based on `tolocate`
+
+    Args:
+      filename : str
+        Name of the file
+      tolocate : list of tuples
+        List of tuples with strings to find (queries) as first elements and
+        integer offset values as second
+
+    Return:
+    '''
+
+    located = locatelinenos(filename, tolocate)
+
+    if len(tolocate) == len(located):
+        for k, v in located.items():
+            if len(v) > 1:
+                raise ValueError('multiple lines found for "{0}": {1}'.format(
+                    tolocate[k][0], ', '.join([str(x) for x in v])))
+
+        startlno = min(list(itertools.chain(*located.values())))
+        endlno = max(list(itertools.chain(*located.values())))
+        return getchunk(filename, startlno, endlno)
+    else:
+        raise ValueError('len(tolocate) != len(located): {0} != {1}'.format(
+            len(tolocate), len(located)))
+
+def getchunk(filename, startlno, endlno):
+    '''
+    Get a list of lines from a file between specified line numbers `startlno`
+    and `endlno`.
 
     Args:
       filename : str
         Name of the file to process
-      start : int
+      startlno : int
         Number of the first line to obtain
-      end : int
+      endlno : int
         Number of the last line to obtain
 
     Returns:
       lines : list
-        A list of lines from the file `filename` between line numbers `start`
-        and `end`
+        A list of lines from the file `filename` between line numbers `startlno`
+        and `endlno`
     '''
 
     fobj = open(filename, 'r')
     fileiter = iter(fobj)
 
-    for _ in range(start):
+    for _ in range(startlno):
         next(fileiter)
 
-    return [next(fileiter) for _ in range(end - start)]
+    return [next(fileiter) for _ in range(endlno - startlno)]
 
 def take(seq, num):
     '''
@@ -125,6 +155,6 @@ def slicebetween(string, start, end):
     '''
 
     istart = string.index(start)
-    iend = string.index(end)
-    return string[istart+len(start):iend]
+    iend = string[istart:].index(end)
+    return string[istart+len(start):istart + iend]
 
