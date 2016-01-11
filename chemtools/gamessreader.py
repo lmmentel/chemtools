@@ -26,10 +26,11 @@
     GamessReader    : reading gamess binary files.
 '''
 
-from .gamessus import GamessLogParser
-import numpy as np
 import os
 import sys
+import numpy as np
+
+from .gamessus import GamessLogParser
 
 # add an option to choose which reader should be used for dictionary file
 # and sequential files, the options are:
@@ -310,13 +311,14 @@ class BinaryFile(object):
 
 class SequentialFile(BinaryFile):
 
-    def __init__(self, filename):
+    def __init__(self, filename logfile=None):
         '''
         Initialize the class with the superclass method.
         '''
         super(SequentialFile, self).__init__(filename)
-        log = os.path.splitext(filename)[0] + ".log"
-        glp = GamessLogParser(log=log)
+        if logfile is None:
+            logfile = os.path.splitext(filename)[0] + ".log"
+        glp = GamessLogParser(log=logfile)
         self.nao = glp.get_number_of_aos()
         self.nmo = glp.get_number_of_mos()
         self.core = glp.get_number_of_core_mos()
@@ -334,6 +336,22 @@ class SequentialFile(BinaryFile):
         ij = max(i, j)*(max(i, j) - 1)/2 + min(i, j)
         kl = max(k, l)*(max(k, l) - 1)/2 + min(k, l)
         return max(ij, kl)*(max(ij, kl) - 1)/2 + min(ij, kl) - 1
+
+    def get_index_buffsize(self, buff_size, int_size):
+        ''' Return the index buffer size for reading 2-electron integrals'''
+
+        if int_size == 4:
+            if self.large_labels:
+                return 2*buff_size
+            else:
+                return buff_size
+        elif int_size == 8:
+            if self.large_labels:
+                return buff_size
+            else:
+                return (buff_size + 1)/2
+        else:
+            raise ValueError('wrong "int_size": {}'.format(int_size))
 
     def readseq(self, buff_size=15000, int_size=8, mos=False, skip_first=False):
         '''
@@ -359,44 +377,32 @@ class SequentialFile(BinaryFile):
             numpy 1D array holding the values
         '''
 
-        if int_size == 4:
-            if self.large_labels:
-                indexBuffSize = 2*buff_size
-            else:
-                indexBuffSize = buff_size
-        elif int_size == 8:
-            if self.large_labels:
-                indexBuffSize = buff_size
-            else:
-                indexBuffSize = (buff_size + 1)/2
-        else:
-            raise ValueError
+        indexBuffSize = self.get_index_buffsize(buff_size, int_size)
 
+        self.seek(0)
         if mos:
-            if skip_first:
-                nmo = self.nmo-self.core
-                n1 = nmo*(nmo+1)/2
-                self.seek(8+8*n1)
-                #hmo = self.read('f8', shape=(nmo*(nmo+1)/2))
-                #pos = self.tell()
-                #self.seek(pos+4)
-
+            nmo = self.nmo-self.core
             nt = self.nmo*(self.nmo+1)/2
-            ints = np.zeros(nt*(nt+1)/2, dtype=float, order='F')
-        else:
-            self.seek(0)
-            nt = self.nao*(self.nao+1)/2
-            ints = np.zeros(nt*(nt+1)/2, dtype=float, order='F')
+            if skip_first:
+                #n1 = nmo*(nmo+1)/2
+                #self.seek(8+8*n1)
+                self.seek(self.tell() + 4)
+                Hoe = self.read('f8', shape=(nt, ))
+                # advance four trailing bytes
+                self.seek(self.tell() + 4)
 
+        else:
+            nt = self.nao*(self.nao+1)/2
+
+        ints = np.zeros(nt*(nt+1)/2, dtype=float, order='F')
 
         int_type = np.dtype('i'+str(int_size))
         index_buffer = np.zeros(indexBuffSize, dtype=int_type, order='F')
         value_buffer = np.zeros(buff_size, dtype=float, order='F')
 
-        pos = self.tell()
-        self.seek(pos+4)
         length = 1
         while length > 0:
+            self.seek(self.tell() + 4)
             length = self.read(int_type)
             if length > buff_size:
                 raise ValueError('the read record length: {0:10d} greater that the buffer size {1:10d}'.format(int(length), buff_size))
@@ -438,9 +444,8 @@ class SequentialFile(BinaryFile):
                             j = label >> 48 & 255
                             k = label >> 40 & 255
                             l = label >> 32 & 255
-                ints[self.ijkl(i, j, k, l)] = value_buffer[m-1]
-            pos = self.tell()
-            self.seek(pos+4)
+                ints[self.ijkl(i, j, k, l)] = value_buffer[m - 1]
+            self.seek(self.tell() + 4)
         return ints
 
     def read_ci_coeffs(self):
@@ -458,6 +463,7 @@ class SequentialFile(BinaryFile):
         # 4 for the start of the new record
         self.seek(self.tell() + 8)
         return self.read('f8', shape=(nconfs * nstates,))
+
 
 class GamessReader(object):
     '''
