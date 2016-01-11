@@ -311,7 +311,7 @@ class BinaryFile(object):
 
 class SequentialFile(BinaryFile):
 
-    def __init__(self, filename logfile=None):
+    def __init__(self, filename, logfile=None):
         '''
         Initialize the class with the superclass method.
         '''
