@@ -27,7 +27,7 @@ Module for handling Gamess-US related jobs:
 - Gamess          : running and submitting jobs, writing inputs,
 - GamessInpParser : parsing the input file,
 - GamessLogParser : parsing the output file,
-- GamessDatParser : parsing data from the gamess PUNCH (*.dat) file
+- GamessDatParser : parsing data from the gamess PUNCH (.dat) file
 '''
 
 from __future__ import print_function
@@ -887,7 +887,7 @@ class GamessDatParser(object):
 
     def get_occupations(self):
         '''
-        Parse the occupation numbers from the ascii PUNCH file (*.dat).
+        Parse the occupation numbers from the ascii PUNCH file (.dat).
         '''
 
         with open(self.datfile, 'r') as dat:
@@ -915,7 +915,7 @@ class GamessDatParser(object):
 
     def get_vec_string(self, method):
         '''
-        Parse the natural orbitals from the ascii PUNCH file (*.dat).
+        Parse the natural orbitals from the ascii PUNCH file (.dat).
 
         Args:
           method : str

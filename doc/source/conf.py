@@ -29,7 +29,10 @@ class Mock(MagicMock):
 
 MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'scipy.linalg', 'scipy.special', 'pandas',
     'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext', 'sqlalchemy.ext.associationproxy',
-    'sqlalchemy.ext.declarative', 'sqlalchemy.ext.hybrid', 'mendeleev']
+    'sqlalchemy.ext.declarative', 'sqlalchemy.ext.hybrid', 'mendeleev',
+    'numba',
+    ]
+
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
