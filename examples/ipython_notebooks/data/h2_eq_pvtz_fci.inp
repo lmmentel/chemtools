@@ -3,7 +3,7 @@
  $SYSTEM timlim=525600 mwords=100 $END
  $SCF dirscf=.false. $END
  $CIDRT iexcit=2 nfzc=0 ndoc=1 nval=27 group=d2h stsym=ag
-        mxnint=14307305 $END
+        mxnint=14307305 nprt=2 $END
  $GUGDIA prttol=1.0e-6 cvgtol=1.0e-10 $END
  $DATA
 H2 cc-pVTZ
