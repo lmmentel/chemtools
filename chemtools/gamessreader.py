@@ -322,7 +322,7 @@ class SequentialFile(BinaryFile):
         self.nao = glp.get_number_of_aos()
         self.nmo = glp.get_number_of_mos()
         self.core = glp.get_number_of_core_mos()
-        if self.nmo < 255:
+        if self.nao < 255:
             self.large_labels = False
         else:
             self.large_labels = True
@@ -405,7 +405,8 @@ class SequentialFile(BinaryFile):
             self.seek(self.tell() + 4)
             length = self.read(int_type)
             if length > buff_size:
-                raise ValueError('the read record length: {0:10d} greater that the buffer size {1:10d}'.format(int(length), buff_size))
+                raise ValueError('the read record length: {0:10d} is greater that the buffer size {1:10d}'.format(int(length), buff_size))
+
             index_buffer = self.read(int_type, shape=(indexBuffSize, ))
             value_buffer = self.read('f8', shape=(buff_size, ))
 
@@ -430,7 +431,7 @@ class SequentialFile(BinaryFile):
                         i = label >> 48
                         j = label >> 32 & 65535
                         k = label >> 16 & 65535
-                        j = label       & 65535
+                        l = label       & 65535
                     else:
                         if m % 2 == 0:
                             label = int(index_buffer[m/2-1])
