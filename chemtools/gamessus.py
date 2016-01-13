@@ -1051,6 +1051,51 @@ def get_naos_nmos(vecstr, clength=15):
     nmos = noveclines//nlines
     return naos, nmos, nlines
 
+
+def to_gamess_vec(coeffs, cfmt='15.8e'):
+    '''
+    Given a 2D array return a string with the elements converted to the GAMESS(US)
+    $VEC format
+
+    Args:
+        coeffs : numpy.array
+            A two-dimensional array of type `float`
+        cmft : str
+            Default format for the elements of `coeffs`
+
+    Returns:
+        vec : str
+            A string representation of the `coeffs` using GAMESS(US) $VEC format
+    '''
+
+    if coeffs.dtype != np.float64:
+        raise ValueError('array should be of type np.flaot64, got: {}'.format(coeffs.dtype))
+
+    nao, nmo = coeffs.shape
+
+    if nao % 5 == 0:
+        nlines = nao/5
+    else:
+        nlines = 1 + nao/5
+
+    vec = ''
+    for i in range(nmo):
+        if i + 1 >= 100:
+            ilab = i + 1 % 100
+        else:
+            ilab = i + 1
+        for l in range(nlines):
+            if l + 1 > 1000:
+                llab = l + 1 % 1000
+            else:
+                llab = l + 1
+            if l < nlines - 1:
+                coeffrow = "".join(["{0:{1:}}".format(coeffs[j + l*5, i], cfmt) for j in range(5)])
+            else:
+                coeffrow = "".join(["{0:{1:}}".format(coeffs[j + l*5, i], cfmt) for j in range(0, 5-((l+1)*5-nao))])
+            vec += "{0:2d}{1:3d}{2:s}\n".format(ilab, llab, coeffrow)
+    return vec
+
 def writeorbinp():
     '''
     A script for writing the GAMESS(US) input with guess orbitals from a previous run.
