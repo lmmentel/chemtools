@@ -579,6 +579,12 @@ records = {
    48 : rec("IZMAT for symmetry internal coords", "i8"),
    49 : rec("B matrix", "f8"),
    50 : rec("B inverse matrix", "f8"),
+   69 : rec("alpha Lowdin populations", "f8"),
+   70 : rec("beta Lowdin populations", "f8"),
+   71 : rec("alpha orbitals during localization", "f8"),
+   72 : rec("betha orbitals during localization", "f8"),
+   73 : rec("alpha localization transformation", "f8"),
+   74 : rec("beta localization transformation", "f8"),
    95 : rec("x dipole integrals in AO basis", "f8"),
    96 : rec("y dipole integrals in AO basis", "f8"),
    97 : rec("z dipole integrals in AO basis", "f8"),
@@ -588,6 +594,7 @@ records = {
   254 : rec("Z dipole integrals in MO basis", "f8"),
   255 : rec("alpha MO symmetry labels", "S8"),
   256 : rec("beta MO symmetry labels", "S8"),
+  286 : rec("oriented localized molecular orbitals", "f8"),
   379 : rec("Lz integrals", "f8"),
 }
 
