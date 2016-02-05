@@ -62,12 +62,12 @@ class GamessUS(Code):
 
     @property
     def version(self):
-        """Return the version."""
+        'Return the version.'
         return self._version
 
     @version.setter
     def version(self, value):
-        """Check if the version exist and set it if it does."""
+        'Check if the version exist and set it if it does.'
 
         versions = []
         for item in os.listdir(self.gmspath):
@@ -79,6 +79,21 @@ class GamessUS(Code):
             self._version = value
         else:
             raise IOError('GamessUS version {0:s} not found in {1:s}'.format(value, self.gmspath))
+
+    @property
+    def runopts(self):
+        'Return the runopts'
+        return self._runopts
+
+    @runopts.setter
+    def runopts(self, value):
+        'Set the runopts dict'
+
+        if value is None:
+            self._runopts = {'nprocs' : 1}
+        else:
+            self._runopts = value
+
 
     def remove_dat(self, inpfile):
         '''
@@ -103,7 +118,7 @@ class GamessUS(Code):
             logfile = os.path.splitext(inpfile)[0] + ".log"
 
         out = open(logfile, 'w')
-        process = Popen([self.executable, inpfile, self.version, str(self.runopts["nproc"])], stdout=out, stderr=out)
+        process = Popen([self.executable, inpfile, self.version, str(self.runopts['nprocs'])], stdout=out, stderr=out)
         process.wait()
         out.close()
         return logfile
@@ -284,7 +299,7 @@ class GamessInput(object):
         inpstr += self.data2str()
         return inpstr
 
-    def data2str(self):
+    def data2str(self, header=True):
         '''
         Return the $DATA card of the input as a formatted string based on the
         previously parsed data.a
@@ -292,10 +307,11 @@ class GamessInput(object):
 
         data = ""
         data += " {0:s}\n".format("$data")
-        data += "{0:s}\n".format(self.parsed["$data"]["title"])
-        data += "{0:s}\n\n".format(self.parsed["$data"]["group"])
-        if self.parsed['$data']['group'].lower() == 'C1':
-            data += '\n'
+        if header:
+            data += "{0:s}\n".format(self.parsed["$data"]["title"])
+            data += "{0:s}\n\n".format(self.parsed["$data"]["group"])
+            if self.parsed['$data']['group'].lower() != 'c1':
+                data += '\n'
         for atom in self.parsed['$data']['atoms']:
             data += '{0:5s}{1:5.1f}{2:12.5f}{3:12.5f}{4:12.5f}\n'.format(
                 atom['label'], atom['atomic'],
@@ -317,7 +333,7 @@ class GamessInput(object):
         with open(filename, "w") as finp:
             finp.write(self.parsed2str())
 
-    def write_with_vec(self, filename, vecstr):
+    def write_with_vec(self, filename, vecstr, keepscftyp=False):
         '''
         Write new gamess input based on exisiting input and natural orbitals
         from $VEC section in PUNCH file.
@@ -338,7 +354,8 @@ class GamessInput(object):
 
         parsed = copy(self.parsed)
 
-        self.parsed['$contrl']['scftyp'] = 'none'
+        if not keepscftyp:
+            self.parsed['$contrl']['scftyp'] = 'none'
         self.parsed['$guess'] = {}
         self.parsed['$guess']['guess'] = 'moread'
         self.parsed['$guess']['norb'] = str(get_naos_nmos(vecstr)[1])
@@ -665,9 +682,12 @@ class GamessLogParser(object):
         cencom = r'\s*(?P<center>\d+)\s*(?P<component>[A-Z]{1,})'
         ao_patt = re.compile(indsym + cencom)
 
+        istart = 3
+        if orbs == 'local orbs':
+            istart = 1
         locstr = self.get_loc_strings(orbs)
         lines = getlines(self.logfile, locstr)
-        lines = lines[3:3 + self.get_number_of_aos()]
+        lines = lines[istart:istart + self.get_number_of_aos()]
 
         res = list()
         for line in lines:
@@ -708,6 +728,8 @@ class GamessLogParser(object):
                            (' ...... END OF {} CALCULATION ......'.format(self.get_scf_type()), 0)],
             'ci orbs'   : [('NATURAL ORBITALS IN ATOMIC ORBITAL', 3),
                            (' ...... END OF DENSITY MATRIX CALCULATION ......', 0)],
+            'local orbs': [('LOCALIZED ORBITALS', 3),
+                           (' LOCALIZATION ...', 0)],
             'lz values' : [('LZ VALUE ANALYSIS FOR', 2),
                            ('EIGENVECTORS', -2)],
         }
@@ -923,6 +945,7 @@ class GamessDatParser(object):
                 - for scf orbitals: "scf", "hf", "rhf", "rohf", "uhf", "gvb"
                 - for mcscf orbitals: "mcscfmos", "mcscfnos"
                 - for ci orbitals: "ci", "aldet", "fsoci", "guga", "genci", "ormas""
+                - for localized orbitals: `local`
 
         Returns:
             orbs : numpy.array
@@ -953,6 +976,11 @@ class GamessDatParser(object):
                 orbi = data.index('NATURAL ORBITALS OF MCSCF')
             except:
                 raise ValueError('MCSCF orbitals header not found, check dat file')
+        elif method.lower() == 'local':
+            try:
+                orbi = data.index('LOCALIZED ORBITALS')
+            except:
+                raise ValueError('LOCALIZED orbitals header not found, check dat file')
         else:
             raise ValueError("Don't know what to do with: '{0:s}'".format(method))
         vecstr = slicebetween(data[orbi:], '$VEC', '$END').strip(" \n\t\r")
@@ -972,6 +1000,7 @@ class GamessDatParser(object):
                 - for scf orbitals: "scf", "hf", "rhf", "rohf", "uhf", "gvb"
                 - for mcscf orbitals: "mcscfmos", "mcscfnos"
                 - for ci orbitals: "ci", "aldet", "fsoci", "guga", "genci", "ormas""
+                - for localized orbitals: `local`
 
         Returns:
             orbs : numpy.array
