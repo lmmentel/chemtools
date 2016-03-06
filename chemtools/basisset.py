@@ -53,21 +53,6 @@ class BasisSet(object):
     as a API for mongoDB basis set repository.
     '''
 
-    #__tablename__ = 'basissets'
-
-    #id = Column(Integer, primary_key=True)
-    #name = Column(String)
-    #element = Column(String)
-    #kind = Column(String)
-    #family = Column(String)
-    #functions = Column(Pickle)
-    #publishedin = Column(String)
-    #authors = relationship() # should be a separate table fot authors
-    #comments = Column(String)
-    #lastModified = Column(DateTime)
-    #status = Column(String)
-    #hasECP = Column(Bool)
-
     def __init__(self, name, element, family=None, kind=None,
                  functions=None):
         '''
@@ -605,7 +590,6 @@ class BasisSet(object):
 
         with open(fname, 'wb') as fbas:
             pickle.dump(self, fbas)
-
 
     def nf(self, spherical=True):
         '''
