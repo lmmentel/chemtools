@@ -57,6 +57,7 @@ setup(
         'chemtools/submitmolpro.py',
         'scripts/bsprint',
         'scripts/bsconvert',
+        'scripts/bsold2new',
                ],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
     version = '0.7.1',

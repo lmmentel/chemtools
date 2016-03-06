@@ -27,7 +27,7 @@
 import numpy as np
 import pandas as pd
 
-from chemtools.gamessus import GamessLogParser
+from chemtools.gamessus import GamessLogParser, GamessDatParser
 from chemtools.gamessreader import DictionaryFile, tri2full
 
 class Orbitals(pd.DataFrame):
@@ -40,7 +40,7 @@ class Orbitals(pd.DataFrame):
         super(Orbitals, self).__init__(*args, **kwargs)
 
     @classmethod
-    def from_files(cls, name=None, logfile=None, dictfile=None):
+    def from_files(cls, name=None, logfile=None, dictfile=None, datfile=None):
         '''
         Initialize the `Orbitals` instance based on orbital information parsed from the `logfile`
         and read from the `dictfile`.
@@ -52,6 +52,8 @@ class Orbitals(pd.DataFrame):
                 Name of the GAMESS(US) log file
             dictfile : str
                 Name of the GAMESS(US) dictionary file .F10
+            datfile : str :
+                Name of the GAMESS(US) dat file
         '''
 
         if name == 'hf':
@@ -62,43 +64,50 @@ class Orbitals(pd.DataFrame):
             evec_record = 19
             eval_record = 21
             syml_record = 256
+        elif name == 'local':
+            pass
         else:
-            raise ValueError('name should be one either "hf" or "ci"')
+            raise ValueError('name should be one either "hf", "ci" or "local"')
 
-        # parse the number of aos and mos
-        glp = GamessLogParser(logfile)
-        nao = glp.get_number_of_aos()
-        nmo = glp.get_number_of_mos()
+        if name in ['hf', 'ci']:
+            # parse the number of aos and mos
+            glp = GamessLogParser(logfile)
+            nao = glp.get_number_of_aos()
+            nmo = glp.get_number_of_mos()
 
-        # read the relevant record from the dictfile
-        df = DictionaryFile(dictfile)
-        # read the orbitals
-        mosv = df.read_record(evec_record)
-        mos = mosv[:nao*nmo].reshape((nao, nmo), order='F')
-        # read the eigenvectors
-        ev = df.read_record(eval_record)
-        ev = ev[:nmo]
-        # read symmetry labels
-        symlab = df.read_record(syml_record)
-        symlab = symlab[:nmo]
+            # read the relevant record from the dictfile
+            df = DictionaryFile(dictfile)
+            # read the orbitals
+            vector = df.read_record(evec_record)
+            vecs = vector[:nao*nmo].reshape((nao, nmo), order='F')
+            # read the eigenvectors
+            evals = df.read_record(eval_record)
+            evals = evals[:nmo]
+            # read symmetry labels
+            symlab = df.read_record(syml_record)
+            symlab = symlab[:nmo]
 
-        data = dict([
-                ('symlabels', symlab),
-                ('eigenvals', ev),
+            data = dict([
+                ('symlabels', [s.strip() for s in symlab]),
+                ('eigenvals', evals),
                 ('gindex', range(1, nmo + 1)),
-        ])
+            ])
+        elif name == 'local':
+            gdp = GamessDatParser(datfile)
+            vecs = gdp.get_orbitals(name)
+            nao, nmo = vecs.shape
+
+            data = dict([('gindex', range(1, nmo + 1)),])
 
         dataframe = cls(data=data)
-
-        # remove whitespace from symmetry labels
-        dataframe['symlabels'] = dataframe['symlabels'].str.strip()
 
         dataframe.nao = nao
         dataframe.nmo = nmo
         dataframe.name = name
         dataframe.logfile = logfile
         dataframe.dictfile = dictfile
-        dataframe.coeffs = pd.DataFrame(data=mos)
+        dataframe.datfile = datfile
+        dataframe.coeffs = pd.DataFrame(data=vecs)
 
         return dataframe
 
@@ -127,7 +136,7 @@ class Orbitals(pd.DataFrame):
         # read Lz integrals from the dictionary file
         lzvec = df.read_record(379)
         # expand triangular to square matrix
-        lzints = tri2full(lzvec, sym=False) 
+        lzints = tri2full(lzvec, sym=False)
 
         unq, indices = check_duplicates(self.eigenvals, decimals=decimals)
 
@@ -217,15 +226,30 @@ class Orbitals(pd.DataFrame):
             else:
                 N = N + 1
 
+        # should check here if the length of the evs is the same as the number of rows of the dataframe
+        # if somethings wrong probably the ETOLLZ should be adjusted
         evs = [np.unique(np.round(np.abs(np.array([x[1] for x in row])), decimals=1)) for row in out]
         lzvals = [int(x[0]) if x.size == 1 else np.NaN for x in evs]
-        # should check here if the length of the evs is the same as the number of rows of the dataframe
 
         self['lzvals'] = [int(x[0]) if x.size == 1 else np.NaN for x in evs]
         self['lzlabels'] = self['lzvals'].map(lzmap)
         self['ig'] = [x[0][0] for x in out]
         return None
 
+    def fragment_populations(self):
+        '''
+        Calculate the fragment populations and assign each orbital to a fragment
+        '''
+
+        glp = GamessLogParser(self.logfile)
+        self.aoinfo = pd.DataFrame(data=glp.get_ao_labels(orbs=self.name + ' orbs'))
+
+        idx1 = self.aoinfo.loc[self.aoinfo['center'] == 1, 'index'].values
+        self['center 1 pop'] = (self.coeffs.loc[idx1, :]**2).sum()
+        idx2 = self.aoinfo.loc[self.aoinfo['center'] == 2, 'index'].values
+        self['center 2 pop'] = (self.coeffs.loc[idx2, :]**2).sum()
+
+        self['fragment'] = np.where(self['center 1 pop'] > self['center 2 pop'], 1, 2)
 
 def check_duplicates(a, decimals=6):
     '''

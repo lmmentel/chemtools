@@ -89,6 +89,7 @@ def getlines(filename, tolocate):
         endlno = max(list(itertools.chain(*located.values())))
         return getchunk(filename, startlno, endlno)
     else:
+        # TODO: this needs to be corrected to be more informative
         raise ValueError('len(tolocate) != len(located): {0} != {1}'.format(
             len(tolocate), len(located)))
 
