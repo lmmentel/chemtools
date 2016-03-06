@@ -309,7 +309,7 @@ class GamessInput(object):
         data += " {0:s}\n".format("$data")
         if header:
             data += "{0:s}\n".format(self.parsed["$data"]["title"])
-            data += "{0:s}\n\n".format(self.parsed["$data"]["group"])
+            data += "{0:s}\n".format(self.parsed["$data"]["group"])
             if self.parsed['$data']['group'].lower() != 'c1':
                 data += '\n'
         for atom in self.parsed['$data']['atoms']:
