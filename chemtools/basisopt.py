@@ -25,20 +25,22 @@
 """ basisopt is a module for optimizing primitive exponents of basis sets"""
 
 from __future__ import division, print_function
-from scipy.optimize import minimize
 import datetime
 import os
+import pprint
+import random
+import string
 import sys
 import time
-import pprint
-import string
-import random
 import numpy as np
+from scipy.optimize import minimize
 
 # chemtools packages
 from chemtools.basisset import BasisSet
 
 class BSOptimizer(object):
+
+    '''Basis Set Optimizer class'''
 
     def __init__(self, method=None, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
@@ -61,6 +63,8 @@ class BSOptimizer(object):
             A dictionary specifying the basis set to be optimized
           optalg : dict
             A dictionary specyfing the optimization algorithm and its options
+          fname : str
+            Name of the job/input file for the single point calculator
         '''
 
         self.fsopt = fsopt
@@ -84,6 +88,10 @@ class BSOptimizer(object):
 
     @fname.setter
     def fname(self, value):
+        '''
+        Set the name of the job/input file for the code used for single point
+        calculations.
+        '''
         if value is None:
             self._fname = ''.join(random.choice(string.ascii_letters) for _ in range(10)) + '.inp'
         else:
