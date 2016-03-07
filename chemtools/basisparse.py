@@ -30,7 +30,7 @@ import re
 from mendeleev import element
 
 CFDTYPE = [('idx', np.int32), ('cc', np.float64)]
-SHELLS = ["s", "p", "d", "f", "g", "h", "i", "j", "k"]
+SHELLS = ["s", "p", "d", "f", "g", "h", "i", "k"]
 
 def parse_basis(string, fmt=None):
     '''
