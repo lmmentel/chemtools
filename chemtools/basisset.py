@@ -24,7 +24,7 @@
 
 from __future__ import division, print_function
 
-from copy import deepcopy
+from copy import copy, deepcopy
 import numpy as np
 from itertools import chain
 from collections import OrderedDict
@@ -34,7 +34,7 @@ import pickle
 import re
 import os
 from mendeleev import element
-from chemtools.basisparse import parse_basis, CFDTYPE, SHELLS
+from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, SHELLS
 
 def read_pickle(fname):
     '''Read a pickled BasisSet object from file
@@ -78,6 +78,51 @@ class BasisSet(object):
         self.family = family
         self.kind = kind
         self.functions = functions
+
+    def __repr__(self):
+        keys = ['name', 'element', 'family', 'kind']
+
+        res = "<BasisSet(\n"
+        for key in keys:
+            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
+        res += self.print_functions()
+        res += ")>"
+        return res
+
+    def __str__(self):
+        keys = ['name', 'element', 'family', 'kind']
+
+        res = ''
+        for key in keys:
+            res += "{k:<20s} = {v}\n".format(k=key.capitalize(), v=getattr(self, key))
+        res += 'Functions:\n'
+        res += self.print_functions()
+        return res
+
+    def __add__(self, other):
+        '''Add functions from another BasisSet object
+
+        Args:
+          other : BasisSet
+            BasisSet object whose functions will be added to the existing ones
+
+        Returns:
+          BasisSet instance with functions from `self` and `other` merged
+        '''
+
+        newf = deepcopy(self.functions)
+        for oshell, ofs in other.functions.items():
+            if oshell.lower() in self.functions.keys():
+                i = self.functions[oshell]['e'].size
+                newf[oshell]['e'] = np.concatenate((self.functions[oshell]['e'], ofs['e']))
+                newcf = [np.copy(cf) for cf in ofs['cf']]
+                for cf in newcf:
+                    cf['idx'] = cf['idx'] + i
+                newf[oshell]['cf'].extend(newcf)
+            else:
+                newf[oshell] = deepcopy(ofs)
+
+        return BasisSet(name=self.name, element=self.element, functions=newf)
 
     @classmethod
     def from_optpars(cls, x0, functs=None, name=None, element=None):
@@ -206,50 +251,6 @@ class BasisSet(object):
                         functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
             return out
 
-    def __repr__(self):
-        keys = ['name', 'element', 'family', 'kind']
-
-        res = "<BasisSet(\n"
-        for key in keys:
-            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
-        res += self.print_functions()
-        res += ")>"
-        return res
-
-    def __str__(self):
-        keys = ['name', 'element', 'family', 'kind']
-
-        res = ''
-        for key in keys:
-            res += "{k:<20s} = {v}\n".format(k=key.capitalize(), v=getattr(self, key))
-        res += 'Functions:\n'
-        res += self.print_functions()
-        return res
-
-    def __add__(self, other):
-        '''Add functions from another BasisSet object
-
-        Args:
-          other : BasisSet
-            BasisSet object whose functions will be added to the existing ones
-
-        Returns:
-          BasisSet instance with functions from `self` and `other` merged
-        '''
-
-        selffuncs = deepcopy(self.functions)
-        otherfuncs = deepcopy(other.functions)
-        for oshell, ofs in otherfuncs.items():
-            if oshell.lower() in selffuncs.keys():
-                i = self.functions[oshell]['e'].size
-                selffuncs[oshell]['e'] = np.concatenate((selffuncs[oshell]['e'], ofs['e']))
-                for cf in ofs['cf']:
-                    cf['idx'] = cf['idx'] + i
-                    selffuncs[oshell]['cf'].append(cf)
-            else:
-                self.functions[oshell] = ofs
-        return BasisSet(name=self.name, element=self.element, functions=selffuncs)
-
     def append(self, other):
         '''Append functions from another BasisSet object
 
@@ -258,16 +259,16 @@ class BasisSet(object):
             BasisSet object whose functions will be added to the existing ones
         '''
 
-        otherfuncs = deepcopy(other.functions)
-        for oshell, ofs in otherfuncs.items():
+        for oshell, ofs in other.functions.items():
             if oshell.lower() in self.functions.keys():
                 i = self.functions[oshell]['e'].size
                 self.functions[oshell]['e'] = np.concatenate((self.functions[oshell]['e'], ofs['e']))
-                for cf in ofs['cf']:
+                newcf = [np.copy(cf) for cf in ofs['cf']]
+                for cf in newcf:
                     cf['idx'] = cf['idx'] + i
-                    self.functions[oshell]['cf'].append(cf)
+                self.functions[oshell]['cf'].extend(newcf)
             else:
-                self.functions[oshell] = ofs
+                self.functions[oshell] = deepcopy(ofs)
 
     def get_exponents(self, shell=None):
         '''
@@ -731,7 +732,7 @@ class BasisSet(object):
         res = list()
         shells = self.functions.keys()
         for i in range(1, len(shells)+1):
-            bscopy = copy.copy(self)
+            bscopy = copy(self)
             bscopy.functions = {k:v for k, v in self.functions.items() if k in shells[:i]}
             res.append(bscopy)
         return res
@@ -801,20 +802,21 @@ def merge(first, other):
         BasisSet instance with functions from `first` and `other` merged
     '''
 
-    selffuncs = deepcopy(first.functions)
-    otherfuncs = deepcopy(other.functions)
-    for oshell, ofs in otherfuncs.items():
-        if oshell.lower() in selffuncs.keys():
-            exps, idxs, idxo = merge_exponents(selffuncs[oshell]['e'], ofs['e'])
-            selffuncs[oshell]['e'] = exps
-            for cf in selffuncs[oshell]['cf']:
+    newf = deepcopy(first.functions)
+    for oshell, ofs in other.functions.items():
+        if oshell.lower() in first.functions.keys():
+            exps, idxs, idxo = merge_exponents(first.functions[oshell]['e'], ofs['e'])
+            newf[oshell]['e'] = exps
+            for cf in newf[oshell]['cf']:
                 cf['idx'] = idxs[cf['idx']]
-            for cf in ofs['cf']:
+            newcf = [np.copy(cf) for cf in ofs['cf']]
+            for cf in newcf:
                 cf['idx'] = idxo[cf['idx']]
-            selffuncs[oshell]['cf'].extend(ofs['cf'])
+            newf[oshell]['cf'].extend(newcf)
         else:
-            selffuncs[oshell] = ofs
-    return BasisSet(name=first.name, element=first.element, functions=selffuncs)
+            newf[oshell] = deepcopy(ofs)
+
+    return BasisSet(name=first.name, element=first.element, functions=newf)
 
 def primitive_overlap(l, a, b):
     '''
@@ -1058,7 +1060,6 @@ def have_equal_floats(a, b):
 
     x = np.array([x for x in product(a, b)])
     return np.any(np.isclose(x[:, 0], x[:, 1]))
-
 
 def xyzlist(l):
     '''
