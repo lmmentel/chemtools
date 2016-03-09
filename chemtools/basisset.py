@@ -344,30 +344,58 @@ class BasisSet(object):
             res += "\n"
         return res
 
-    def to_dalton(self, efmt="20.10f", cfmt="15.8f"):
+    def to_dalton(self, fmt='prec'):
         '''
         Return a string with the basis set in DALTON format.
 
         Args:
-          efmt : str
-            string describing output format for the exponents, default: "20.10f"
-          cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+          fmt : str
+            string describing output format for the exponents and coefficents
+                - `prec` "20.10f"
+                - `default` "10.4f"
+                - or python format string e.g. "15.8f"
 
         Returns:
           res : str
             basis set string in Dalton format
         '''
 
+        formats = {'prec' : '20.10f', 'default' : '10.4f'}
+
+        ffmt = formats.get(fmt, fmt)
+
+        if fmt == 'prec':
+            ffmt = '20.10f'
+            nitems = 3
+            fmtlabel = 'H'
+        elif fmt == 'default':
+            ffmt = '10.4f'
+            nitems = 7
+            fmtlabel = ' '
+        else:
+            ffmt = fmt
+            cwidth = int(ffmt.split('.')[0])
+            nitems = (80 - cwidth) // cwidth
+            fmtlabel = "{0:d}F{1}.{2}".format(nitems, ffmt.split('.')[0], re.sub('[A-Za-z]+', '', ffmt.split('.')[1]))
+
         res = "! {s}\n".format(s=self.name)
         for shell, fs in self.functions.items():
             res += "! {s} functions\n".format(s=shell)
-            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f="F", p=len(fs['e']), c=len(fs['cf']))
+            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f=fmtlabel, p=len(fs['e']), c=len(fs['cf']))
             # create an array with all the contraction coefficients for a given shell
             cc = self.contraction_matrix(shell)
-            for expt, cfc in zip(fs['e'], cc):
-                res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
+            ncont = cc.shape[1]
+            #if fmt == 'prec':
+                #if ncont % nitems == 0:
+                #    nlines = ncont//nitems
+                #else:
+                #    nlines = ncont//nitems + 1
+            for expt, row in zip(fs['e'], cc):
+                it = splitlist(row, nitems)
+                res += "{e:>{efmt}}{c}".format(e=expt, efmt=ffmt, c="".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in next(it)])) + "\n"
+
+                for row in it:
+                    res += ' '*int(ffmt.split('.')[0]) + "".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in row]) + "\n"
         return res
 
     def normalze(self):
@@ -1023,6 +1051,10 @@ def legendre(nf, coeffs):
     return np.exp(zetas[::-1])
 
 def splitlist(l, n):
+    '''
+    Split a list into sublists of size `n`
+    '''
+
     if len(l) % n == 0:
         splits = len(l)//n
     elif len(l) % n != 0 and len(l) > n:
