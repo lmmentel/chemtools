@@ -24,16 +24,15 @@
 
 from __future__ import division, print_function
 
-from copy import copy, deepcopy
-import numpy as np
-from itertools import chain
-from collections import OrderedDict
-from scipy.linalg import sqrtm, inv
-from scipy.special import factorial, factorial2, binom
+import os
 import pickle
 import re
-import os
-from mendeleev import element
+from collections import OrderedDict
+from copy import copy, deepcopy
+from itertools import chain
+import numpy as np
+from scipy.linalg import sqrtm, inv
+from scipy.special import factorial, factorial2, binom
 from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, SHELLS
 
 def read_pickle(fname):
@@ -125,7 +124,7 @@ class BasisSet(object):
         return BasisSet(name=self.name, element=self.element, functions=newf)
 
     @classmethod
-    def from_optpars(cls, x0, functs=None, name=None, element=None):
+    def from_optpars(cls, x0, functs=None, name=None, element=None, explogs=False):
         '''
         Return a basis set object generated from a sequence based on the specified
         arguments.
@@ -151,7 +150,10 @@ class BasisSet(object):
             funs[shell] = dict()
             if seq in ["exp", "exponents"]:
                 nt += nf
-                funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
+                if explogs:
+                    funs[shell]['e'] = generate_exponents(seq, nf, np.exp(x0[ni:nt]))
+                else:
+                    funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
                 ni += nf
             else:
                 nt += len(params)

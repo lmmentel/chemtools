@@ -44,7 +44,7 @@ class BSOptimizer(object):
 
     def __init__(self, method=None, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
-                 fsopt=None, staticbs=None, fname=None):
+                 fsopt=None, staticbs=None, fname=None, uselogs=True):
 
         '''
         Args:
@@ -65,6 +65,10 @@ class BSOptimizer(object):
             A dictionary specyfing the optimization algorithm and its options
           fname : str
             Name of the job/input file for the single point calculator
+          uselogs : bool
+            Use natural logarithms of exponents in optimization rather than their
+            values, this option is only relevant if functions asre given as
+            ``exp`` or ``exponents``
         '''
 
         self.fsopt = fsopt
@@ -80,6 +84,7 @@ class BSOptimizer(object):
         self.mol = mol
         self.result = None
         self.fname = fname
+        self.uselogs = uselogs
         self.function = self.get_function()
 
     @property
@@ -202,10 +207,13 @@ class BSOptimizer(object):
         Collect all the parameters in a consecutive list of elements.
         '''
 
-        x0 = list()
+        x0 = np.empty(0)
         for fperatom in self.fsopt.values():
             for fs in fperatom:
-                x0.extend(fs[-1])
+                if fs[1].lower() in ['exp', 'exponents'] and self.uselogs:
+                    x0 = np.concatenate((x0, np.log(fs[-1])), axis=0)
+                else:
+                    x0 = np.concatenate((x0, np.array(fs[-1])), axis=0)
         return x0
 
     def run(self):
@@ -260,7 +268,7 @@ def run_total_energy(x0, *args):
         ni = 0; nt = 0
         for shell, seq, nf, params in functs:
             nt += nf
-            if seq not in ['le', 'legendre']:
+            if seq not in ['le', 'legendre'] and not bso.uselogs:
                 x0[ni:nt] = np.abs(x0[ni:nt])
             ni += nf
 
@@ -268,7 +276,8 @@ def run_total_energy(x0, *args):
 
     bsdict = dict()
     for atom, functs in bso.fsopt.items():
-        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom)
+        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
+                                             explogs=bso.uselogs)
 
     if bso.verbose:
         print("Current exponents being optimized:")
