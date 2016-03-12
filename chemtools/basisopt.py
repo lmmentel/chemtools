@@ -313,7 +313,7 @@ def run_total_energy(x0, *args):
             print("="*80)
         return objective + bso.optalg["lambda"]*penalty
     else:
-        sys.exit("something went wrong, check output {0:s}".format(output))
+        raise ValueError("something went wrong, check output {0:s}".format(output))
 
 def run_core_energy(x0, *args):
     '''
