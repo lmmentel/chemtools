@@ -218,11 +218,11 @@ class BSOptimizer(object):
 
     def run(self):
         '''
-        Driver for the basis set optimization
+        Start the basis set optimization
 
         Returns:
             res : OptimizeResult
-            An instance of the ``scipy.optimize.OptimizeResult`` class
+                An instance of the ``scipy.optimize.OptimizeResult`` class
         '''
 
         print(self.header())
@@ -233,13 +233,34 @@ class BSOptimizer(object):
 
         x0 = self.get_x0()
         self.result = minimize(self.function, x0,
-                        args=(self,),
-                        method=self.optalg["method"],
-                        jac=self.optalg['jacob'],
-                        tol=self.optalg["tol"],
-                        options=self.optalg["options"])
+                               args=(self,),
+                               method=self.optalg["method"],
+                               jac=self.optalg['jacob'],
+                               tol=self.optalg["tol"],
+                               options=self.optalg["options"])
         print(self.result)
         print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
+
+    def get_basis(self, name=None, element=None):
+        '''
+        Construct the BasisSet object from the result of the optimization and function definition.
+
+        Args:
+            name : str
+                Name to be assigned to the basis set
+            element : str
+                Element symbol for the basis set
+
+        Returns:
+            basis : chemtools.basisset.BasisSet
+                :py:class:`BasisSet <chemtools.basisset.BasisSet>` object with the optimized
+                functions
+        '''
+
+        basis = BasisSet.from_optpars(self.result.x, self.fsopt, name=name, element=element,
+                                      explogs=self.uselogs)
+        basis.sort()
+        return basis
 
 def run_total_energy(x0, *args):
     '''
