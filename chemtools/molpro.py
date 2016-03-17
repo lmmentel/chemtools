@@ -23,19 +23,13 @@
 #SOFTWARE.
 
 from __future__ import print_function
-from .code import Code
+
 from subprocess import Popen, PIPE
 import os
-import re
-import sys
-from string import Template
 
-class MolproTemplate(Template):
+from .calculators import Calculator, InputTemplate, parse_objective
 
-    delimiter = '%'
-    idpattern = r'[a-z][_a-z0-9]*'
-
-class Molpro(Code):
+class Molpro(Calculator):
     '''
     Wrapper for the Molpro program.
     '''
@@ -46,14 +40,32 @@ class Molpro(Code):
 
         self.molpropath = os.path.dirname(self.executable)
 
-    def write_input(self, fname=None, template=None, mol=None, bs=None, core=""):
+    def parse(self, fname, objective, regularexp=None):
         '''
-        Write the molpro input to "fname" file based on the information from the
-        keyword arguments.
+        Parse a value from the output file ``fname`` based on the ``objective``.
+
+        If the value of the ``objective`` is ``regexp`` then the ``regularexp`` will
+        be used to parse the file.
         '''
 
-        mi = MolproInput(fname=fname, template=template)
-        mi.write_input(mol=mol, bs=bs, core=core)
+        regexps = {
+            'hf total energy'      : r'!RHF STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)',
+            'mp2 total energy'     : r'!MP2 total energy\s+(?P<energy>\-?\d+\.\d+)',
+            'ccsd total energy'    : r'!CCSD total energy\s+(?P<energy>\-?\d+\.\d+)',
+            'ccsd(t) total energy' : r'!CCSD\(T\) total energy\s+(?P<energy>\-?\d+\.\d+)',
+            'cisd total energy'    : r'!(RHF-R)?CISD\s+(total\s+)?energy\s+(?P<energy>\-?\d+\.\d+)',
+            'fci total energy'     : r'!FCI STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)',
+            'accomplished'         : r'\s*error',
+        }
+
+        if objective == 'regexp':
+            toparse = regularexp
+        else:
+            toparse = regexps.get(objective, None)
+            if toparse is None:
+                raise ValueError("Specified objective: '{0:s}' not supported".format(objective))
+
+        return parse_objective(fname, toparse)
 
     def run(self, inpfile):
         '''
@@ -97,59 +109,25 @@ class Molpro(Code):
 
         return outputs
 
-    def parse(self, output, method, objective, regexp=None):
+    def accomplished(self, fname):
         '''
-        Parser molpro output file to get the objective.
-        '''
-
-        parser = MolproOutputParser(output)
-
-        if objective == "total energy":
-            if method == "hf":
-                return parser.get_hf_total_energy()
-            elif method == "cisd":
-                return parser.get_cisd_total_energy()
-        elif objective == "correlation energy":
-                return parser.get_cisd_total_energy() - parser.get_hf_total_energy()
-        elif objective == "core energy":
-            if method == "cisd":
-                return parser.get_cisd_total_energy()
-        elif objective == "regexp":
-            return parser.get_variable(regexp)
-        else:
-            raise ValueError("unknown objective in prase {0:s}".format(objective))
-
-    def accomplished(self, outfile=None):
-        '''
-        Return True if Molpro job finished without errors.
+        Return True if the job completed without errors
         '''
 
-        if outfile is not None:
-            parser = MolproOutputParser(outfile)
-        else:
-            raise ValueError("oufile needs to be specified")
-        return parser.accomplished()
+        # since the regexp is search for errors is None is found it is assumed
+        # that the calcualtion is accomplished
+        return self.parse(fname, 'accomplished') is None
 
     def __repr__(self):
         return "\n".join(["<Molpro(",
-                        "\tname={},".format(self.name),
-                        "\tmolpropath={},".format(self.molpropath),
-                        "\texecutable={},".format(self.executable),
-                        "\tscratch={},".format(self.scratch),
-                        "\trunopts={},".format(str(self.runopts)),
-                        ")>\n"])
+                          "\tname={},".format(self.name),
+                          "\tmolpropath={},".format(self.molpropath),
+                          "\texecutable={},".format(self.executable),
+                          "\tscratch={},".format(self.scratch),
+                          "\trunopts={},".format(str(self.runopts)),
+                          ")>\n"])
 
-class MolproInput(object):
-    '''
-    Reading, parsing and writing of Molpro input file.
-    '''
-
-    def __init__(self, fname=None, template=None):
-
-        self.fname = fname
-        self.template = template
-
-    def write_input(self, mol=None, bs=None, core=None):
+    def write_input(self, fname=None, template=None, mol=None, bs=None, core=None):
         '''
         Write the molpro input to "fname" file based on the information from the
         keyword arguments.
@@ -163,7 +141,7 @@ class MolproInput(object):
             Molpro core specification
         '''
 
-        temp = MolproTemplate(self.template)
+        temp = InputTemplate(template)
 
         if isinstance(bs, list):
             bs_str = "".join(x.to_molpro() for x in bs)
@@ -181,120 +159,5 @@ class MolproInput(object):
             'core' : core,
         }
 
-        with open(self.fname, 'w') as inp:
+        with open(fname, 'w') as inp:
             inp.write(temp.substitute(subs))
-
-class MolproOutputParser(object):
-
-    '''Class for parsing molro output files'''
-
-    def __init__(self, out=None):
-
-        self.output = out
-        self.outexists()
-
-    def outexists(self):
-
-        '''Check if the out file exists.'''
-
-        if os.path.exists(self.output):
-            return True
-        else:
-            sys.exit("Molpro out file: {0:s} doesn't exist in {1:s}".format(
-                     self.output, os.getcwd()))
-
-    def get_hf_total_energy(self):
-
-        '''Return the total HF energy.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        hfre = re.compile(r'!RHF STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = hfre.search(data)
-        if match:
-            return float(match.group("energy"))
-
-    def get_mp2_total_energy(self):
-
-        '''Return the total MP2 energy.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        mpre = re.compile(r'!MP2 total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = mpre.search(data)
-        if match:
-            return float(match.group("energy"))
-
-    def get_ccsd_total_energy(self):
-
-        '''Return the total CCSD energy.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        ccre = re.compile(r'!CCSD total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = ccre.search(data)
-        if match:
-            return float(match.group("energy"))
-
-    def get_ccsdt_total_energy(self):
-
-        '''Return the total CCSD(T) energy.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        ccre = re.compile(r'!CCSD\(T\) total energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = ccre.search(data)
-        if match:
-            return float(match.group("energy"))
-
-    def get_cisd_total_energy(self):
-
-        '''Return the total CISD energy.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        cire = re.compile(r'!(RHF-R)?CISD\s+(total\s+)?energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = cire.search(data)
-        if match:
-            return float(match.group("energy"))
-
-    def get_fci_total_energy(self):
-
-        '''Return the total HF energy.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        fcire = re.compile(r'!FCI STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)', flags=re.M)
-        match = fcire.search(data)
-        if match:
-            return float(match.group("energy"))
-
-    def get_variable(self, rawstring):
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        genre = re.compile(rawstring, flags=re.M)
-        match = genre.search(data)
-        if match:
-            return float(match.group(1))
-
-    def accomplished(self):
-
-        '''Check if the job terminated succesfully.'''
-
-        with open(self.output, 'r') as out:
-            data = out.read()
-
-        errorre = re.compile(r'\s*error', flags=re.I)
-
-        match = errorre.search(data)
-        if match:
-            return False
-        else:
-            return True

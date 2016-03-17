@@ -42,10 +42,10 @@ from copy import copy
 from subprocess import Popen
 import numpy as np
 
-from .code import Code
+from .calculators import Calculator
 from .parsetools import slicebetween, sliceafter, parsepairs, getlines
 
-class GamessUS(Code):
+class GamessUS(Calculator):
 
     '''Container object for Gamess-us jobs.'''
 
@@ -305,8 +305,7 @@ class GamessInput(object):
         previously parsed data.a
         '''
 
-        data = ""
-        data += " {0:s}\n".format("$data")
+        data = " {0:s}\n".format("$data")
         if header:
             data += "{0:s}\n".format(self.parsed["$data"]["title"])
             data += "{0:s}\n".format(self.parsed["$data"]["group"])
@@ -314,8 +313,7 @@ class GamessInput(object):
                 data += '\n'
         for atom in self.parsed['$data']['atoms']:
             data += '{0:5s}{1:5.1f}{2:12.5f}{3:12.5f}{4:12.5f}\n'.format(
-                atom['label'], atom['atomic'],
-                atom['xyz'][0], atom['xyz'][1], atom['xyz'][2])
+                atom['label'], atom['atomic'], atom['xyz'][0], atom['xyz'][1], atom['xyz'][2])
             data += atom['basis'] + '\n\n'
         data += self.end
         return data

@@ -42,14 +42,12 @@ class BSOptimizer(object):
 
     '''Basis Set Optimizer class'''
 
-    def __init__(self, method=None, objective=None, core=None, template=None,
+    def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
                  fsopt=None, staticbs=None, fname=None, uselogs=True):
 
         '''
         Args:
-          method : str
-            Electornic structure method to use in optimzation
           objective : str
             Obejctive on which the optimization will be evaluated
           code : chemtools.code.Code
@@ -69,11 +67,12 @@ class BSOptimizer(object):
             Use natural logarithms of exponents in optimization rather than their
             values, this option is only relevant if functions asre given as
             ``exp`` or ``exponents``
+          regexp : str
+            Regular expression to use in search for the objective if ``objective`` is regexp
         '''
 
         self.fsopt = fsopt
         self.staticbs = staticbs
-        self.method = method
         self.objective = objective
         self.regexp = regexp
         self.template = template
@@ -140,17 +139,17 @@ class BSOptimizer(object):
         else:
             raise ValueError("optalg should be a <dict>, got: {}".format(type(value)))
 
-    @property
-    def objective(self):
-        return self._objective
-
-    @objective.setter
-    def objective(self, value):
-
-        if value in ['total energy', 'core energy', 'correlation energy', 'regexp']:
-            self._objective = value
-        else:
-            raise ValueError('unknown objective: {}'.format(value))
+#    @property
+#    def objective(self):
+#        return self._objective
+#
+#    @objective.setter
+#    def objective(self, value):
+#
+#        if value in ['total energy', 'core energy', 'correlation energy', 'regexp']:
+#            self._objective = value
+#        else:
+#            raise ValueError('unknown objective: {}'.format(value))
 
     @property
     def fsopt(self):
@@ -165,10 +164,16 @@ class BSOptimizer(object):
             self._fsopt = value
 
     def get_function(self):
-        if self.objective == 'core energy':
+        '''
+        Figure out which function to use
+        '''
+
+        if 'core' in self.objective:
             return run_core_energy
-        elif self.objective in ['total energy', 'correlation energy', 'regexp']:
+        elif any([x in self.objective for x in ['total', 'correlation', 'regexp']]):
             return run_total_energy
+        else:
+            raise ValueError('Confusion in <get_function>, correct the objective')
 
     def header(self):
         '''
@@ -191,6 +196,7 @@ class BSOptimizer(object):
 
         #for name, obj in [("code", code), ("job", job), ("mol", mol),
         #                ("bsnoopt", bsnoopt), ("bsopt", bsopt), ("opt", opt)]:
+        # TODO add printing of static basis set 
         attrs = ['code', 'mol', 'optalg']
         out = ''
         for attr in attrs:
@@ -315,15 +321,16 @@ def run_total_energy(x0, *args):
             if diff_atoms:
                 for atom in diff_atoms:
                     bsdict[atom] = bso.staticbs[atom]
-        #elif isinstance(bso.staticbs, BasisSet):
-        #    if
-    else:
-        pass
+        elif isinstance(bso.staticbs, BasisSet):
+            if bso.staticbs.element in set(bsdict.keys()):
+                bsdict[atom].append(bso.staticbs[atom])
+            else:
+                bsdict[bso.staticbs.element] = bso.staticbs
 
-    bso.code.write_input(fname=bso.fname, template=bso.template, bs=bsdict.values(), mol=bso.mol, core=bso.core)
+    bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict, mol=bso.mol, core=bso.core)
     output = bso.code.run(bso.fname)
     if bso.code.accomplished(output):
-        objective = bso.code.parse(output, bso.method, bso.objective, bso.regexp)
+        objective = bso.code.parse(output, bso.objective, bso.regexp)
         if objective is None:
             raise ValueError("Unable to parse the objective, check output")
         if bso.verbose:

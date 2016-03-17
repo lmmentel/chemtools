@@ -29,14 +29,21 @@ All the methods should be implemented for the basisopt module to work with the
 new code.
 '''
 
-from abc import ABCMeta, abstractmethod
 import os
+import re
+from collections import Counter
 
-class Code():
-    __metaclass__ = ABCMeta
+from subprocess import Popen, PIPE, call
+from string import Template
+
+from abc import ABCMeta, abstractmethod
+from .basisset import get_l
+
+class Calculator():
     '''
     Abstract class that should be subclassed when adding a new code interace.
     '''
+    __metaclass__ = ABCMeta
 
     def __init__(self, executable=None, runopts=None, scratch=None):
 
@@ -46,13 +53,14 @@ class Code():
 
     @property
     def executable(self):
+        'Set the executable'
         return self._executable
 
     @executable.setter
     def executable(self, value):
         if os.path.exists(value):
             if os.path.isdir(value):
-                    raise OSError('{0} is a directory, not executable'.format(value))
+                raise OSError('{0} is a directory, not executable'.format(value))
             elif os.path.isfile(value):
                 if os.access(value, os.X_OK):
                     self._executable = value
@@ -65,6 +73,7 @@ class Code():
 
     @property
     def scratch(self):
+        'Return scratch'
         return self._scratch
 
     @scratch.setter
@@ -77,31 +86,81 @@ class Code():
         else:
             raise ValueError("Scratch directory doesn't exist: {}".format(path))
 
+
     @abstractmethod
-    def parse():
+    def parse(self, fname, objective, regexp=None):
+
         pass
 
     @abstractmethod
-    def run():
+    def run(self, *args):
         '''
-        run s single job
+        run a single job
         '''
+
         pass
 
     @abstractmethod
-    def run_multiple():
+    def run_multiple(self):
         pass
 
-    @abstractmethod
-    def accomplished():
+    def accomplished(self, fname):
         '''
-        return True if the job completed without errors
+        Return True if the job completed without errors
         '''
-        pass
+
+        return self.parse(fname, 'accomplished') is True
 
     @abstractmethod
-    def write_input():
+    def write_input(self):
         '''
         write the input file in the format of the code used
         '''
         pass
+
+def parse_objective(fname, regexp, reflags=re.I):
+    '''
+    Wrapper for the parse methods
+
+    Args:
+        fname : str
+            Name of the file to be parsed
+        objective : str
+    '''
+
+    if not os.path.exists(fname):
+        raise ValueError("Output file: {0:s} doesn't exist in {1:s}".format(fname, os.getcwd()))
+
+    rec = re.compile(regexp, flags=reflags)
+    with open(fname, 'r') as fobj:
+        for line in fobj:
+            match = rec.search(line)
+            if match:
+                # check if a group was captured or not
+                if match.lastindex > 0:
+                    return float(match.group(1))
+                else:
+                    return True
+        else:
+            return None
+
+class InputTemplate(Template):
+
+    'Modified string.Template class to be used for input rendering'
+
+    delimiter = '%'
+    idpattern = r'[a-z][_a-z0-9]*'
+
+    def get_keys(self):
+        '''
+        Parse the string and return a dict with possible keys to substitute.
+        For most use case only the `named` fields are interesting.
+        '''
+
+        keys = {}
+        match = self.pattern.findall(self.template)
+        for k, v in self.pattern.groupindex.items():
+            keys[k] = [x[v-1] for x in match if x[v-1] != '']
+        return keys
+
+

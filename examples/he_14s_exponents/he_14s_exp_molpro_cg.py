@@ -40,7 +40,7 @@ exps = ( 5.34806342e+04,   1.21788142e+04,   3.25581325e+03,
 
 sfuncts = {'He' : [('s', 'exp', 12, exps)]}
 
-bso = BSOptimizer(method='hf', objective='total energy', template=template, code=mp, mol=he,
+bso = BSOptimizer(objective='hf total energy', template=template, code=mp, mol=he,
                   fsopt=sfuncts, staticbs=None, core=[0,0,0,0,0,0,0,0], fname='molpro_cg.inp',
                   verbose=True, uselogs=True, optalg=optimization)
 

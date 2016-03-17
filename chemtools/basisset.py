@@ -387,11 +387,6 @@ class BasisSet(object):
             # create an array with all the contraction coefficients for a given shell
             cc = self.contraction_matrix(shell)
             ncont = cc.shape[1]
-            #if fmt == 'prec':
-                #if ncont % nitems == 0:
-                #    nlines = ncont//nitems
-                #else:
-                #    nlines = ncont//nitems + 1
             for expt, row in zip(fs['e'], cc):
                 it = splitlist(row, nitems)
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=ffmt, c="".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in next(it)])) + "\n"
