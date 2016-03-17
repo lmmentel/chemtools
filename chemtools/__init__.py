@@ -8,6 +8,4 @@ __version__ = "0.7.2"
 
 import chemtools.basisset
 import chemtools.basisopt
-import chemtools.gamessus
-import chemtools.dmft
 
