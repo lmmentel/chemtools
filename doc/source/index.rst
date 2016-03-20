@@ -130,6 +130,11 @@ License
 .. include:: ../../LICENSE.rst
 
 
+.. literalinclude:: ../../tests/test_basisopt/test_dalton_eventemp.py
+    :linenos:
+    :language: python
+
+
 Indices and tables
 ==================
 * :ref:`genindex`

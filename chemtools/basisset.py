@@ -29,7 +29,7 @@ import pickle
 import re
 from collections import OrderedDict
 from copy import copy, deepcopy
-from itertools import chain
+from itertools import chain, product
 import numpy as np
 from scipy.linalg import sqrtm, inv
 from scipy.special import factorial, factorial2, binom
@@ -1087,7 +1087,7 @@ def have_equal_floats(a, b):
         - False if there are no common items
     '''
 
-    x = np.array([x for x in product(a, b)])
+    x = np.array([item for item in product(a, b)])
     return np.any(np.isclose(x[:, 0], x[:, 1]))
 
 def xyzlist(l):
@@ -1205,4 +1205,3 @@ def zlmtoxyz(l):
                     else:
                         out[icart, -m + l] -= tmpk
     return out
-
