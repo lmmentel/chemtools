@@ -37,7 +37,7 @@ from subprocess import Popen, PIPE, call
 from string import Template
 
 from abc import ABCMeta, abstractmethod
-from .basisset import get_l
+from ..basisset import get_l
 
 class Calculator():
     '''

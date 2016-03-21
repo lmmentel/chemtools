@@ -42,8 +42,8 @@ from copy import copy
 from subprocess import Popen
 import numpy as np
 
-from .calculators import Calculator
-from .parsetools import slicebetween, sliceafter, parsepairs, getlines
+from .calculator import Calculator
+from ..parsetools import slicebetween, sliceafter, parsepairs, getlines
 
 class GamessUS(Calculator):
 

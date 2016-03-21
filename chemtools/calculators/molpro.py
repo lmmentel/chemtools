@@ -27,7 +27,7 @@ from __future__ import print_function
 from subprocess import Popen, PIPE
 import os
 
-from .calculators import Calculator, InputTemplate, parse_objective
+from .calculator import Calculator, InputTemplate, parse_objective
 
 class Molpro(Calculator):
     '''
