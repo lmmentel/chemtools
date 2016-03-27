@@ -29,7 +29,7 @@ from subprocess import Popen, call
 
 from .calculator import Calculator, InputTemplate, parse_objective
 
-from .basisset import get_l
+from ..basisset import get_l
 
 class Dalton(Calculator):
 
