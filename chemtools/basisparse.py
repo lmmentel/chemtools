@@ -195,13 +195,13 @@ def parse_gaussian_basis(string):
                             functions[shell]['e'] = sexp
                             for cf in functions[shell]['cf']:
                                 cf['idx'] = idxs[cf['idx']]
-                            newcf = np.array(zip(idxo[indxs], cc), dtype=CFDTYPE)
+                            newcf = np.array(list(zip(idxo[indxs], cc)), dtype=CFDTYPE)
                             functions[shell]['cf'].append(newcf)
                         else:
                             functions[shell] = dict()
                             functions[shell]['cf'] = list()
                             functions[shell]['e'] = exps
-                            functions[shell]['cf'].append(np.array(zip(indxs, cc), dtype=CFDTYPE))
+                            functions[shell]['cf'].append(np.array(list(zip(indxs, cc)), dtype=CFDTYPE))
                 out[atom] = functions
     return out
 
@@ -258,13 +258,13 @@ def parse_gamessus_basis(string):
                                 functions[shell]['e'] = sexp
                                 for cf in functions[shell]['cf']:
                                     cf['idx'] = idxs[cf['idx']]
-                                newcf = np.array(zip(idxo[indxs-1], cc), dtype=CFDTYPE)
+                                newcf = np.array(list(zip(idxo[indxs-1], cc)), dtype=CFDTYPE)
                                 functions[shell]['cf'].append(newcf)
                             else:
                                 functions[shell] = dict()
                                 functions[shell]['cf'] = list()
                                 functions[shell]['e'] = exps
-                                functions[shell]['cf'].append(np.array(zip(indxs-1, cc), dtype=CFDTYPE))
+                                functions[shell]['cf'].append(np.array(list(zip(indxs-1, cc)), dtype=CFDTYPE))
                 res[elem.symbol] = functions
     return res
 
