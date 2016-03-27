@@ -2,7 +2,7 @@ import numpy as np
 import os
 import unittest
 
-from chemtools.gamessreader import DictionaryFile
+from chemtools.calculators.gamessreader import DictionaryFile
 
 class TestDictionaryFileHeMini(unittest.TestCase):
 
@@ -501,7 +501,7 @@ class TestDictionaryFileNeDZ(unittest.TestCase):
         labs = ['AG      ', 'AG      ', 'B1U     ', 'B3U     ', 'B2U     ',
        'B3U     ', 'B2U     ', 'B1U     ', 'AG      ', 'B1G     ',
        'B3G     ', 'AG      ', 'B2G     ', 'AG      ', '']
-        self.assertListEqual(list(self.daf.read_record(255)), labs)
+        self.assertListEqual([s.decode('utf-8') for s in self.daf.read_record(255)], labs)
 
 if __name__ == "__main__":
     unittest.main()

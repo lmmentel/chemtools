@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from chemtools.gamessus import GamessInput 
+from chemtools.calculators.gamessus import GamessInput 
 
 class TestGIPonHeH2(unittest.TestCase):
 

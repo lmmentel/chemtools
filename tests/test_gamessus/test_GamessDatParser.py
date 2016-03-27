@@ -3,7 +3,7 @@ import os
 import re
 import unittest
 
-from chemtools.gamessus import GamessDatParser, get_naos_nmos
+from chemtools.calculators.gamessus import GamessDatParser, get_naos_nmos
 
 class TestGDPonHeH2(unittest.TestCase):
     heh2_rhf = '''--- CLOSED SHELL ORBITALS --- GENERATED AT Sun May 11 14:57:30 2014

@@ -249,6 +249,8 @@ class BinaryFile(object):
         else:
             order = self.order
 
+        length = int(length)
+
         # Read the data from file
         data = self.file.read(length)
         if len(data) < length:

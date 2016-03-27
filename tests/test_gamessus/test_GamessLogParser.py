@@ -2,7 +2,7 @@
 
 import unittest
 import os
-from chemtools.gamessus import GamessLogParser
+from chemtools.calculators.gamessus import GamessLogParser
 
 class TestGLPonHeMini(unittest.TestCase):
 
