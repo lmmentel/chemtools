@@ -24,7 +24,7 @@
 
 from __future__ import print_function
 
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 import os
 
 from .calculator import Calculator, InputTemplate, parse_objective
@@ -76,17 +76,9 @@ class Molpro(Calculator):
             outfile = self.runopts[self.runopts.index("-o") + 1]
         else:
             outfile = os.path.splitext(inpfile)[0] + ".out"
-        errfile = os.path.splitext(outfile)[0] + ".err"
-        opts = []
-        opts.extend([self.executable, inpfile] + self.runopts)
 
-        process = Popen(opts, stdout=PIPE, stderr=PIPE)
-        out, err = process.communicate()
-        ferr = open(errfile, 'w')
-        ferr.write(out)
-        ferr.write("{0:s}\n{1:^80s}\n{0:s}\n".format("="*80, "Error messages:"))
-        ferr.write(err)
-        ferr.close()
+        command = [self.executable, inpfile] + self.runopts
+        call(command)
 
         return outfile
 
@@ -127,26 +119,28 @@ class Molpro(Calculator):
                           "\trunopts={},".format(str(self.runopts)),
                           ")>\n"])
 
-    def write_input(self, fname=None, template=None, mol=None, bs=None, core=None):
+    def write_input(self, fname=None, template=None, mol=None, basis=None, core=None):
         '''
         Write the molpro input to "fname" file based on the information from the
         keyword arguments.
 
         Args:
-          mol : chemtools.molecule.Molecule
-            Molecule object instance
-          bs : chemtools.basisset.BasisSet
-            BasisSet class instance or list of those instances
-          core : list of ints
-            Molpro core specification
+            mol : chemtools.molecule.Molecule
+                Molecule object instance
+            basis : dict
+                An instance of :py:class:`BasisSet <chemtools.basisset.BasisSet>` class or a
+                dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` objects with
+                element symbols as keys
+            core : list of ints
+                Molpro core specification
         '''
 
         temp = InputTemplate(template)
 
-        if isinstance(bs, list):
-            bs_str = "".join(x.to_molpro() for x in bs)
+        if isinstance(basis, dict):
+            bs_str = "".join(x.to_molpro() for x in basis.values())
         else:
-            bs_str = bs.to_molpro()
+            bs_str = basis.to_molpro()
 
         if core is not None:
             core = "core,{0:s}\n".format(",".join([str(x) for x in core]))
