@@ -45,7 +45,7 @@ setup(
     ],
     entry_points = {
         'console_scripts' : [
-            'writeorbinp = chemtools.gamessus:writeorbinp',
+            'writeorbinp = chemtools.calculators.gamessus:writeorbinp',
         ]
     },
     license = open('LICENSE.rst').read(),
