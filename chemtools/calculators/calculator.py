@@ -137,7 +137,7 @@ def parse_objective(fname, regexp, reflags=re.I):
             match = rec.search(line)
             if match:
                 # check if a group was captured or not
-                if match.lastindex > 0:
+                if match.lastindex is not None and match.lastindex > 0:
                     return float(match.group(1))
                 else:
                     return True
