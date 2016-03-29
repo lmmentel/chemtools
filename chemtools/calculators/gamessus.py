@@ -159,7 +159,7 @@ class GamessUS(Calculator):
         else:
             raise ValueError("unknown objective in prase {0:s}".format(objective))
 
-    def write_input(self, fname, template=None):
+    def write_input(self, fname, basis=None, template=None):
         '''
         Write a file containing gamess input.
         '''

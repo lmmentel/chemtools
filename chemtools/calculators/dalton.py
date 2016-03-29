@@ -122,7 +122,8 @@ class Dalton(Calculator):
                 Dictionary with templates for the ``dal`` and ``mol`` with those strings as keys and
                 actual templates as values
             basis : dict
-                Dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` object with
+                An instance of :py:class:`BasisSet <chemtools.basisset.BasisSet>` class or a
+                dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` objects with
                 element symbols as keys
             mol : :py:class:`chemtools.molecule.Molecule`
                 Molecule object with the system geometry
