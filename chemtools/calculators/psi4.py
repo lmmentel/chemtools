@@ -35,6 +35,7 @@ class Psi4(Calculator):
 
     def __init__(self, name="Psi4", **kwargs):
         self.name = name
+        self.inpext = '.dat'
         super(Psi4, self).__init__(**kwargs)
 
         self.psi4path = os.path.dirname(self.executable)

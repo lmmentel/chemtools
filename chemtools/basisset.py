@@ -244,8 +244,8 @@ class BasisSet(object):
 
         out = dict()
         if len(res) == 1:
-            atom, fs = res.items()[0]
-            return cls(name=name, element=res.keys()[0],
+            atom, fs = list(res.items())[0]
+            return cls(name=name, element=list(res.keys())[0],
                     functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
         else:
             for atom, fs in res.items():

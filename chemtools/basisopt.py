@@ -44,7 +44,7 @@ class BSOptimizer(object):
 
     def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
-                 fsopt=None, staticbs=None, fname=None, uselogs=True):
+                 fsopt=None, staticbs=None, fname=None, uselogs=True, runcore=False):
 
         '''
         Args:
@@ -69,6 +69,9 @@ class BSOptimizer(object):
             ``exp`` or ``exponents``
           regexp : str
             Regular expression to use in search for the objective if ``objective`` is regexp
+          runcore : bool
+            Flag to mark wheather to run separate single point jobs with different numbers of
+            frozen core orbitals to calculate core energy
         '''
 
         self.fsopt = fsopt
@@ -84,7 +87,11 @@ class BSOptimizer(object):
         self.result = None
         self.fname = fname
         self.uselogs = uselogs
-        self.function = self.get_function()
+
+        if runcore:
+            self.function = run_core_energy
+        else:
+            self.function = run_total_energy
 
     @property
     def fname(self):
@@ -162,18 +169,6 @@ class BSOptimizer(object):
             raise ValueError("no dictionary describing basis set to be optimized given")
         else:
             self._fsopt = value
-
-    def get_function(self):
-        '''
-        Figure out which function to use
-        '''
-
-        if 'core' in self.objective:
-            return run_core_energy
-        elif any([x in self.objective for x in ['total', 'correlation', 'regexp']]):
-            return run_total_energy
-        else:
-            raise ValueError('Confusion in <get_function>, correct the objective')
 
     def header(self):
         '''
@@ -268,6 +263,32 @@ class BSOptimizer(object):
         basis.sort()
         return basis
 
+def get_basis_dict(bso, x0):
+
+    bsdict = dict()
+    for atom, functs in bso.fsopt.items():
+        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
+                                             explogs=bso.uselogs)
+
+    if bso.staticbs is not None:
+        if isinstance(bso.staticbs, dict):
+            common_atoms = set(bso.staticbs.keys()) & set(bsdict.keys())
+            if common_atoms:
+                for atom in common_atoms:
+                    bsdict[atom].append(bso.staticbs[atom])
+            diff_atoms = set(bso.staticbs.keys()) - set(bsdict.keys())
+            if diff_atoms:
+                for atom in diff_atoms:
+                    bsdict[atom] = bso.staticbs[atom]
+        elif isinstance(bso.staticbs, BasisSet):
+            if bso.staticbs.element in set(bsdict.keys()):
+                bsdict[atom].append(bso.staticbs)
+            else:
+                bsdict[bso.staticbs.element] = bso.staticbs
+
+    return bsdict
+
+
 def run_total_energy(x0, *args):
     '''
     Funtion for running a single point calculation and parsing the resulting
@@ -301,31 +322,12 @@ def run_total_energy(x0, *args):
 
     penalty = 0.0
 
-    bsdict = dict()
-    for atom, functs in bso.fsopt.items():
-        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
-                                             explogs=bso.uselogs)
+    bsdict = get_basis_dict(bso, x0)
 
     if bso.verbose:
         print("Current exponents being optimized:")
         for atom, basis in bsdict.items():
             print(atom, basis.print_functions())
-
-    if bso.staticbs is not None:
-        if isinstance(bso.staticbs, dict):
-            common_atoms = set(bso.staticbs.keys()) & set(bsdict.keys())
-            if common_atoms:
-                for atom in common_atoms:
-                    bsdict[atom].append(bso.staticbs[atom])
-            diff_atoms = set(bso.staticbs.keys()) - set(bsdict.keys())
-            if diff_atoms:
-                for atom in diff_atoms:
-                    bsdict[atom] = bso.staticbs[atom]
-        elif isinstance(bso.staticbs, BasisSet):
-            if bso.staticbs.element in set(bsdict.keys()):
-                bsdict[atom].append(bso.staticbs[atom])
-            else:
-                bsdict[bso.staticbs.element] = bso.staticbs
 
     bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict, mol=bso.mol, core=bso.core)
     output = bso.code.run(bso.fname)
@@ -369,31 +371,18 @@ def run_core_energy(x0, *args):
         ni = 0; nt = 0
         for shell, seq, nf, params in functs:
             nt += nf
-            if seq not in ['le', 'legendre']:
+            if seq not in ['le', 'legendre'] and not bso.uselogs:
                 x0[ni:nt] = np.abs(x0[ni:nt])
             ni += nf
 
     penalty = 0.0
 
-    bsdict = dict()
-    for atom, functs in bso.fsopt.items():
-        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom)
+    bsdict = get_basis_dict(bso, x0)
 
     if bso.verbose:
         print("Current exponents being optimized:")
         for atom, basis in bsdict.items():
             print(atom, basis.print_functions())
-
-    if bso.staticbs is not None:
-        if isinstance(bso.staticbs, dict):
-            common_atoms = set(bso.staticbs.keys()) & set(bsdict.keys())
-            if common_atoms:
-                for atom in common_atoms:
-                    bsdict[atom].append(bso.staticbs[atom])
-            diff_atoms = set(bso.staticbs.keys()) - set(bsdict.keys())
-            if diff_atoms:
-                for atom in diff_atoms:
-                    bsdict[atom] = bso.staticbs[atom]
 
     citote = []
     stats  = []
@@ -401,11 +390,11 @@ def run_core_energy(x0, *args):
     inputs = [base+"_core"+str(sum(x))+".inp" for x in bso.core]
 
     for inpname, core in zip(inputs, bso.core):
-        bso.code.write_input(fname=inpname, core=core, bs=bsdict.values(), mol=bso.mol, template=bso.template)
+        bso.code.write_input(fname=inpname, core=core, basis=bsdict, mol=bso.mol, template=bso.template)
 
     outputs = bso.code.run_multiple(inputs)
     for output in outputs:
-        citote.append(bso.code.parse(output, bso.method, bso.objective, bso.regexp))
+        citote.append(bso.code.parse(output, bso.objective, bso.regexp))
         stats.append(bso.code.accomplished(output))
 
     if stats[0] and stats[1]:

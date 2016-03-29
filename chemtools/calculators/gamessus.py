@@ -52,6 +52,7 @@ class GamessUS(Calculator):
     def __init__(self, name="GamessUS", version="00", runopts=None, **kwargs):
         super(GamessUS, self).__init__(**kwargs)
         self.name = name
+        self.inpext = '.inp'
         self.rungms = self.executable
         self.gmspath = os.path.dirname(self.executable)
         self.version = version

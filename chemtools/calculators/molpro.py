@@ -36,6 +36,7 @@ class Molpro(Calculator):
 
     def __init__(self, name="Molpro", **kwargs):
         self.name = name
+        self.inpext = '.inp'
         super(Molpro, self).__init__(**kwargs)
 
         self.molpropath = os.path.dirname(self.executable)
