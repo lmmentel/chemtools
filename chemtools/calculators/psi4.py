@@ -23,7 +23,7 @@
 #SOFTWARE.
 
 from __future__ import print_function
-from subprocess import Popen, PIPE
+from subprocess import Popen, call
 import os
 
 from .calculator import Calculator, InputTemplate, parse_objective
@@ -45,17 +45,9 @@ class Psi4(Calculator):
         '''
 
         outfile = os.path.splitext(inpfile)[0] + ".out"
-        errfile = os.path.splitext(inpfile)[0] + ".err"
-        opts = []
-        opts.extend([self.executable, inpfile] + self.runopts)
 
-        process = Popen(opts, stdout=PIPE, stderr=PIPE)
-        out, err = process.communicate()
-        ferr = open(errfile, 'w')
-        ferr.write(out)
-        ferr.write("{0:s}\n{1:^80s}\n{0:s}\n".format("="*80, "Error messages:"))
-        ferr.write(err)
-        ferr.close()
+        command = [self.executable, inpfile] + self.runopts
+        call(command)
 
         return outfile
 
@@ -79,26 +71,32 @@ class Psi4(Calculator):
 
         return outputs
 
-    def write_input(self, fname, template, mol=None, bs=None, core=None):
+    def write_input(self, fname, template, mol=None, basis=None, core=None):
         '''
         Write the Psi4 input to "fname" file based on the information from the
         keyword arguments.
 
         Args:
-          mol : chemtools.molecule.Molecule
-            Molecule object instance
-          bs : chemtools.basisset.BasisSet
-            BasisSet class instance or list of those instances
-          core : list of ints
-            Psi4 core specification
+            mol : :py:class:`chemtools.molecule.Molecule`
+                Molecule object instance
+            basis : dict or :py:class:`BasisSet <chemtools.basisset.BasisSet>`
+                An instance of :py:class:`BasisSet <chemtools.basisset.BasisSet>` class or a
+                dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` objects with
+                element symbols as keys
+            core : list of ints
+                Psi4 core specification
+            template : :py:class:`str`
+                Template of the input file
+            fname : :py:class:`str`
+                Name of the input file to be used
         '''
 
         temp = InputTemplate(template)
 
-        if isinstance(bs, list):
-            bs_str = "".join(x.to_gaussian() for x in bs)
+        if isinstance(basis, dict):
+            bs_str = "".join(x.to_gaussian() for x in basis.values())
         else:
-            bs_str = bs.to_gaussian()
+            bs_str = basis.to_gaussian()
 
         if core is not None:
             core = "core,{0:s}\n".format(",".join([str(x) for x in core]))
@@ -123,8 +121,8 @@ class Psi4(Calculator):
         '''
 
         regexps = {
-            'hf total energy'   : r'@RHF Final Energy:\s+(?P<energy>\-?\d+\.\d+)',
-            'cisd total energy' : r'\s+\* CISD total energy:\s*(?P<energy>\-?\d+\.\d+)',
+            'hf total energy'   : r'@RHF Final Energy:\s+(\-?\d+\.\d+)',
+            'cisd total energy' : r'\s+\* CISD total energy:\s*(\-?\d+\.\d+)',
             'accomplished'    : r'\*\*\* PSI4 exiting successfully.',
         }
 

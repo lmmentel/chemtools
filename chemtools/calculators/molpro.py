@@ -24,7 +24,7 @@
 
 from __future__ import print_function
 
-from subprocess import Popen, PIPE, call
+from subprocess import Popen, call
 import os
 
 from .calculator import Calculator, InputTemplate, parse_objective
@@ -49,12 +49,12 @@ class Molpro(Calculator):
         '''
 
         regexps = {
-            'hf total energy'      : r'!RHF STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)',
-            'mp2 total energy'     : r'!MP2 total energy\s+(?P<energy>\-?\d+\.\d+)',
-            'ccsd total energy'    : r'!CCSD total energy\s+(?P<energy>\-?\d+\.\d+)',
-            'ccsd(t) total energy' : r'!CCSD\(T\) total energy\s+(?P<energy>\-?\d+\.\d+)',
-            'cisd total energy'    : r'!(RHF-R)?CISD\s+(total\s+)?energy\s+(?P<energy>\-?\d+\.\d+)',
-            'fci total energy'     : r'!FCI STATE \d+\.\d+ Energy\s+(?P<energy>\-?\d+\.\d+)',
+            'hf total energy'      : r'!RHF STATE \d+\.\d+ Energy\s+(\-?\d+\.\d+)',
+            'mp2 total energy'     : r'!MP2 total energy\s+(\-?\d+\.\d+)',
+            'ccsd total energy'    : r'!CCSD total energy\s+(\-?\d+\.\d+)',
+            'ccsd(t) total energy' : r'!CCSD\(T\) total energy\s+(\-?\d+\.\d+)',
+            'cisd total energy'    : r'!(?:RHF-R)?CISD\s+(?:total\s+)?energy\s+(\-?\d+\.\d+)',
+            'fci total energy'     : r'!FCI STATE \d+\.\d+ Energy\s+(\-?\d+\.\d+)',
             'accomplished'         : r'\s*error',
         }
 
@@ -125,14 +125,18 @@ class Molpro(Calculator):
         keyword arguments.
 
         Args:
-            mol : chemtools.molecule.Molecule
+            mol : :py:class:`chemtools.molecule.Molecule`
                 Molecule object instance
-            basis : dict
+            basis : dict or :py:class:`BasisSet <chemtools.basisset.BasisSet>`
                 An instance of :py:class:`BasisSet <chemtools.basisset.BasisSet>` class or a
                 dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` objects with
                 element symbols as keys
             core : list of ints
                 Molpro core specification
+            template : :py:class:`str`
+                Template of the input file
+            fname : :py:class:`str`
+                Name of the input file to be used
         '''
 
         temp = InputTemplate(template)
