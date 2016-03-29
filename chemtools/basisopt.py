@@ -129,11 +129,11 @@ class BSOptimizer(object):
                 value['jacob'] = None
             else:
                 value['jacob'] = jac
-            if not value.has_key('lambda'):
+            if not 'lambda' in value.keys():
                 value["lambda"] = lbd
-            if not value.has_key('tol'):
-                value["lambda"] = tol
-            if not value['options'].has_key('maxiter'):
+            if not 'tol' in value.keys():
+                value['tol'] = tol
+            if not 'maxiter' in value['options'].keys():
                 value['options']['maxiter'] = mxi
             self._optalg = value
         else:
