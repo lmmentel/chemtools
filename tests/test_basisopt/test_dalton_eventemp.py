@@ -1,9 +1,11 @@
-
+import os
 from chemtools.calculators.dalton import Dalton
 from chemtools.molecule import Molecule
 from chemtools.basisopt import BSOptimizer
 
-def test_optimize():
+def test_optimize(tmpdir):
+
+    tmpdir.chdir()
 
     moltemplate = '''INTGRL
 basis set optimization
@@ -43,14 +45,16 @@ GASCI
 **END OF DALTON INPUT
 '''
 
-    dalton = Dalton(executable='/home/lmentel/apps/dalton/dalton', runopts=['-nobackup', '-noarch', '-d'])
+    dalton = Dalton(executable='/home/lmentel/apps/dalton/dalton',
+                    runopts=['-nobackup', '-noarch', '-d'])
 
     fname = {'dal' : 'hf.dal', 'mol' : 'He_5s.mol'}
     template = {'mol' : moltemplate, 'dal' : hftemplate}
     fsopt = {'He' : [('s', 'et', 5, (0.5, 2.0))]}
     he = Molecule(name='He', atoms=[('He', ) ])
-    bso = BSOptimizer(objective='hf total energy', template=template, verbose=False, code=dalton, mol=he, fsopt=fsopt, fname=fname)
+    bso = BSOptimizer(objective='hf total energy', template=template, verbose=False, code=dalton,
+                      mol=he, fsopt=fsopt, fname=fname)
 
     bso.run()
     energy = -2.8586246608170001
-    assert abs(bso.result.fun +- energy) < 1.0e-8, 'wrong objective'
+    assert abs(bso.result.fun - energy) < 1.0e-8, 'wrong objective'
