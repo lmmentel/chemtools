@@ -44,7 +44,8 @@ class BSOptimizer(object):
 
     def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
-                 fsopt=None, staticbs=None, fname=None, uselogs=True, runcore=False):
+                 fsopt=None, staticbs=None, fname=None, uselogs=True, runcore=False,
+                 usepenalty=None, penaltykwargs=None):
 
         '''
         Args:
@@ -87,6 +88,8 @@ class BSOptimizer(object):
         self.result = None
         self.fname = fname
         self.uselogs = uselogs
+        self.usepenalty = usepenalty
+        self.penaltykwargs = penaltykwargs
 
         if runcore:
             self.function = run_core_energy
@@ -118,13 +121,11 @@ class BSOptimizer(object):
 
         #defaults
         tol = 1.0e-4
-        lbd = 10.0
         jac = False
         mxi = 100
 
         if value is None:
             self._optalg = {"method"  : "Nelder-Mead",
-                            "lambda"  : lbd,
                             "tol"     : tol,
                             "jacob"   : None,
                             "options" : {"maxiter" : 100,
@@ -136,8 +137,6 @@ class BSOptimizer(object):
                 value['jacob'] = None
             else:
                 value['jacob'] = jac
-            if not 'lambda' in value.keys():
-                value["lambda"] = lbd
             if not 'tol' in value.keys():
                 value['tol'] = tol
             if not 'maxiter' in value['options'].keys():
@@ -157,6 +156,18 @@ class BSOptimizer(object):
             raise ValueError("no dictionary describing basis set to be optimized given")
         else:
             self._fsopt = value
+
+    @property
+    def penaltykwargs(self):
+        return self._penaltykwargs
+
+    @penaltykwargs.setter
+    def penaltykwargs(self, value):
+
+        if value is None:
+            self._penaltykwargs = {'alpha' : 25.0, 'smallestonly' : True}
+        else:
+            self._penaltykwargs = value
 
     def header(self):
         '''
@@ -282,6 +293,44 @@ def get_basis_dict(bso, x0):
 
     return bsdict
 
+def get_penalty(bsdict, alpha=25.0, smallestonly=True):
+    '''
+    For a given dict of basis sets calculate the penalty for pairs of exponents being too close
+    together.
+
+    Args:
+        bsdict : dict
+            Dictionary of :py:class:`BasisSet` objects
+        alpha : float
+            Parameter controling the magnitude and range of the penalty
+        smallestonly : bool
+            A flag to mark whether to use only the smallest ratio to calculate the penalty or all
+            smallest ratios from each shell and calculate the penalty as a product of individual
+            penalties
+
+    For each basis and shell within the basis ratios between pairs of sorted exponents are
+    calculated. The minimal ratio (closest to 1.0) is taken to calculate the penalty according to
+    the formula
+
+    .. math::
+
+       P = 1 + \\exp(-\alpha (r - 1))
+
+    where :math:`r` is the ratio between the two closest exponents (>1).
+    '''
+
+    minratios = []
+    for basis in bsdict.values():
+        for functions in basis.functions.values():
+            exps = np.sort(functions['e'])
+            ratios = exps[1:] / exps[:-1]
+            minratios.append(np.min(ratios))
+
+    if smallestonly:
+        return 1 + np.exp(-alpha*(np.min(np.array(minratios)) - 1))
+    else:
+        return np.prod(1 + np.exp(-alpha*(np.array(minratios) - 1)))
+
 def run_total_energy(x0, *args):
     '''
     Funtion for running a single point calculation and parsing the resulting
@@ -313,9 +362,13 @@ def run_total_energy(x0, *args):
                 x0[ni:nt] = np.abs(x0[ni:nt])
             ni += nf
 
-    penalty = 0.0
-
     bsdict = get_basis_dict(bso, x0)
+
+    # set the penalty value
+    if bso.usepenalty:
+        penalty = get_penalty(bsdict, **bso.penaltykwargs)
+    else:
+        penalty = 1.0
 
     if bso.verbose:
         print("Current exponents being optimized:")
@@ -335,9 +388,9 @@ def run_total_energy(x0, *args):
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("\n{0:<20s} : {1:>30s}".format("Output", output))
             print("{0:<20s} : {1:>30.10f}".format(str(bso.objective), objective))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", objective + bso.optalg["lambda"]*penalty))
+            print("{0:<20s} : {1:>30.10f}".format("Objective", objective*penalty))
             print("="*80)
-        return objective + bso.optalg["lambda"]*penalty
+        return objective*penalty
     else:
         raise ValueError("something went wrong, check output {0:s}".format(output))
 
@@ -371,9 +424,13 @@ def run_core_energy(x0, *args):
                 x0[ni:nt] = np.abs(x0[ni:nt])
             ni += nf
 
-    penalty = 0.0
-
     bsdict = get_basis_dict(bso, x0)
+
+    # set the penalty value
+    if bso.usepenalty:
+        penalty = get_penalty(bsdict, bso.penaltykwargs)
+    else:
+        penalty = 1.0
 
     if bso.verbose:
         print("Current exponents being optimized:")
@@ -407,12 +464,11 @@ def run_core_energy(x0, *args):
             coreenergy = -1.0*coreenergy
         if bso.verbose:
             print("{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", coreenergy))
+            print("{0:<20s} : {1:>30.10f}".format("Objective", coreenergy*penalty))
             print("="*84)
-        return coreenergy
+        return coreenergy*penalty
     else:
-        print("Job terminated with ERRORS, check output.")
-        sys.exit("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
+        raise ValueError("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
 
 def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
     '''

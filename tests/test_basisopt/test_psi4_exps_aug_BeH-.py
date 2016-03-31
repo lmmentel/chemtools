@@ -52,7 +52,6 @@ energy('cisd')
 
     optimization = {"method"  : "Nelder-Mead",
                     "tol"     : 1.0e-4,
-                    "lambda"  : 10.0,
                     "options" : {"maxiter" : 100,
                                  "disp"    : True,
                                 }

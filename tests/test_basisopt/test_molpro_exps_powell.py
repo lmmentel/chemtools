@@ -29,7 +29,6 @@ GTHRESH,THROVL=1.0e-9
 
     optimization = {"method"  : "Powell",
         "tol"     : 1.0e-5,
-        "lambda"  : 10.0,
         "jacob"   : False,
         "options" : {"maxiter" : 100, "disp" : True},
     }
