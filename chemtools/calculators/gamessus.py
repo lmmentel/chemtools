@@ -38,11 +38,12 @@ import math
 import os
 import re
 import sys
+from collections import Counter
 from copy import copy
-from subprocess import Popen
+from subprocess import Popen, PIPE
 import numpy as np
 
-from .calculator import Calculator
+from .calculator import Calculator, InputTemplate
 from ..parsetools import slicebetween, sliceafter, parsepairs, getlines
 
 class GamessUS(Calculator):
@@ -91,10 +92,9 @@ class GamessUS(Calculator):
         'Set the runopts dict'
 
         if value is None:
-            self._runopts = {'nprocs' : 1}
+            self._runopts = ['1']
         else:
             self._runopts = value
-
 
     def remove_dat(self, inpfile):
         '''
@@ -104,7 +104,6 @@ class GamessUS(Calculator):
         datfile = os.path.splitext(inpfile)[0] + ".dat"
         if os.path.exists(os.path.join(self.scratch, datfile)):
             os.remove(os.path.join(self.scratch, datfile))
-
 
     def run(self, inpfile, logfile=None, remove_dat=True):
         '''
@@ -118,10 +117,14 @@ class GamessUS(Calculator):
         if logfile is None:
             logfile = os.path.splitext(inpfile)[0] + ".log"
 
-        out = open(logfile, 'w')
-        process = Popen([self.executable, inpfile, self.version, str(self.runopts['nprocs'])], stdout=out, stderr=out)
-        process.wait()
-        out.close()
+        command = [self.executable, inpfile, self.version] + self.runopts
+        process = Popen(command, stdout=PIPE, stderr=PIPE)
+        output = process.communicate()[0]
+        #process.wait()
+
+        with open(logfile, 'wb') as fout:
+            fout.write(output)
+
         return logfile
 
     def run_multiple(self, inputs):
@@ -135,38 +138,71 @@ class GamessUS(Calculator):
         parser = GamessLogParser(outfile)
         return parser.accomplished()
 
-    def parse(self, output, method, objective, regexp=None):
+    def parse(self, output, objective, regexp=None):
         '''
         Parser GAMESS(US) output file to get the objective.
         '''
 
         parser = GamessLogParser(output)
 
-        if objective == "total energy":
-            if method == "hf":
-                return parser.get_hf_total_energy()
-            elif method == "cisd":
-                energies = parser.get_energy_components(method)
-                return energies["TOTAL ENERGY"]
+        if objective == "hf total energy":
+            return parser.get_hf_total_energy()
+        elif objective == "cisd total energy":
+            energies = parser.get_energy_components('ci')
+            return energies["TOTAL ENERGY"]
         elif objective == "correlation energy":
-            energies = parser.get_energy_components(method)
+            energies = parser.get_energy_components('ci')
             return energies["TOTAL ENERGY"] - parser.get_hf_total_energy()
-        elif objective == "core energy":
-            if method == "cisd":
-                energies = parser.get_energy_components(method)
-                return energies["TOTAL ENERGY"]
         elif objective == "regexp":
             return parser.get_variable(regexp)
         else:
             raise ValueError("unknown objective in prase {0:s}".format(objective))
 
-    def write_input(self, fname, basis=None, template=None):
+    def write_input(self, fname, template=None, mol=None, basis=None, core=None):
         '''
-        Write a file containing gamess input.
+        Write the molpro input to "fname" file based on the information from the
+        keyword arguments.
+
+        Args:
+            mol : :py:class:`chemtools.molecule.Molecule`
+                Molecule object instance
+            basis : dict or :py:class:`BasisSet <chemtools.basisset.BasisSet>`
+                An instance of :py:class:`BasisSet <chemtools.basisset.BasisSet>` class or a
+                dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` objects with
+                element symbols as keys
+            core : list of ints
+                Molpro core specification
+            template : :py:class:`str`
+                Template of the input file
+            fname : :py:class:`str`
+                Name of the input file to be used
         '''
 
-        gip = GamessInput(fname=fname, parsed=template)
-        gip.write_input(fname)
+        #gip = GamessInput(fname=fname, parsed=template)
+        #out = gip.parsed2str()
+
+        out = ' $data\nbasis optimization\n{0:s}'.format(mol.symmetry)
+        if mol.symmetry.lower() == 'c1':
+            out += '\n'
+        else: 
+            out += '\n\n'
+        # loop over different elements (not atoms)
+        atomtypes = Counter([a.symbol for a in mol.atoms])
+        for symbol, count in atomtypes.items():
+            atoms = [a for a in mol.atoms if a.symbol == symbol]
+            atombasis = basis[symbol]
+            for i, atom in enumerate(atoms, start=1):
+                out += atom.gamess_rep()
+
+            out += atombasis.to_gamessus()
+
+        out += ' $end'
+
+        subs = {'basis' : out, 'core' : core}
+        temp = InputTemplate(template)
+
+        with open(fname, 'w') as finp:
+            finp.write(temp.substitute(subs))
 
     def __repr__(self):
         return "\n".join([
@@ -853,7 +889,7 @@ def detsplit(det, norb):
     out = det.split()
     if len(out) != norb:
         nchar = int(math.floor(len(det)/float(norb)))
-        out = [det[nchar*i:nchar*i+nchar] for i in xrange(norb)]
+        out = [det[nchar*i:nchar*i+nchar] for i in range(norb)]
     return out
 
 def det_to_spin_coupling(det, norb):
