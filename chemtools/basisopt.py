@@ -380,7 +380,12 @@ def run_total_energy(x0, *args):
     bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict, mol=bso.mol, core=bso.core)
     output = bso.code.run(bso.fname)
     if bso.code.accomplished(output):
-        objective = bso.code.parse(output, bso.objective, bso.regexp)
+
+        if callable(bso.objective):
+            objective = bso.objective(output)
+        else:
+            objective = bso.code.parse(output, bso.objective, bso.regexp)
+
         if objective is None:
             raise ValueError("Unable to parse the objective, check output")
         if bso.verbose:
