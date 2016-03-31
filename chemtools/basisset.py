@@ -29,6 +29,7 @@ import pickle
 import re
 from collections import OrderedDict
 from copy import copy, deepcopy
+from argparse import ArgumentParser
 from itertools import chain, product
 import numpy as np
 from scipy.linalg import sqrtm, inv
@@ -463,7 +464,7 @@ class BasisSet(object):
             basis set string in Gamess(US) format
         '''
 
-        res = "{0:s}\n".format(self.element)
+        res = ''
         for shell, fs in self.functions.items():
             for contraction in fs["cf"]:
                 res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(), n=len(contraction))
@@ -1205,3 +1206,69 @@ def zlmtoxyz(l):
                     else:
                         out[icart, -m + l] -= tmpk
     return out
+
+def bsprint():
+    '''
+    CLI scrpt to read a basis set from a file in internal format and print
+    in a specified format
+    '''
+
+    parser = ArgumentParser()
+    parser.add_argument("file", help="file name with a pickled BasisSet object")
+    parser.add_argument("-f", "--format",
+                        choices=["cfour", "dalton", "gamessus", "gaussian",
+                                 "molpro", "nwchem"],
+                        default="gamessus")
+    args = parser.parse_args()
+
+    writer = "to_" + args.format
+    bs = read_pickle(args.file)
+    method = getattr(bs, writer)
+
+    print(method())
+
+def bsconvert():
+    '''
+    CLI script to convert between different basis set formats
+    '''
+
+    parser = ArgumentParser(description='Convert basis set between formats of different programs')
+    parser.add_argument("filename", help="file name with a basis set")
+    parser.add_argument("-if",
+                        "--inputformat",
+                        choices=["gamessus", "gaussian", "molpro", "pickle"],
+                        help="Basis set input format",
+                        default="gamessus")
+    parser.add_argument("-of",
+                        "--outputformat",
+                        choices=["cfour", "dalton", "gamessus", "gaussian", "molpro", "nwchem", "pickle"],
+                        help="Basis set output format",
+                        default="gamessus")
+    args = parser.parse_args()
+
+    name = os.path.splitext(args.filename)[0]
+
+    if args.inputformat == "pickle":
+        bsets = read_pickle(args.filename)
+    else:
+        bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat, name=name)
+
+    if args.outputformat == "pickle":
+        if isinstance(bsets, dict):
+            for elem, bset in bsets.items():
+                bset.to_pickle(name + '_' + elem + '.pkl')
+        elif isinstance(bsets, BasisSet):
+            bsets.to_pickle(name + '_' + bsets.element + '.pkl')
+    else:
+        writer = "to_" + args.outputformat
+
+        if isinstance(bsets, dict):
+            for elem, bset in bsets.items():
+                method = getattr(bset, writer)
+                print(method())
+        elif isinstance(bsets, BasisSet):
+            method = getattr(bsets, writer)
+            print(method())
+        else:
+            raise ValueError('Something went wrong')
+

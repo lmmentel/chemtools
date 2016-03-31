@@ -46,6 +46,8 @@ setup(
     entry_points = {
         'console_scripts' : [
             'writeorbinp = chemtools.calculators.gamessus:writeorbinp',
+            'bsconvert = chemtools.basisset:bsconvert',
+            'bsprint = chemtools.basisset:bsprint',
         ]
     },
     license = open('LICENSE.rst').read(),
@@ -55,8 +57,6 @@ setup(
     scripts = [
         'chemtools/submitgamess.py',
         'chemtools/submitmolpro.py',
-        'scripts/bsprint',
-        'scripts/bsconvert',
         'scripts/bsold2new',
                ],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
