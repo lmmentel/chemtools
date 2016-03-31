@@ -158,8 +158,7 @@ class TestBasisSetPrintingFormatsUncontracted(unittest.TestCase):
 
     def test_printing_to_gamessus(self):
 
-        bsstr = '''H
-S  1
+        bsstr = '''S  1
   1        4.0000000000     1.00000000
 S  1
   1        2.0000000000     1.00000000
