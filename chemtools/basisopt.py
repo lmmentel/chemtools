@@ -130,7 +130,7 @@ class BSOptimizer(object):
                             "options" : {"maxiter" : 100,
                                          "disp"    : True,
                                         }
-                            }
+                           }
         elif isinstance(value, dict):
             if value.get('method').lower() == "nelder-mead":
                 value['jacob'] = None
@@ -145,18 +145,6 @@ class BSOptimizer(object):
             self._optalg = value
         else:
             raise ValueError("optalg should be a <dict>, got: {}".format(type(value)))
-
-#    @property
-#    def objective(self):
-#        return self._objective
-#
-#    @objective.setter
-#    def objective(self, value):
-#
-#        if value in ['total energy', 'core energy', 'correlation energy', 'regexp']:
-#            self._objective = value
-#        else:
-#            raise ValueError('unknown objective: {}'.format(value))
 
     @property
     def fsopt(self):
@@ -242,7 +230,7 @@ class BSOptimizer(object):
         print(self.result)
         print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
 
-    def get_basis(self, name=None, element=None):
+    def get_basis(self, name=None, element=None, sort=False):
         '''
         Construct the BasisSet object from the result of the optimization and function definition.
 
@@ -260,10 +248,16 @@ class BSOptimizer(object):
 
         basis = BasisSet.from_optpars(self.result.x, self.fsopt, name=name, element=element,
                                       explogs=self.uselogs)
-        basis.sort()
+        if sort:
+            basis.sort()
         return basis
 
 def get_basis_dict(bso, x0):
+    '''
+    Return a dictionary with :py:class:`BasisSet` objects as values and element symbols as keys.
+    The dictionary is composed based on the current parameters ``x0`` and attributes of the
+    :py:class:`BSOptimizer` including the ``staticbs``
+    '''
 
     bsdict = dict()
     for atom, functs in bso.fsopt.items():
@@ -287,7 +281,6 @@ def get_basis_dict(bso, x0):
                 bsdict[bso.staticbs.element] = bso.staticbs
 
     return bsdict
-
 
 def run_total_energy(x0, *args):
     '''
@@ -326,7 +319,9 @@ def run_total_energy(x0, *args):
 
     if bso.verbose:
         print("Current exponents being optimized:")
-        for atom, basis in bsdict.items():
+        for atom, functs in bso.fsopt.items():
+            basis = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
+                                          explogs=bso.uselogs)
             print(atom, basis.print_functions())
 
     bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict, mol=bso.mol, core=bso.core)
@@ -339,6 +334,7 @@ def run_total_energy(x0, *args):
             print("{0:<s}".format("Job Terminated without errors"))
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("\n{0:<20s} : {1:>30s}".format("Output", output))
+            print("{0:<20s} : {1:>30.10f}".format(str(bso.objective), objective))
             print("{0:<20s} : {1:>30.10f}".format("Objective", objective + bso.optalg["lambda"]*penalty))
             print("="*80)
         return objective + bso.optalg["lambda"]*penalty
@@ -381,16 +377,19 @@ def run_core_energy(x0, *args):
 
     if bso.verbose:
         print("Current exponents being optimized:")
-        for atom, basis in bsdict.items():
+        for atom, functs in bso.fsopt.items():
+            basis = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
+                                          explogs=bso.uselogs)
             print(atom, basis.print_functions())
 
     citote = []
-    stats  = []
-    base   = os.path.splitext(bso.fname)[0]
+    stats = []
+    base = os.path.splitext(bso.fname)[0]
     inputs = [base+"_core"+str(sum(x))+".inp" for x in bso.core]
 
     for inpname, core in zip(inputs, bso.core):
-        bso.code.write_input(fname=inpname, core=core, basis=bsdict, mol=bso.mol, template=bso.template)
+        bso.code.write_input(fname=inpname, core=core, basis=bsdict, mol=bso.mol,
+                             template=bso.template)
 
     outputs = bso.code.run_multiple(inputs)
     for output in outputs:
@@ -401,7 +400,7 @@ def run_core_energy(x0, *args):
         if bso.verbose:
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK", str(stats[0]), str(stats[1])))
-            print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format("CI total energy", citote[0], citote[1]))
+            print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format(str(bso.objective), citote[0], citote[1]))
             print("-"*84)
         coreenergy = citote[0] - citote[1]
         if coreenergy > 0.0:
