@@ -70,7 +70,7 @@ def parse_molpro_basis(string):
     if m:
         lines = m.group(1).split("\n")
     else:
-        raise ValueError("basis string not found")
+        raise ValueError('basis string: "basis={*}" not found')
 
     start = []
     for i, line in enumerate(lines):
@@ -118,7 +118,7 @@ def parse_molpro_shell(expsline, coeffs):
                 fs[shell]['cf'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
     else:
         for i in range(len(exps)):
-            fs[shell]['cc'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
+            fs[shell]['cf'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
     return at_symbol, fs
 
 def parse_ecp(ecpstring):
