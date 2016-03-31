@@ -42,9 +42,27 @@ class Calculator():
     '''
     __metaclass__ = ABCMeta
 
-    def __init__(self, executable=None, runopts=None, scratch=None):
+    def __init__(self, exevar=None, executable=None, runopts=None, scratch=None):
 
-        self.executable = executable
+        self.exevar = exevar
+
+        if executable is None and exevar is None:
+            self.exe_found = False
+        elif executable is None and exevar is not None:
+            self.executable = os.getenv(self.exevar)
+            self.exe_found = True
+        elif executable is not None and exevar is None:
+            self.executable = executable
+            self.exe_found = True
+        elif executable is not None and exevar is not None:
+            exefromvar = os.getenv(self.exevar)
+            if os.path.abspath(exefromvar) == os.path.abspath(executable):
+                self.executable = exefromvar
+                self.exe_found = True
+            else:
+                raise ValueError('conflicting <executable> and <exevar> options specified: '\
+                                 '{0:s} != {1:s}'.format(executable, exefromvar))
+
         self.runopts = runopts
         self.scratch = scratch
 
