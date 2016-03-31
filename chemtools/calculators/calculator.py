@@ -31,13 +31,10 @@ new code.
 
 import os
 import re
-from collections import Counter
 
-from subprocess import Popen, PIPE, call
 from string import Template
 
 from abc import ABCMeta, abstractmethod
-from ..basisset import get_l
 
 class Calculator():
     '''
@@ -89,7 +86,9 @@ class Calculator():
 
     @abstractmethod
     def parse(self, fname, objective, regexp=None):
-
+        '''
+        Parse the value of the ``objective`` from the file ``fname``
+        '''
         pass
 
     @abstractmethod
@@ -101,7 +100,10 @@ class Calculator():
         pass
 
     @abstractmethod
-    def run_multiple(self):
+    def run_multiple(self, *args):
+        '''
+        Run multiple jobs
+        '''
         pass
 
     def accomplished(self, fname):
@@ -123,9 +125,12 @@ def parse_objective(fname, regexp, reflags=re.I):
     Wrapper for the parse methods
 
     Args:
-        fname : str
+        fname : :py:class:`str`
             Name of the file to be parsed
-        objective : str
+        regexp : :py:class:`str`
+            Regular expression as raw string
+        reflags :
+            Flags for the regular expression compilation
     '''
 
     if not os.path.exists(fname):
@@ -159,8 +164,8 @@ class InputTemplate(Template):
 
         keys = {}
         match = self.pattern.findall(self.template)
-        for k, v in self.pattern.groupindex.items():
-            keys[k] = [x[v-1] for x in match if x[v-1] != '']
+        for key, val in self.pattern.groupindex.items():
+            keys[key] = [x[val - 1] for x in match if x[val - 1] != '']
         return keys
 
 

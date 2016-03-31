@@ -22,7 +22,6 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-from __future__ import print_function
 import os
 from collections import Counter
 from subprocess import Popen, call
