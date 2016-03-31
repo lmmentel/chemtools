@@ -2,12 +2,15 @@ from chemtools.basisopt import BSOptimizer
 from chemtools.molecule import Molecule
 from chemtools.calculators.psi4 import Psi4
 from chemtools.basisset import BasisSet
+import pytest
+import os
 
+@pytest.mark.skipif(os.getenv('PSI4_EXE') is None, reason="<PSI4_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
 
-    psi = Psi4(executable="/usr/local/psi4/bin/psi4", runopts=["-n", "4"])
+    psi = Psi4(exevar="PSI4_EXE", runopts=["-n", "4"])
 
     beh = Molecule(name="BeH-", atoms=[('Be',), ('H', (0.0, 0.0, 2.724985))],
                    sym="cnv 2", charge=-1, multiplicity=1)

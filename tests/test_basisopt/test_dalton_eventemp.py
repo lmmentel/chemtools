@@ -2,7 +2,10 @@ import os
 from chemtools.calculators.dalton import Dalton
 from chemtools.molecule import Molecule
 from chemtools.basisopt import BSOptimizer
+import pytest
+import os
 
+@pytest.mark.skipif(os.getenv('DALTON_EXE') is None, reason="<DALTON_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
@@ -45,8 +48,7 @@ GASCI
 **END OF DALTON INPUT
 '''
 
-    dalton = Dalton(executable='/home/lmentel/apps/dalton/dalton',
-                    runopts=['-nobackup', '-noarch', '-d'])
+    dalton = Dalton(exevar='DALTON_EXE', runopts=['-nobackup', '-noarch', '-d'])
 
     fname = {'dal' : 'hf.dal', 'mol' : 'He_5s.mol'}
     template = {'mol' : moltemplate, 'dal' : hftemplate}

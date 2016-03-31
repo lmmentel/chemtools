@@ -3,7 +3,10 @@ from chemtools.basisopt import BSOptimizer
 from chemtools.molecule import Molecule
 from chemtools.calculators.molpro import Molpro
 from chemtools.basisset import BasisSet
+import pytest
+import os
 
+@pytest.mark.skipif(os.getenv('MOLPRO_EXE') is None, reason="<MOLPRO_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
@@ -23,8 +26,7 @@ memory,100,m
 cisd
 '''
 
-    mp = Molpro(executable="/home/lmentel/Programs/molprop_2012_1_Linux_x86_64_i8/bin/molpro",
-                runopts=["-s", "-n", "1", "-d", "/home/lmentel/scratch"])
+    mp = Molpro(exevar="MOLPRO_EXE", runopts=["-s", "-n", "1", "-d", "."])
 
 
     corefs = {'Be' :  [('s', 'exp', 1, (1.1,)), ('p', 'exp', 1, (4.2,))]}
