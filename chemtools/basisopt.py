@@ -32,11 +32,12 @@ import random
 import string
 import sys
 import time
+from collections import OrderedDict
 import numpy as np
 from scipy.optimize import minimize
 
 # chemtools packages
-from chemtools.basisset import BasisSet
+from chemtools.basisset import BasisSet, get_num_params, sliceinto
 
 class BSOptimizer(object):
 
@@ -45,7 +46,7 @@ class BSOptimizer(object):
     def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
                  fsopt=None, staticbs=None, fname=None, uselogs=True, runcore=False,
-                 usepenalty=None, penaltykwargs=None):
+                 penalize=None, penaltykwargs=None):
 
         '''
         Args:
@@ -73,6 +74,12 @@ class BSOptimizer(object):
           runcore : bool
             Flag to mark wheather to run separate single point jobs with different numbers of
             frozen core orbitals to calculate core energy
+          penalize : bool
+            Flag enabling the use of penalty function, when two exponent in any shell are too close
+            the objective is multiplied by a penalty factor calculated in ``get_penalty``
+          penaltykwargs : dict
+            Keyword arguments for the penalty function, default
+            ``{'alpha' : 25.0, 'smallestonly' : True}``
         '''
 
         self.fsopt = fsopt
@@ -88,7 +95,7 @@ class BSOptimizer(object):
         self.result = None
         self.fname = fname
         self.uselogs = uselogs
-        self.usepenalty = usepenalty
+        self.penalize = penalize
         self.penaltykwargs = penaltykwargs
 
         if runcore:
@@ -107,7 +114,7 @@ class BSOptimizer(object):
         calculations.
         '''
         if value is None:
-            self._fname = ''.join(random.choice(string.ascii_letters) for _ in range(10)) + '.inp'
+            self._fname = 'bso_' + ''.join(random.choice(string.ascii_letters) for _ in range(10)) + '.inp'
         else:
             self._fname = value
 
@@ -155,7 +162,7 @@ class BSOptimizer(object):
         if value is None:
             raise ValueError("no dictionary describing basis set to be optimized given")
         else:
-            self._fsopt = value
+            self._fsopt = OrderedDict(sorted(value.items(), key=lambda t: t[0]))
 
     @property
     def penaltykwargs(self):
@@ -204,7 +211,7 @@ class BSOptimizer(object):
 
     def get_x0(self):
         '''
-        Collect all the parameters in a consecutive list of elements.
+        Collect all the parameters in an array of consecutive elements.
         '''
 
         x0 = np.empty(0)
@@ -241,7 +248,7 @@ class BSOptimizer(object):
         print(self.result)
         print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
 
-    def get_basis(self, name=None, element=None, sort=False):
+    def get_basis(self, name=None, element=None):
         '''
         Construct the BasisSet object from the result of the optimization and function definition.
 
@@ -257,11 +264,15 @@ class BSOptimizer(object):
                 functions
         '''
 
-        basis = BasisSet.from_optpars(self.result.x, self.fsopt, name=name, element=element,
-                                      explogs=self.uselogs)
-        if sort:
-            basis.sort()
-        return basis
+        bsdict = {}
+        # get number of parameters per atom
+        npars = [sum(get_num_params(t) for t in funs) for funs in self.fsopt.values()]
+        x0peratom = sliceinto(self.result.x, npars)
+        for (atom, funs), xpars in zip(self.fsopt.items(), x0peratom):
+
+            bsdict[atom] = BasisSet.from_optpars(xpars, funs, name=name, element=element,
+                                                 explogs=self.uselogs)
+        return bsdict
 
 def get_basis_dict(bso, x0):
     '''
@@ -365,7 +376,7 @@ def run_total_energy(x0, *args):
     bsdict = get_basis_dict(bso, x0)
 
     # set the penalty value
-    if bso.usepenalty:
+    if bso.penalize:
         penalty = get_penalty(bsdict, **bso.penaltykwargs)
     else:
         penalty = 1.0
@@ -432,7 +443,7 @@ def run_core_energy(x0, *args):
     bsdict = get_basis_dict(bso, x0)
 
     # set the penalty value
-    if bso.usepenalty:
+    if bso.penalize:
         penalty = get_penalty(bsdict, bso.penaltykwargs)
     else:
         penalty = 1.0
