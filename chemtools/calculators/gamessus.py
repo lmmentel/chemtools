@@ -178,23 +178,17 @@ class GamessUS(Calculator):
                 Name of the input file to be used
         '''
 
-        #gip = GamessInput(fname=fname, parsed=template)
-        #out = gip.parsed2str()
-
         out = ' $data\nbasis optimization\n{0:s}'.format(mol.symmetry)
         if mol.symmetry.lower() == 'c1':
             out += '\n'
-        else: 
+        else:
             out += '\n\n'
-        # loop over different elements (not atoms)
-        atomtypes = Counter([a.symbol for a in mol.atoms])
-        for symbol, count in atomtypes.items():
-            atoms = [a for a in mol.atoms if a.symbol == symbol]
-            atombasis = basis[symbol]
-            for i, atom in enumerate(atoms, start=1):
-                out += atom.gamess_rep()
 
-            out += atombasis.to_gamessus()
+        for i, atom in enumerate(mol.atoms):
+            if i in mol.unique_labels:
+                atombasis = basis[atom.symbol]
+                out += atom.gamess_rep()
+                out += atombasis.to_gamessus()
 
         out += ' $end'
 
