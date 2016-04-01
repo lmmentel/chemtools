@@ -1,9 +1,9 @@
 
-from chemtools.molecule import Atom, Molecule
-from chemtools import molpro
+from chemtools.molecule import Molecule
+from chemtools.calculators import molpro
 from chemtools.basisset import BasisSet
 from chemtools.basisopt import opt_shell_by_nf, opt_multishell
-
+import pytest
 
 be2 = Molecule(name="Be2", atoms=[("Be", (0.0, 0.0,  1.2268016705), False),
                                   ("Be", (0.0, 0.0, -1.2268016705), False)], charge=0, multiplicity=1)
@@ -18,21 +18,18 @@ optimization = {"method"  : "Nelder-Mead",
                             }
                }
 
-job = {"method"    : "hf",
-       "objective" : "total energy",
-       "core"      : [0,0,0,0,0,0,0,0],
-       "inpname"   : "be_hf.inp",
-       "inpdata"   : open("molpro.inp", 'r').read(),
-       "verbose"   : True,
-       }
 
-mp = molpro.Molpro(
-        name="MOLPRO",
-        execpath="/share/apps/molprop_2012_1_Linux_x86_64_i8/bin/molpro",
-        runopts=["-s", "-n", "1", "-d", "."],
-            )
+mp = molpro.Molpro(exevar="MOLPRO_EXE", runopts=["-s", "-n", "4", "-d", "."])
 
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_optimize_s():
+    job = {"method"    : "hf",
+        "objective" : "total energy",
+        "core"      : [0,0,0,0,0,0,0,0],
+        "inpname"   : "be_hf.inp",
+        "inpdata"   : '',
+        "verbose"   : True,
+        }
 
     nfs = range(2, 20)
     bsopt = {"typ"      : "legendre",
@@ -53,6 +50,7 @@ def test_optimize_s():
                     bsopt=bsopt,
                     opt=optimization)
 
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_optimize_multishell():
 
     shells = ['s', 'p', 'd']

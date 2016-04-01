@@ -45,7 +45,6 @@ GTHRESH,THROVL=1.0e-9
                   fsopt=sfuncts, staticbs=None, core=[0,0,0,0,0,0,0,0], fname='molpro_powell.inp',
                   verbose=True, uselogs=True, optalg=optimization)
 
-
     bso.run()
 
     energy = -2.8614232306
