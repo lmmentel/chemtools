@@ -14,18 +14,20 @@
 
 import sys
 import os
-# in python >= 3.3
-#from unittest.mock import MagicMock
-from mock import Mock as MagicMock
+
+if sys.version_info.major == 3:
+    from unittest.mock import Mock    # if python ver >= 3.3
+else:
+    from mock import Mock as Mock     # if python ver 2.7
 
 import sphinx_rtd_theme
 import inspect
 from sphinx import apidoc
 
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-            return Mock()
+#class Mock(MagicMock):
+#    @classmethod
+#    def __getattr__(cls, name):
+#        return Mock()
 
 MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'scipy.linalg', 'scipy.special', 'pandas',
     'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext', 'sqlalchemy.ext.associationproxy',
@@ -33,7 +35,10 @@ MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'scipy.linalg', 
     'numba',
     ]
 
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = Mock()
+
+#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:

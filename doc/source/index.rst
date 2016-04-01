@@ -18,10 +18,6 @@ Current Modules
 * :mod:`basisopt`: module for optimizing one electron basis function exponents
 * :mod:`basisset`: module for handling basis set in different formats and obtaining
   exponents from series like: even tempered, well tempered, Legendre expansion,
-* :mod:`dmft`: utility functions for running DMFT calculations,
-* :mod:`gamessus`: utility function for parsing input and log files from Gamess-US
-  calculations, wrappers for running the code from python
-* :mod:`molpro`: parser for the output file
 * :mod:`molecule`: general purpose module intorducing molecule class for handling
   molecules
 

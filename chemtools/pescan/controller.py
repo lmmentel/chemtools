@@ -3,7 +3,7 @@
 import numpy as np
 import os
 
-from itertools import izip, product
+from itertools import product
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -25,7 +25,7 @@ def grid_product(dicts):
       {"number": 3, "color": "blue"}
     ]
     '''
-    return (dict(izip(dicts, x)) for x in product(*dicts.itervalues()))
+    return (dict(zip(dicts, x)) for x in product(*dicts.itervalues()))
 
 def expand_grids(grids=[], debug=False):
 

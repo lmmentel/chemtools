@@ -27,8 +27,8 @@
 import numpy as np
 import pandas as pd
 
-from chemtools.gamessus import GamessLogParser, GamessDatParser
-from chemtools.gamessreader import DictionaryFile, tri2full
+from chemtools.calculators.gamessus import GamessLogParser, GamessDatParser
+from chemtools.calculators.gamessreader import DictionaryFile, tri2full
 
 class Orbitals(pd.DataFrame):
     '''

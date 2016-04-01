@@ -22,7 +22,9 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-""" basisopt is a module for optimizing primitive exponents of basis sets"""
+"""\
+``basisopt`` is a module containing flexible methods for optimizing primitive
+exponents of basis sets"""
 
 from __future__ import division, print_function
 import datetime
@@ -36,51 +38,62 @@ from collections import OrderedDict
 import numpy as np
 from scipy.optimize import minimize
 
-# chemtools packages
 from chemtools.basisset import BasisSet, get_num_params, sliceinto
 
 class BSOptimizer(object):
+    '''
+    Basis Set Optimizer class is a convenient wrapper for optimizing primitive
+    exponents of Gaussian basis sets using different code interfaces for performing
+    the actual electronic structure calculations.
 
-    '''Basis Set Optimizer class'''
+    Args:
+        objective : str or callable
+            Name of the objective using which the optimization will be evaluated, if it
+            is a callable/function it should take the output name as argument
+        code : :py:class:`Calculator <chemtools.calculators.calculator.Calculator>`
+            Subclass of the :py:class:`Calculator <chemtools.calculators.calculator.Calculator>`
+            specifying the electronic structure program to use
+        mol : :py:class:` Molecule <chemtools.molecule.Molecule>`
+            Molecule specifying the system
+        staticbs : dict or :py:class:`BasisSet <chemtools.basisset.BasisSet>`
+            Basis set or ``dict`` of basis set with basis sets whose exponents are not going to be
+            optimized
+        fsopt : dict
+            A dictionary specifying the basis set to be optimized, the keys should be element/atom
+            symbol and the values should contain lists of 4-tuples composed of: shell, type, number
+            of functions and parameters/exponents, for example,
+
+            >>> fs = {'H' : [('s', 'et', 10, (0.5, 2.0))]}
+
+            describes 10 ``s``-type exponents for H generated from even tempered formula with
+            parameters 0.5 and 2.0
+        optalg : dict
+            A dictionary specifying the optimization algorithm and its options
+        fname : str
+            Name of the job/input file for the single point calculator
+        uselogs : bool
+            Use natural logarithms of exponents in optimization rather than their
+            values, this option is only relevant if functions asre given as
+            ``exp`` or ``exponents``
+        regexp : str
+            Regular expression to use in search for the objective if ``objective`` is regexp
+        runcore : bool
+            Flag to mark wheather to run separate single point jobs with different numbers of
+            frozen core orbitals to calculate core energy
+        penalize : bool
+            Flag enabling the use of penalty function, when two exponent in any shell are too close
+            the objective is multiplied by a penalty factor calculated in
+            :py:func:`get_penalty <chemtools.basisopt.get_penalty>`
+        penaltykwargs : dict
+            Keyword arguments for the penalty function, default
+            ``{'alpha' : 25.0, 'smallestonly' : True}``
+    '''
 
     def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
                  fsopt=None, staticbs=None, fname=None, uselogs=True, runcore=False,
                  penalize=None, penaltykwargs=None):
 
-        '''
-        Args:
-          objective : str
-            Obejctive on which the optimization will be evaluated
-          code : chemtools.code.Code
-            Instance of the `Code` subclass specifying which program to use
-          mol : chemtools.molecule.Molecule
-            Instance of the `Molecule` class specifying the system
-          staticbs : chemtools.basisset.BasisSet
-            Instance of the `BasisSet` class or list of those intances with a
-            basis set whose exponents are not going to be optimized
-          fsopt : dict
-            A dictionary specifying the basis set to be optimized
-          optalg : dict
-            A dictionary specyfing the optimization algorithm and its options
-          fname : str
-            Name of the job/input file for the single point calculator
-          uselogs : bool
-            Use natural logarithms of exponents in optimization rather than their
-            values, this option is only relevant if functions asre given as
-            ``exp`` or ``exponents``
-          regexp : str
-            Regular expression to use in search for the objective if ``objective`` is regexp
-          runcore : bool
-            Flag to mark wheather to run separate single point jobs with different numbers of
-            frozen core orbitals to calculate core energy
-          penalize : bool
-            Flag enabling the use of penalty function, when two exponent in any shell are too close
-            the objective is multiplied by a penalty factor calculated in ``get_penalty``
-          penaltykwargs : dict
-            Keyword arguments for the penalty function, default
-            ``{'alpha' : 25.0, 'smallestonly' : True}``
-        '''
 
         self.fsopt = fsopt
         self.staticbs = staticbs
@@ -313,7 +326,7 @@ def get_penalty(bsdict, alpha=25.0, smallestonly=True):
         bsdict : dict
             Dictionary of :py:class:`BasisSet` objects
         alpha : float
-            Parameter controling the magnitude and range of the penalty
+            Parameter controlling the magnitude and range of the penalty
         smallestonly : bool
             A flag to mark whether to use only the smallest ratio to calculate the penalty or all
             smallest ratios from each shell and calculate the penalty as a product of individual
@@ -325,7 +338,7 @@ def get_penalty(bsdict, alpha=25.0, smallestonly=True):
 
     .. math::
 
-       P = 1 + \\exp(-\alpha (r - 1))
+       P = 1 + \\exp(-\\alpha (r - 1))
 
     where :math:`r` is the ratio between the two closest exponents (>1).
     '''

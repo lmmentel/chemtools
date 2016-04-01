@@ -51,27 +51,26 @@ class BasisSet(object):
     '''
     Basis set module supporting basic operation on basis sets and can be used
     as a API for mongoDB basis set repository.
-    '''
+
+    Args:
+        name : str
+            Name of the basis set
+        element : str
+            Symbol of the element
+
+    Kwargs:
+        kind : str
+            Classification of the basis set functions, *diffuse*, *tight*
+        family : str
+            basis set family
+        functions : dict
+            Dict of functions with *s*, *p*, *d*, *f*, ... as keys
+        params : list of dicts
+            Parameters for generating the functions according to the model
+        '''
 
     def __init__(self, name, element, family=None, kind=None,
                  functions=None):
-        '''
-        Args:
-          name : str
-            Name of the basis set
-          element : str
-            Symbol of the element
-
-        Kwargs:
-          kind : str
-            Classification of the basis set functions, *diffuse*, *tight*
-          family : str
-            basis set family
-          functions : dict
-            Dict of functions with *s*, *p*, *d*, *f*, ... as keys
-          params : list of dicts
-            Parameters for generating the functions according to the model
-        '''
 
         self.name = name
         self.element = element
