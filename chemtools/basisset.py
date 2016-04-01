@@ -496,32 +496,41 @@ class BasisSet(object):
                     res += "{e:>{efmt}}{c:>{cfmt}}".format(e=fs['e'][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
         return res + "****\n"
 
-    def to_molpro(self, pars=False, efmt="20.10f", cfmt="15.8f"):
+    def to_molpro(self, withpars=False, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in MOLPRO format.
 
         Args:
-          pars : bool
-            a flag to indicate whether to wrap the basis with "basis={ }" string
-          efmt : str
-            string describing output format for the exponents, default: "20.10f"
-          cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+            withpars : bool
+                A flag to indicate whether to wrap the basis with "basis={ }" string
+            efmt : str
+                Output format for the exponents, default: "20.10f"
+            cfmt : str
+                Output format for the contraction coefficients, default: "15.8f"
 
         Returns:
-          res : str
-            basis set string
+            res : str
+                basis set string
         '''
 
         res = ""
         for shell, fs in self.functions.items():
             exps = ", ".join(["{0:>{efmt}}".format(e, efmt=efmt).lstrip() for e in fs['e']])
             res += "{s:>s}, {e:>s}, ".format(s=shell, e=self.element) + exps + '\n'
-            for cf in fs['cf']:
-                coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cf['cc']])
-                res += "c, {0:d}.{1:d}, ".format(cf['idx'].min()+1, cf['idx'].max()+1) + coeffs + '\n'
-        if pars:
+            cm = self.contraction_matrix(shell)
+            for icol, cf in enumerate(fs['cf']):
+                if cf.size == 1:
+                    coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cf['cc']])
+                    res += "c, {0:d}.{0:d}, ".format(cf['idx'][0] + 1) + coeffs + '\n'
+                else:
+                    # check if indices are consecutive
+                    if np.all(np.sort(cf['idx'])[1:] - np.sort(cf['idx'])[:-1] == 1):
+                        coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cf['cc']])
+                        res += "c, {0:d}.{1:d}, ".format(cf['idx'].min() + 1, cf['idx'].max() + 1) + coeffs + '\n'
+                    else:
+                        coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cm[:, icol]])
+                        res += "c, {0:d}.{1:d}, ".format(cf['idx'].min() + 1, cf['idx'].max() + 1) + coeffs + '\n'
+        if withpars:
             res = 'basis={\n' + res + '}'
         return res
 
@@ -562,6 +571,20 @@ class BasisSet(object):
                     c = cc[nonzerorowmask, :][0][colidx]
                     res += "{e:>{efmt}}{c:>{cfmt}}".format(e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
         return res + "END\n"
+
+    def to_pickle(self, fname=None):
+        '''Save the basis set in pickle format under the filename `fname`
+
+        Args:
+          fname : str
+            File name
+        '''
+
+        if fname is None:
+            fname = self.name.strip().replace(' ', '_') + '.bas.pkl'
+
+        with open(fname, 'wb') as fbas:
+            pickle.dump(self, fbas)
 
     def print_functions(self, efmt="20.10f", cfmt="15.8f"):
         '''
@@ -604,20 +627,6 @@ class BasisSet(object):
                     res += "{i:5d}{e:>{efmt}}{c:>{cfmt}}".format(i=count, e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
         return res
 
-    def to_pickle(self, fname=None):
-        '''Save the basis set in pickle format under the filename `fname`
-
-        Args:
-          fname : str
-            File name
-        '''
-
-        if fname is None:
-            fname = self.name.strip().replace(' ', '_') + '.bas.pkl'
-
-        with open(fname, 'wb') as fbas:
-            pickle.dump(self, fbas)
-
     def nf(self, spherical=True):
         '''
         Calculate the number of basis functions
@@ -659,7 +668,6 @@ class BasisSet(object):
             ncomp = [ncartesian(get_l(shell)) for shell in self.functions.keys()]
 
         return sum([prim*nc for prim, nc in zip(self.primitives_per_shell(), ncomp)])
-
 
     def contraction_scheme(self):
         '''
@@ -746,7 +754,7 @@ class BasisSet(object):
             # actually sort the exponents and coefficients
             fs['e'] = fs['e'][idx]
             for cf in fs['cf']:
-                cf['idx'] = idx[cf['idx']]
+                cf['idx'] = np.asarray([np.nonzero(idx == y)[0][0] for y in cf['idx']])
                 cf.sort(order='idx')
 
     def partial_wave_expand(self):
@@ -935,9 +943,9 @@ def generate_exponents(formula, nf, params):
     Args:
       formula : str
         name of the sequence from which the exponents are generated, one of:
-          - *even*, *eventemp*, *even tempered*
-          - *well*, *welltemp*, *well tempered*
-          - *legendre*
+          - *et*, *even*, *eventemp*, *even tempered*
+          - *wt*, *well*, *welltemp*, *well tempered*
+          - *le*, *legendre*
           - *exp*, *exponents*
       nf : int
         number of exponents
@@ -959,7 +967,27 @@ def generate_exponents(formula, nf, params):
     else:
         raise ValueError('unknown sequence name: {}'.format(formula))
 
-def eventemp(nf, params):
+def get_num_params(ftuple):
+    '''
+    Get the number of parameter for a given 4-tuple desciribing functions
+
+    >>> get_num_params(('s', 'et', 20, (0.4, 2.0)))
+    2
+    '''
+
+    formula = ftuple[1]
+    if formula.lower() in ["et", "even", "eventemp", "even tempered"]:
+        return 2
+    elif formula.lower() in ["wt", "well", "welltemp", "well tempered"]:
+        return 4
+    elif formula.lower() in ["le", "legendre"]:
+        return ftuple[2]
+    elif formula.lower() in ["exp", "exponents"]:
+        return ftuple[2]
+    else:
+        raise ValueError('unknown sequence name: {}'.format(formula))
+
+def eventemp(numexp, params):
     '''
     Generate a sequence of nf even tempered exponents accodring to
     the even tempered formula
@@ -968,25 +996,25 @@ def eventemp(nf, params):
        \\zeta_i = \\alpha \cdot \\beta^{i-1}
 
     Args:
-      nf : int
-        number fo exponents to generate
-      params : tuple of floats
-        alpha and beta parameters
+        numexp : int
+            Number fo exponents to generate
+        params : tuple of floats
+            Alpha and beta parameters
     Returns:
-      res : numpy array
-        array of generated exponents (floats)
+        res : numpy array
+            Array of generated exponents (floats)
     '''
 
-    if not isinstance(nf, int):
-        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
-    if len(params) !=  2:
+    if not isinstance(numexp, int):
+        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(numexp)))
+    if len(params) != 2:
         raise ValueError('"params" tuple should have exactly 2 entries, got {}'.format(len(params)))
 
     alpha, beta = params
-    zetas = alpha * np.power(beta, np.arange(nf))
+    zetas = alpha * np.power(beta, np.arange(numexp))
     return zetas[::-1]
 
-def welltemp(nf, params):
+def welltemp(numexp, params):
     '''
     Generate a sequence of nf well tempered exponents accodring to
     the well tempered fromula
@@ -996,26 +1024,28 @@ def welltemp(nf, params):
        \\zeta_i = \\alpha \cdot \\beta^{i-1} \cdot \\left[1 + \\gamma \cdot \\left(\\frac{i}{N}\\right)^{\delta}\\right]
 
     Args:
-      nf : int
-        number fo exponents to generate
-      params : tuple of floats
-        alpha, beta, gamma and delta parameters
+        numexp : int
+            Number fo exponents to generate
+        params : tuple of floats
+            Alpha, beta, gamma and delta parameters
 
     Returns:
-      res : numpy.array
-        array of generated exponents (floats)
+        res : numpy.array
+            Array of generated exponents (floats)
     '''
-    if not isinstance(nf, int):
-        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
-    if len(params) !=  4:
+
+    if not isinstance(numexp, int):
+        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(numexp)))
+    if len(params) != 4:
         raise ValueError('"params" tuple should have exactly 4 entries, got {}'.format(len(params)))
 
     alpha, beta, gamma, delta = params
-    zetas = alpha*np.power(beta, np.arange(nf))*(1+gamma*np.power(np.arange(1, nf+1)/nf, delta))
+    zetas = alpha*np.power(beta, np.arange(numexp))*\
+            (1+gamma*np.power(np.arange(1, numexp + 1)/numexp, delta))
     zetas.sort()
     return zetas[::-1]
 
-def legendre(nf, coeffs):
+def legendre(numexp, coeffs):
     '''
     Generate a sequence of nf exponents from expansion in the orthonormal
     legendre polynomials as described in: Peterson, G. A. et.al J. Chem. Phys.,
@@ -1025,19 +1055,19 @@ def legendre(nf, coeffs):
        \ln \\zeta_i = \\sum^{k_{\max}}_{k=0} A_k P_k \\left(\\frac{2j-2}{N-1}-1\\right)
 
     Args:
-      nf : int
-        number fo exponents to generate
-      params : tuple of floats
-        polynomial coefficients (expansion parameters)
+        numexp : int
+            Number fo exponents to generate
+        params : tuple of floats
+            Polynomial coefficients (expansion parameters)
 
     Returns:
-      res : numpy array
-        array of generated exponents (floats)
+        res : numpy array
+            Array of generated exponents (floats)
     '''
 
-    if not isinstance(nf, int):
-        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(nf)))
-    if len(coeffs) <  1:
+    if not isinstance(numexp, int):
+        raise TypeError('"nf" variable should be of "int" type, got: {}'.format(type(numexp)))
+    if len(coeffs) < 1:
         raise ValueError('"coeffs" tuple should have at least 1 entry, got {}'.format(len(coeffs)))
 
     # special case for one function
@@ -1045,7 +1075,7 @@ def legendre(nf, coeffs):
         return [np.exp(coeffs[0])]
 
     poly = np.polynomial.legendre.Legendre(coeffs)
-    zetas = [poly(((2.0*(i+1.0)-2.0)/(nf-1.0))-1.0) for i in range(nf)]
+    zetas = [poly(((2.0*(i + 1.0) - 2.0)/(numexp - 1.0)) - 1.0) for i in range(numexp)]
     return np.exp(zetas[::-1])
 
 def splitlist(l, n):
@@ -1063,33 +1093,20 @@ def splitlist(l, n):
     for i in range(splits):
         yield l[n*i:n*i+n]
 
-def sliceinto(l, s):
-    '''slice a list into chunks with sizes defined in s'''
-
-    if len(l) != sum(s):
-        raise ValueError('cannot slice list, size mismatch {}!={}'.format(len(l), sum(s)))
-
-    si = [sum(s[:i]) for i in range(0, len(s))]
-    return [l[i:i+s] for i, s in zip(si, sizes)]
-
-def have_equal_floats(a, b):
+def sliceinto(toslice, chunk_sizes):
     '''
-    Check if the arrays a and b have equal items
+    Slice a list ``toslice`` into chunks of sizes defined in ``chunk_sizes``
 
-    Pairwise compare all the item from a with all the items form b
-
-    Args:
-      a : numpy.array
-      b : numpy.array
-
-    Returns:
-      res : bool
-        - True if there are common items in `a` and `b`
-        - False if there are no common items
+    >>> sliceinto(list(range(10)), (6, 4))
+    [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9]]
     '''
 
-    x = np.array([item for item in product(a, b)])
-    return np.any(np.isclose(x[:, 0], x[:, 1]))
+    if len(toslice) != sum(chunk_sizes):
+        raise ValueError('cannot slice list, size mismatch {} != {}'.format(len(toslice),
+                                                                            sum(chunk_sizes)))
+
+    sidx = [sum(chunk_sizes[:i]) for i in range(0, len(chunk_sizes))]
+    return [toslice[i:i + s] for i, s in zip(sidx, chunk_sizes)]
 
 def xyzlist(l):
     '''
