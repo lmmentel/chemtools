@@ -27,6 +27,7 @@ import os
 import socket
 import subprocess
 
+
 def main():
     '''
     Script for submitting gamessus jobs to the queue.
@@ -64,8 +65,8 @@ def main():
     parser.add_argument("-s",
                         "--usescratch",
                         action="store_true",
-                        help="use node scratch directory (/scratch/$USER),\
-                        default=False")
+                        help="use node scratch directory (/scratch/$USER)",
+                        default=False)
     parser.add_argument("-q",
                         "--queue",
                         default="default",
@@ -73,10 +74,11 @@ def main():
     parser.add_argument("-t",
                         "--walltime",
                         default="120:00:00",
-                        help="walltime in the format HH:MM:SS,\
-                        default=120:00:00")
+                        help="walltime in the format HH:MM:SS",
+                        default="120:00:00")
     args = vars(parser.parse_args())
     submit_pbs(args)
+
 
 def set_defaults(args):
 
@@ -85,7 +87,8 @@ def set_defaults(args):
     if socket.gethostname() == "boron.chem.umk.pl":
         args['scratch'] = os.path.join('/scratch', os.getenv('USER'))
         args['rungms'] = '/share/apps/gamess-may2013/rungms'
-    elif socket.gethostname() in ["login1.lisa.surfsara.nl", "login2.lisa.surfsara.nl"]:
+    elif socket.gethostname() in ["login1.lisa.surfsara.nl",
+                                  "login2.lisa.surfsara.nl"]:
         args['scratch'] = os.getenv("TMPDIR")
         args['rungms'] = 'rungms'
     args['local_scr'] = os.path.join(os.getenv('HOME'), 'scratch')
@@ -102,11 +105,12 @@ def remove_dat(path, datfile):
     if os.path.exists(os.path.join(path, datfile)):
         os.remove(os.path.join(path, datfile))
 
+
 def submit_pbs(args):
     '''
     Write the run script for PBS and submit it to the queue.
     '''
-    
+
     args = set_defaults(args)
     remove_dat(args["local_scr"], args["datfile"])
 
@@ -143,6 +147,7 @@ def submit_pbs(args):
         output = subprocess.check_output(["qsub", args['script_name']])
         pid = output.split(".")[0]
         return args['jobname'] + ".o" + pid
+
 
 def submit_slurm(args):
     '''
@@ -184,6 +189,7 @@ def submit_slurm(args):
         sublog = open(args['jobname'] + ".sublog", 'w')
         proc = subprocess.Popen(["sbatch", args['script_name']], stdout=sublog, stderr=sublog)
         sublog.close()
+
 
 def submit_ll(args):
     '''

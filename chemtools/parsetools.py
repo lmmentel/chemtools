@@ -31,9 +31,11 @@ from __future__ import print_function
 import itertools
 from collections import defaultdict
 
+
 def contains(string, query):
     'Check if `string` contains `query`'
     return string.find(query) > -1
+
 
 def locatelinenos(filename, tolocate):
     '''
@@ -62,6 +64,7 @@ def locatelinenos(filename, tolocate):
             if contains(line, query):
                 out[idx].append(lineno + offset)
     return out
+
 
 def getlines(filename, tolocate):
     '''
@@ -93,6 +96,7 @@ def getlines(filename, tolocate):
         raise ValueError('len(tolocate) != len(located): {0} != {1}'.format(
             len(tolocate), len(located)))
 
+
 def getchunk(filename, startlno, endlno):
     '''
     Get a list of lines from a file between specified line numbers `startlno`
@@ -108,8 +112,8 @@ def getchunk(filename, startlno, endlno):
 
     Returns:
       lines : list
-        A list of lines from the file `filename` between line numbers `startlno`
-        and `endlno`
+        A list of lines from the file `filename` between line numbers\
+        `startlno` and `endlno`
     '''
 
     fobj = open(filename, 'r')
@@ -120,12 +124,14 @@ def getchunk(filename, startlno, endlno):
 
     return [next(fileiter) for _ in range(endlno - startlno)]
 
+
 def take(seq, num):
     '''
     Iterate over a sequence `seq` `num` times and return the list of the
     elements iterated over.
     '''
     return [next(seq) for _ in range(num)]
+
 
 def parsepairs(los, sep="="):
     '''
@@ -140,6 +146,7 @@ def parsepairs(los, sep="="):
             out.append((name.strip(), float(value)))
     return dict(out)
 
+
 def sliceafter(seq, item, num):
     '''
     Return "num" elements of a sequence "seq" present after the item "item".
@@ -150,6 +157,7 @@ def sliceafter(seq, item, num):
         if item in element:
             return [next(it) for _ in range(num)]
 
+
 def slicebetween(string, start, end):
     '''
     Return a slice of the `string` between phrases `start` and `end`.
@@ -157,5 +165,4 @@ def slicebetween(string, start, end):
 
     istart = string.index(start)
     iend = string[istart:].index(end)
-    return string[istart+len(start):istart + iend]
-
+    return string[istart + len(start):istart + iend]

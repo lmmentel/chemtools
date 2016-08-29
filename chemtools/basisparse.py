@@ -32,6 +32,7 @@ from mendeleev import element
 CFDTYPE = [('idx', np.int32), ('cc', np.float64)]
 SHELLS = ["s", "p", "d", "f", "g", "h", "i", "k"]
 
+
 def parse_basis(string, fmt=None):
     '''
     A wrapper for parsing the basis sets in different formats.
@@ -39,13 +40,14 @@ def parse_basis(string, fmt=None):
     Args:
       string : str
         A string with the basis set
+
       fmt : str
         Format in which the basis set is specified
 
     Returns:
       out : dict
-        A dictionary of parsed basis sets with element symbols as keys and basis
-        set functions as values
+        A dictionary of parsed basis sets with element symbols as keys and
+        basis set functions as values
     '''
 
     formats = ['molpro', 'gamessus', 'gaussian']
@@ -59,12 +61,13 @@ def parse_basis(string, fmt=None):
     else:
         raise ValueError("<fmt> should be one of: {}".format(", ".join(formats)))
 
+
 def parse_molpro_basis(string):
     '''
     Parse basis set from a string in Molpro format.
     '''
 
-    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL|re.IGNORECASE)
+    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL | re.IGNORECASE)
 
     m = bas_re.search(string)
     if m:
@@ -80,18 +83,19 @@ def parse_molpro_basis(string):
         return None
 
     startstop = []
-    for i in range(len(start)-1):
-        startstop.append((start[i], start[i+1]))
+    for i in range(len(start) - 1):
+        startstop.append((start[i], start[i + 1]))
     startstop.append((start[-1], len(lines)))
 
     bs = {}
     for i in startstop:
-        at_symbol, shell = parse_molpro_shell(lines[i[0]], lines[i[0]+1:i[1]])
+        at_symbol, shell = parse_molpro_shell(lines[i[0]], lines[i[0] + 1:i[1]])
         if at_symbol in bs.keys():
             bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
         else:
             bs[at_symbol] = shell
     return bs
+
 
 def parse_molpro_shell(expsline, coeffs):
     '''
@@ -104,22 +108,23 @@ def parse_molpro_shell(expsline, coeffs):
 
     fs = {}
 
-    shell  = expsline.split(",")[0].lower()
+    shell = expsline.split(",")[0].lower()
     at_symbol = expsline.split(",")[1].strip().capitalize()
-    exps   = np.array([float(real.sub('E', x)) for x in expsline.rstrip(";").split(",")[2:]])
+    exps = np.array([float(real.sub('E', x)) for x in expsline.rstrip(";").split(",")[2:]])
 
-    fs[shell] = {'e' : exps, 'cf' : []}
+    fs[shell] = {'e': exps, 'cf': []}
     if len(coeffs) != 0:
         for line in coeffs:
             lsp = line.rstrip(";").split(",")
             if lsp[0] == "c":
                 i, j = [int(x) for x in lsp[1].split(".")]
                 coeffs = [float(real.sub('E', x)) for x in lsp[2:]]
-                fs[shell]['cf'].append(np.array(list(zip(list(range(i-1, j)), coeffs)), dtype=CFDTYPE))
+                fs[shell]['cf'].append(np.array(list(zip(list(range(i - 1, j)), coeffs)), dtype=CFDTYPE))
     else:
         for i in range(len(exps)):
             fs[shell]['cf'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
     return at_symbol, fs
+
 
 def parse_ecp(ecpstring):
 
@@ -136,14 +141,15 @@ def parse_ecp(ecpstring):
         return None
 
     startstop = []
-    for i in range(len(start)-1):
-        startstop.append((start[i], start[i+1]))
+    for i in range(len(start) - 1):
+        startstop.append((start[i], start[i + 1]))
     startstop.append((start[-1], len(lines)))
 
     ecp = {}
     for i in startstop:
-        ecp = dict(list(ecp.items()) + list(parse_coeffs(lines[i[0] : i[1]]).items()))
+        ecp = dict(list(ecp.items()) + list(parse_coeffs(lines[i[0]: i[1]]).items()))
     return ecp
+
 
 def parse_coeffs(lines):
 
@@ -154,7 +160,7 @@ def parse_coeffs(lines):
 
     liter = iter(x for x in lines[1:] if x != '')
 
-    ecp = {element : {"nele" : nele, "lmax" : lmax, "shells" : []}}
+    ecp = {element: {"nele": nele, "lmax": lmax, "shells": []}}
 
     while True:
         try:
@@ -163,12 +169,15 @@ def parse_coeffs(lines):
             break
         nlmax = int(temp.split(";")[0])
         comment = temp.split(";")[1].replace("!", "")
-        tt = {'comment' : comment, 'parameters' : []}
+        tt = {'comment': comment, 'parameters': []}
         for i in range(nlmax):
             param = next(liter).replace(";", "").split(",")
-            tt['parameters'].append({'m' : float(param[0]), 'gamma' : float(param[1]),'c' : float(param[2])})
+            tt['parameters'].append({'m': float(param[0]),
+                                     'gamma': float(param[1]),
+                                     'c': float(param[2])})
         ecp[element]['shells'].append(tt)
     return ecp
+
 
 def parse_gaussian_basis(string):
     '''
@@ -188,7 +197,7 @@ def parse_gaussian_basis(string):
                 match = shellre.search(line)
                 if match:
                     shells, nf, scale = match.group('shells').lower(), match.group('nf'), match.group('scale')
-                    exps, indxs, coeffs = parse_gaussian_function(bslines[i+1:i+int(nf)+1])
+                    exps, indxs, coeffs = parse_gaussian_function(bslines[i + 1: i + int(nf) + 1])
                     for shell, cc in zip(shells, coeffs.T):
                         if shell in functions.keys():
                             sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
@@ -204,6 +213,7 @@ def parse_gaussian_basis(string):
                             functions[shell]['cf'].append(np.array(list(zip(indxs, cc)), dtype=CFDTYPE))
                 out[atom] = functions
     return out
+
 
 def parse_gaussian_function(lines):
     '''
@@ -221,13 +231,14 @@ def parse_gaussian_function(lines):
     coeffs = np.array([[float(real.sub('E', x)) for x in line.split()[1:]] for line in lines], dtype=np.float64)
     return (exps, indxs, coeffs)
 
+
 def parse_gamessus_basis(string):
     '''
     Parse the basis set into a list of dictionaries from a string in
     gamess format.
     '''
 
-    bas_re = re.compile(r'\$DATA\n(.*?)\$END', flags=re.DOTALL|re.IGNORECASE)
+    bas_re = re.compile(r'\$DATA\n(.*?)\$END', flags=re.DOTALL | re.IGNORECASE)
 
     m = bas_re.search(string)
     if m:
@@ -249,9 +260,9 @@ def parse_gamessus_basis(string):
                     match = pat.search(line)
                     if match:
                         shells, nf = match.group("shells").lower(), match.group("nf")
-                        exps, indxs, coeffs = parse_gamessus_function(bslines[i+1:i+int(nf)+1])
+                        exps, indxs, coeffs = parse_gamessus_function(bslines[i + 1: i + int(nf) + 1])
                         if shells in ['L', 'l']:
-                            shells = ['s','p']
+                            shells = ['s', 'p']
                         for shell, cc in zip(shells, coeffs.T):
                             if shell in functions.keys():
                                 sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
@@ -264,9 +275,10 @@ def parse_gamessus_basis(string):
                                 functions[shell] = dict()
                                 functions[shell]['cf'] = list()
                                 functions[shell]['e'] = exps
-                                functions[shell]['cf'].append(np.array(list(zip(indxs-1, cc)), dtype=CFDTYPE))
+                                functions[shell]['cf'].append(np.array(list(zip(indxs - 1, cc)), dtype=CFDTYPE))
                 res[elem.symbol] = functions
     return res
+
 
 def parse_gamessus_function(lines):
     '''
@@ -284,9 +296,11 @@ def parse_gamessus_function(lines):
     coeffs = np.array([[float(real.sub('E', x)) for x in line.split()[2:]] for line in lines], dtype=np.float64)
     return (exps, indxs, coeffs)
 
+
 def merge_exponents(a, b):
     '''
-    Concatenate the arrays `a` and `b` using only the unique items from both arrays
+    Concatenate the arrays `a` and `b` using only the unique items from both
+    arrays
 
     Args:
       a : numpy.array
@@ -303,4 +317,3 @@ def merge_exponents(a, b):
     idxa = np.where(np.in1d(u, a))[0]
     idxb = np.where(np.in1d(u, b))[0]
     return u, idxa, idxb
-

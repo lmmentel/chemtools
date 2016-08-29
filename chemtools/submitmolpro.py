@@ -27,6 +27,7 @@ import os
 import socket
 import subprocess
 
+
 def main():
     '''
     Script for submitting molpro job to the queue.
@@ -60,8 +61,8 @@ def main():
     parser.add_argument("-s",
                         "--usescratch",
                         action="store_true",
-                        help="use node scratch directory (/scratch/$USER),\
-                        default=False")
+                        help="use node scratch directory (/scratch/$USER)",
+                        default=False)
     parser.add_argument("-q",
                         "--queue",
                         default="default",
@@ -73,6 +74,7 @@ def main():
                         default=120:00:00")
     args = vars(parser.parse_args())
     submit_pbs(args)
+
 
 def set_defaults(args):
     '''Set some useful default values and add them to args'''
@@ -92,11 +94,12 @@ def set_defaults(args):
     args['script_name'] = "run." + args['jobname']
     return args
 
+
 def submit_pbs(args):
     '''
     Write the run script for PBS and submit it to the queue.
     '''
-    
+
     args = set_defaults(args)
 
     with open(args['script_name'], 'w') as script:

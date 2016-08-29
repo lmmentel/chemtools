@@ -25,10 +25,11 @@
 from __future__ import print_function
 
 import numpy as np
-from scipy.special import factorial, factorial2, gamma
+from scipy.special import factorial2
 from chemtools.basisset import ncartesian, get_l
 from numba import jit, int32, float64
 from scipy.linalg import sqrtm, inv
+
 
 @jit(float64(int32, float64))
 def norm(n, a):
@@ -83,31 +84,31 @@ def obara_saika(i, j, a, b, Ax, Bx):
     '''
 
     p = a + b
-    mu = a*b/p
-    Px = (a*Ax + b*Bx)/p
+    mu = a * b / p
+    Px = (a * Ax + b * Bx) / p
     X_AB = Ax - Bx
     X_PA = Px - Ax
     X_PB = Px - Bx
 
     if i == 0 and j == 0:
-        return np.sqrt(np.pi/p)*np.exp(-mu*X_AB**2)
+        return np.sqrt(np.pi / p) * np.exp(-mu * X_AB**2)
     elif i == 0 and j == 1:
-        return X_PB*obara_saika(0, 0, a, b, Ax, Bx)
+        return X_PB * obara_saika(0, 0, a, b, Ax, Bx)
     elif i == 1 and j == 0:
-        return X_PA*obara_saika(0, 0, a, b, Ax, Bx)
+        return X_PA * obara_saika(0, 0, a, b, Ax, Bx)
     elif i == 1 and j == 1:
-        return X_PA*obara_saika(0, 1, a, b, Ax, Bx) + \
+        return X_PA * obara_saika(0, 1, a, b, Ax, Bx) + \
                 obara_saika(0, 0, a, b, Ax, Bx)/(2.0*p)
     elif i == 0 and j > 1:
-        return X_PB*obara_saika(0, j-1, a, b, Ax, Bx) + \
-                (j-1)*obara_saika(0, j-2, a, b, Ax, Bx)/(2.0*p)
+        return X_PB * obara_saika(0, j - 1, a, b, Ax, Bx) + \
+                (j-1)*obara_saika(0, j - 2, a, b, Ax, Bx)/(2.0*p)
     elif i == 1 and j > 1:
-        return X_PB*obara_saika(1, j-1, a, b, Ax, Bx) + \
+        return X_PB * obara_saika(1, j - 1, a, b, Ax, Bx) + \
                 (obara_saika(0, j-1, a, b, Ax, Bx) + \
-                (j-1)*obara_saika(1, j-2, a, b, Ax, Bx))/(2.0*p)
+                (j - 1) * obara_saika(1, j-2, a, b, Ax, Bx))/(2.0*p)
     elif i > 1 and j == 0:
-        return X_PA*obara_saika(i-1, 0, a, b, Ax, Bx) + \
-                (i-1)*obara_saika(i-2, 0, a, b, Ax, Bx)/(2.0*p)
+        return X_PA * obara_saika(i-1, 0, a, b, Ax, Bx) + \
+                (i - 1)*obara_saika(i-2, 0, a, b, Ax, Bx)/(2.0*p)
     elif i > 1 and j == 1:
         return X_PA*obara_saika(i-1, 1, a, b, Ax, Bx) + \
                 ((i-1)*obara_saika(i-2, 1, a, b, Ax, Bx) + \
@@ -117,10 +118,11 @@ def obara_saika(i, j, a, b, Ax, Bx):
                 ((i-1)*obara_saika(i-2, j, a, b, Ax, Bx) + \
                 j*obara_saika(i-1, j-1, a, b, Ax, Bx))/(2.0*p)
 
+
 def get_basinfo(bases, positions, order='canonical'):
     '''
-    Compose a record array with all of the exponents/functions, The record has the follwing
-    structure
+    Compose a record array with all of the exponents/functions, The record has
+    the follwing structure
 
       * ``exp``,  ``float``, the exponent
       * ``shell``, ``str``, the shell
@@ -165,6 +167,7 @@ def get_basinfo(bases, positions, order='canonical'):
                     out[index] = (ex, shell, l, ixyz[0], ixyz[1], ixyz[2],
                                   basis.element, atom[0], atom[1], atom[2])
     return out
+
 
 def xyzlist(l, order='canonical'):
     '''
@@ -216,6 +219,7 @@ def xyzlist(l, order='canonical'):
     else:
         raise ValueError('Unknown <order> value: {}'.format(order))
 
+
 @jit
 def primitive_overlap(exps):
     '''
@@ -258,6 +262,7 @@ def primitive_overlap(exps):
     np.fill_diagonal(S, S.diagonal()/2.0)
     return S
 
+
 def primitive_overlap_between(bas1, bas2):
 
     # initialize the overlap matrix
@@ -275,6 +280,7 @@ def primitive_overlap_between(bas1, bas2):
             S[i, j] = normi*normj*x*y*z
 
     return S
+
 
 def contraction_matrix(bases):
     '''
@@ -302,10 +308,10 @@ def contraction_matrix(bases):
         for shell, fs in basis.functions.items():
             l = get_l(shell)
             ncart = ncartesian(l)
-            nprs = len(fs['e'])*ncart
+            nprs = len(fs['e']) * ncart
             for cf in fs['cf']:
                 # calculate the indices of rows for all the components
-                rowidx = np.asarray([[i*ncart+n  for i in cf['idx']] for n in range(ncart)]).T
+                rowidx = np.asarray([[i * ncart + n  for i in cf['idx']] for n in range(ncart)]).T
                 # reshape the contraction coefficients to assign them to elements of the contraction matrix
                 cc[rowidx + irow, np.arange(ncart) + icol] = np.repeat(cf['cc'], ncart).reshape(cf.size, ncart)
                 icol += ncart
@@ -326,8 +332,6 @@ def completeness_profile(basinfo, cc, zetas):
         numpy array with values of the profile (shells, zetas)
     '''
 
-    out = np.zeros((zetas.size, cc.shape[1]))
-
     # calculate the overlap matrix
     Sprim = primitive_overlap(basinfo)
     S = np.dot(cc.T, np.dot(Sprim, cc))
@@ -335,6 +339,6 @@ def completeness_profile(basinfo, cc, zetas):
     X = inv(sqrtm(S))
     SO = primitive_overlap_between(basinfo, zetas)
     J = np.dot(np.dot(cc, X).T, SO)
-    Y = np.sum(np.square(J), axis=0)
+    out = np.sum(np.square(J), axis=0)
 
-    return Y
+    return out

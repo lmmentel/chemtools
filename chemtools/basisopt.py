@@ -40,50 +40,66 @@ from scipy.optimize import minimize
 
 from chemtools.basisset import BasisSet, get_num_params, sliceinto
 
+
 class BSOptimizer(object):
     '''
     Basis Set Optimizer class is a convenient wrapper for optimizing primitive
-    exponents of Gaussian basis sets using different code interfaces for performing
-    the actual electronic structure calculations.
+    exponents of Gaussian basis sets using different code interfaces for
+    performing the actual electronic structure calculations.
 
     Args:
         objective : str or callable
-            Name of the objective using which the optimization will be evaluated, if it
-            is a callable/function it should take the output name as argument
+            Name of the objective using which the optimization will be
+            evaluated, if it is a callable/function it should take the output
+            name as argument
+
         code : :py:class:`Calculator <chemtools.calculators.calculator.Calculator>`
             Subclass of the :py:class:`Calculator <chemtools.calculators.calculator.Calculator>`
             specifying the electronic structure program to use
+
         mol : :py:class:` Molecule <chemtools.molecule.Molecule>`
             Molecule specifying the system
+
         staticbs : dict or :py:class:`BasisSet <chemtools.basisset.BasisSet>`
-            Basis set or ``dict`` of basis set with basis sets whose exponents are not going to be
-            optimized
+            Basis set or ``dict`` of basis set with basis sets whose exponents
+            are not going to be optimized
+
         fsopt : dict
-            A dictionary specifying the basis set to be optimized, the keys should be element/atom
-            symbol and the values should contain lists of 4-tuples composed of: shell, type, number
-            of functions and parameters/exponents, for example,
+            A dictionary specifying the basis set to be optimized, the keys
+            should be element/atom symbol and the values should contain lists
+            of 4-tuples composed of: shell, type, number of functions and
+            parameters/exponents, for example,
 
             >>> fs = {'H' : [('s', 'et', 10, (0.5, 2.0))]}
 
-            describes 10 ``s``-type exponents for H generated from even tempered formula with
-            parameters 0.5 and 2.0
+            describes 10 ``s``-type exponents for H generated from even
+            tempered formula with parameters 0.5 and 2.0
+
         optalg : dict
             A dictionary specifying the optimization algorithm and its options
+
         fname : str
             Name of the job/input file for the single point calculator
+
         uselogs : bool
-            Use natural logarithms of exponents in optimization rather than their
-            values, this option is only relevant if functions asre given as
-            ``exp`` or ``exponents``
+            Use natural logarithms of exponents in optimization rather than
+            their values, this option is only relevant if functions asre given
+            as ``exp`` or ``exponents``
+
         regexp : str
-            Regular expression to use in search for the objective if ``objective`` is regexp
+            Regular expression to use in search for the objective if
+            ``objective`` is regexp
+
         runcore : bool
-            Flag to mark wheather to run separate single point jobs with different numbers of
-            frozen core orbitals to calculate core energy
+            Flag to mark wheather to run separate single point jobs with
+            different numbers of frozen core orbitals to calculate core energy
+
         penalize : bool
-            Flag enabling the use of penalty function, when two exponent in any shell are too close
-            the objective is multiplied by a penalty factor calculated in
-            :py:func:`get_penalty <chemtools.basisopt.get_penalty>`
+            Flag enabling the use of penalty function, when two exponent in
+            any shell are too close the objective is multiplied by a penalty
+            factor calculated in :py:func:`get_penalty
+            <chemtools.basisopt.get_penalty>`
+
         penaltykwargs : dict
             Keyword arguments for the penalty function, default
             ``{'alpha' : 25.0, 'smallestonly' : True}``
@@ -91,9 +107,8 @@ class BSOptimizer(object):
 
     def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
-                 fsopt=None, staticbs=None, fname=None, uselogs=True, runcore=False,
-                 penalize=None, penaltykwargs=None):
-
+                 fsopt=None, staticbs=None, fname=None, uselogs=True,
+                 runcore=False, penalize=None, penaltykwargs=None):
 
         self.fsopt = fsopt
         self.staticbs = staticbs
@@ -145,21 +160,21 @@ class BSOptimizer(object):
         mxi = 100
 
         if value is None:
-            self._optalg = {"method"  : "Nelder-Mead",
-                            "tol"     : tol,
-                            "jacob"   : None,
-                            "options" : {"maxiter" : 100,
-                                         "disp"    : True,
+            self._optalg = {"method" : "Nelder-Mead",
+                            "tol"    : tol,
+                            "jacob"  : None,
+                            "options": {"maxiter": 100,
+                                         "disp"  : True,
                                         }
-                           }
+                            }
         elif isinstance(value, dict):
             if value.get('method').lower() == "nelder-mead":
                 value['jacob'] = None
             else:
                 value['jacob'] = jac
-            if not 'tol' in value.keys():
+            if 'tol' not in value.keys():
                 value['tol'] = tol
-            if not 'maxiter' in value['options'].keys():
+            if 'maxiter' not in value['options'].keys():
                 value['options']['maxiter'] = mxi
             self._optalg = value
         else:
@@ -185,7 +200,7 @@ class BSOptimizer(object):
     def penaltykwargs(self, value):
 
         if value is None:
-            self._penaltykwargs = {'alpha' : 25.0, 'smallestonly' : True}
+            self._penaltykwargs = {'alpha': 25.0, 'smallestonly': True}
         else:
             self._penaltykwargs = value
 
@@ -201,7 +216,7 @@ class BSOptimizer(object):
         out = "\n".join(["Script name : {0}".format(script),
                          "Workdir     : {0}".format(path),
                          "Start time  : {0}".format(datetime.datetime.today()),
-                        ])
+                         ])
 
         return out
 
@@ -246,7 +261,8 @@ class BSOptimizer(object):
         '''
 
         print(self.header())
-        print("\n"+"="*80, "STARTING OPTIMIZATION".center(80, "="), "="*80, end="\n\n", sep='\n')
+        print("\n" + "=" * 80, "STARTING OPTIMIZATION".center(80, "="),
+              "=" * 80, end="\n\n", sep='\n')
         print(self.jobinfo())
 
         starttime = time.time()
@@ -259,11 +275,12 @@ class BSOptimizer(object):
                                tol=self.optalg["tol"],
                                options=self.optalg["options"])
         print(self.result)
-        print("Elapsed time : {0:>20.3f} sec".format(time.time()-starttime))
+        print("Elapsed time : {0:>20.3f} sec".format(time.time() - starttime))
 
     def get_basis(self, name=None, element=None):
         '''
-        Construct the BasisSet object from the result of the optimization and function definition.
+        Construct the BasisSet object from the result of the optimization and
+        function definition.
 
         Args:
             name : str
@@ -273,8 +290,8 @@ class BSOptimizer(object):
 
         Returns:
             basis : chemtools.basisset.BasisSet
-                :py:class:`BasisSet <chemtools.basisset.BasisSet>` object with the optimized
-                functions
+                :py:class:`BasisSet <chemtools.basisset.BasisSet>` object with
+                the optimized functions
         '''
 
         bsdict = {}
@@ -283,21 +300,41 @@ class BSOptimizer(object):
         x0peratom = sliceinto(self.result.x, npars)
         for (atom, funs), xpars in zip(self.fsopt.items(), x0peratom):
 
-            bsdict[atom] = BasisSet.from_optpars(xpars, funs, name=name, element=element,
+            bsdict[atom] = BasisSet.from_optpars(xpars, funs, name=name,
+                                                 element=element,
                                                  explogs=self.uselogs)
+
+        if self.staticbs is not None:
+            if isinstance(self.staticbs, dict):
+                common_atoms = set(self.staticbs.keys()) & set(bsdict.keys())
+                if common_atoms:
+                    for atom in common_atoms:
+                        bsdict[atom].append(self.staticbs[atom])
+                diff_atoms = set(self.staticbs.keys()) - set(bsdict.keys())
+                if diff_atoms:
+                    for atom in diff_atoms:
+                        bsdict[atom] = self.staticbs[atom]
+            elif isinstance(self.staticbs, BasisSet):
+                if self.staticbs.element in set(bsdict.keys()):
+                    bsdict[atom].append(self.staticbs)
+                else:
+                    bsdict[self.staticbs.element] = self.staticbs
+
         return bsdict
+
 
 def get_basis_dict(bso, x0):
     '''
-    Return a dictionary with :py:class:`BasisSet` objects as values and element symbols as keys.
-    The dictionary is composed based on the current parameters ``x0`` and attributes of the
-    :py:class:`BSOptimizer` including the ``staticbs``
+    Return a dictionary with :py:class:`BasisSet` objects as values and
+    element symbols as keys. The dictionary is composed based on the current
+    parameters ``x0`` and attributes of the :py:class:`BSOptimizer` including
+    the ``staticbs``
     '''
 
     bsdict = dict()
     for atom, functs in bso.fsopt.items():
-        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
-                                             explogs=bso.uselogs)
+        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt',
+                                             element=atom, explogs=bso.uselogs)
 
     if bso.staticbs is not None:
         if isinstance(bso.staticbs, dict):
@@ -317,24 +354,27 @@ def get_basis_dict(bso, x0):
 
     return bsdict
 
+
 def get_penalty(bsdict, alpha=25.0, smallestonly=True):
     '''
-    For a given dict of basis sets calculate the penalty for pairs of exponents being too close
-    together.
+    For a given dict of basis sets calculate the penalty for pairs of
+    exponents being too close together.
 
     Args:
         bsdict : dict
             Dictionary of :py:class:`BasisSet` objects
+
         alpha : float
             Parameter controlling the magnitude and range of the penalty
-        smallestonly : bool
-            A flag to mark whether to use only the smallest ratio to calculate the penalty or all
-            smallest ratios from each shell and calculate the penalty as a product of individual
-            penalties
 
-    For each basis and shell within the basis ratios between pairs of sorted exponents are
-    calculated. The minimal ratio (closest to 1.0) is taken to calculate the penalty according to
-    the formula
+        smallestonly : bool
+            A flag to mark whether to use only the smallest ratio to calculate
+            the penalty or all smallest ratios from each shell and calculate
+            the penalty as a product of individual penalties
+
+    For each basis and shell within the basis ratios between pairs of sorted
+    exponents are calculated. The minimal ratio (closest to 1.0) is taken to
+    calculate the penalty according to the formula
 
     .. math::
 
@@ -351,9 +391,10 @@ def get_penalty(bsdict, alpha=25.0, smallestonly=True):
             minratios.append(np.min(ratios))
 
     if smallestonly:
-        return 1 + np.exp(-alpha*(np.min(np.array(minratios)) - 1))
+        return 1 + np.exp(-alpha * (np.min(np.array(minratios)) - 1))
     else:
-        return np.prod(1 + np.exp(-alpha*(np.array(minratios) - 1)))
+        return np.prod(1 + np.exp(-alpha * (np.array(minratios) - 1)))
+
 
 def run_total_energy(x0, *args):
     '''
@@ -379,7 +420,8 @@ def run_total_energy(x0, *args):
     bso = args[0]
 
     for atom, functs in bso.fsopt.items():
-        ni = 0; nt = 0
+        ni = 0
+        nt = 0
         for shell, seq, nf, params in functs:
             nt += nf
             if seq not in ['le', 'legendre'] and not bso.uselogs:
@@ -397,11 +439,12 @@ def run_total_energy(x0, *args):
     if bso.verbose:
         print("Current exponents being optimized:")
         for atom, functs in bso.fsopt.items():
-            basis = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
-                                          explogs=bso.uselogs)
+            basis = BasisSet.from_optpars(x0, functs=functs, name='opt',
+                                          element=atom, explogs=bso.uselogs)
             print(atom, basis.print_functions())
 
-    bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict, mol=bso.mol, core=bso.core)
+    bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict,
+                         mol=bso.mol, core=bso.core)
     output = bso.code.run(bso.fname)
     if bso.code.accomplished(output):
 
@@ -417,11 +460,12 @@ def run_total_energy(x0, *args):
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("\n{0:<20s} : {1:>30s}".format("Output", output))
             print("{0:<20s} : {1:>30.10f}".format(str(bso.objective), objective))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", objective*penalty))
-            print("="*80)
-        return objective*penalty
+            print("{0:<20s} : {1:>30.10f}".format("Objective", objective * penalty))
+            print("=" * 80)
+        return objective * penalty
     else:
         raise ValueError("something went wrong, check output {0:s}".format(output))
+
 
 def run_core_energy(x0, *args):
     '''
@@ -446,7 +490,8 @@ def run_core_energy(x0, *args):
     bso = args[0]
 
     for atom, functs in bso.fsopt.items():
-        ni = 0; nt = 0
+        ni = 0
+        nt = 0
         for shell, seq, nf, params in functs:
             nt += nf
             if seq not in ['le', 'legendre'] and not bso.uselogs:
@@ -471,7 +516,7 @@ def run_core_energy(x0, *args):
     citote = []
     stats = []
     base = os.path.splitext(bso.fname)[0]
-    inputs = [base+"_core"+str(sum(x))+".inp" for x in bso.core]
+    inputs = [base + "_core" + str(sum(x)) + ".inp" for x in bso.core]
 
     for inpname, core in zip(inputs, bso.core):
         bso.code.write_input(fname=inpname, core=core, basis=bsdict, mol=bso.mol,
@@ -487,22 +532,24 @@ def run_core_energy(x0, *args):
             print("x0 : ", ", ".join([str(x) for x in x0]))
             print("{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK", str(stats[0]), str(stats[1])))
             print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format(str(bso.objective), citote[0], citote[1]))
-            print("-"*84)
+            print("-" * 84)
         coreenergy = citote[0] - citote[1]
         if coreenergy > 0.0:
-            coreenergy = -1.0*coreenergy
+            coreenergy = -1.0 * coreenergy
         if bso.verbose:
             print("{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", coreenergy*penalty))
-            print("="*84)
-        return coreenergy*penalty
+            print("{0:<20s} : {1:>30.10f}".format("Objective", coreenergy * penalty))
+            print("=" * 84)
+        return coreenergy * penalty
     else:
         raise ValueError("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
 
+
 def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
     '''
-    For a given shell optimize the functions until the convergence criterion is reached
-    the energy difference for two consecutive function numbers is less than the threshold
+    For a given shell optimize the functions until the convergence criterion
+    is reached the energy difference for two consecutive function numbers is
+    less than the threshold
 
     Kwargs:
         shell : string
@@ -526,7 +573,8 @@ def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=Fal
             from the basisopt module
 
     Returns:
-        BasisSet object instance with optimized functions for the specified shell
+        BasisSet object instance with optimized functions for the specified
+        shell
 
     Raises:
         ValueError:
@@ -587,6 +635,7 @@ def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=Fal
             save_basis(res.x.tolist(), bsopt)
         return BasisSet.from_optdict(res.x.tolist(), bsopt)
 
+
 def opt_multishell(shells=None, nfps=None, guesses=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
     '''
     Optimize a basis set by saturating the function space shell by shell
@@ -645,4 +694,3 @@ def opt_multishell(shells=None, nfps=None, guesses=None, max_params=5, opt_tol=1
     basis_dict = vars(kwargs['bsnoopt'])
     with open("final.bas", 'wb') as ff:
         ff.write(str(basis_dict))
-

@@ -30,11 +30,12 @@ import re
 from collections import OrderedDict
 from copy import copy, deepcopy
 from argparse import ArgumentParser
-from itertools import chain, product
+from itertools import chain
 import numpy as np
 from scipy.linalg import sqrtm, inv
 from scipy.special import factorial, factorial2, binom
 from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, SHELLS
+
 
 def read_pickle(fname):
     '''Read a pickled BasisSet object from file
@@ -47,24 +48,28 @@ def read_pickle(fname):
     with open(fname, 'rb') as fil:
         return pickle.load(fil)
 
+
 class BasisSet(object):
     '''
-    Basis set module supporting basic operation on basis sets and can be used
-    as a API for mongoDB basis set repository.
+    Basis set module supporting basic operation on basis sets.
 
     Args:
         name : str
             Name of the basis set
+
         element : str
             Symbol of the element
 
     Kwargs:
         kind : str
             Classification of the basis set functions, *diffuse*, *tight*
+
         family : str
             basis set family
+
         functions : dict
             Dict of functions with *s*, *p*, *d*, *f*, ... as keys
+
         params : list of dicts
             Parameters for generating the functions according to the model
         '''
@@ -124,19 +129,24 @@ class BasisSet(object):
         return BasisSet(name=self.name, element=self.element, functions=newf)
 
     @classmethod
-    def from_optpars(cls, x0, functs=None, name=None, element=None, explogs=False):
+    def from_optpars(cls, x0, functs=None, name=None, element=None,
+                     explogs=False):
         '''
-        Return a basis set object generated from a sequence based on the specified
-        arguments.
+        Return a basis set object generated from a sequence based on the
+        specified arguments.
 
         Args:
           x0 : list or numpy.array
-            Parameters to generate the basis set as a contonuous list or array
+            Parameters to generate the basis set as a continuous list or array
+
           functs : list of tuples
             A list of tuple specifying the shell type, number of functions and
-            parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3, (1.0, 3.0))]`
+            parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3,
+            (1.0, 3.0))]`
+
           name : str
             Name of the basis set
+
           element : str
             Chemical symbol of the element
 
@@ -145,7 +155,8 @@ class BasisSet(object):
         '''
 
         funs = dict()
-        ni = 0; nt = 0
+        ni = 0
+        nt = 0
         for shell, seq, nf, params in functs:
             funs[shell] = dict()
             if seq in ["exp", "exponents"]:
@@ -167,15 +178,18 @@ class BasisSet(object):
     @classmethod
     def from_sequence(cls, functs=None, name=None, element=None):
         '''
-        Return a basis set object generated from a sequence based on the specified
-        arguments.
+        Return a basis set object generated from a sequence based on the
+        specified arguments.
 
         Args:
           functs : list of tuples
             A list of tuple specifying the shell type, number of functions and
-            parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3, (1.0, 3.0))]`
+            parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3,
+            (1.0, 3.0))]`
+
           name : str
             Name of the basis set
+
           element : str
             Chemical symbol of the element
 
@@ -201,8 +215,10 @@ class BasisSet(object):
         Args:
           fname : str
             File name
+
           fmt : str
             Format of the basis set in the file (*molpro*, *gamessus*)
+
           name : str
             Name of the basis set
 
@@ -362,7 +378,7 @@ class BasisSet(object):
             basis set string in Dalton format
         '''
 
-        formats = {'prec' : '20.10f', 'default' : '10.4f'}
+        formats = {'prec': '20.10f', 'default': '10.4f'}
 
         ffmt = formats.get(fmt, fmt)
 
@@ -406,7 +422,7 @@ class BasisSet(object):
             po = primitive_overlap(SHELLS.index(shell), fs['e'], fs['e'])
             for col in range(cc.shape[1]):
                 norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
-                fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col]/np.sqrt(norm2)
+                fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col] / np.sqrt(norm2)
 
     def normalzation(self):
         '''
@@ -815,10 +831,12 @@ class BasisSet(object):
         cc = self.contraction_matrix(shell)
         return np.dot(cc.T, np.dot(S, cc))
 
+
 def get_l(shell):
     '''Return the angular momentum value of a given shell'''
 
     return SHELLS.index(shell)
+
 
 def merge(first, other):
     '''
@@ -851,6 +869,7 @@ def merge(first, other):
 
     return BasisSet(name=first.name, element=first.element, functions=newf)
 
+
 def primitive_overlap(l, a, b):
     '''
     Calculate the overlap integrals for a given shell `l` and two sets of exponents
@@ -872,21 +891,24 @@ def primitive_overlap(l, a, b):
         Overlap integrals
     '''
 
-    return np.power(2.0*np.sqrt(np.outer(a, b))/np.add.outer(a, b), l + 1.5)
+    return np.power(2.0 * np.sqrt(np.outer(a, b)) / np.add.outer(a, b), l + 1.5)
+
 
 def nspherical(l):
     '''
     Calculate the number of spherical components of a function with a given angular
     momentum value *l*.
     '''
-    return 2*l+1
+    return 2 * l + 1
+
 
 def ncartesian(l):
     '''
-    Calculate the number of cartesian components of a function with a given angular
-    momentum value *l*.
+    Calculate the number of cartesian components of a function with a given
+    angular momentum value *l*.
     '''
-    return int((l+1)*(l+2)/2)
+    return int((l + 1) * (l + 2) / 2)
+
 
 def zetas2legendre(zetas, kmax):
     '''
@@ -906,17 +928,18 @@ def zetas2legendre(zetas, kmax):
 
     # exponents should be sorted in the ascending order
     zetas = sorted(zetas)
-    c = np.asarray([1.0]*kmax, dtype=float)
+    c = np.asarray([1.0] * kmax, dtype=float)
 
     leg = np.polynomial.Legendre(c)
     a = np.zeros((len(zetas), kmax))
 
     for j in range(len(zetas)):
         for k in range(kmax):
-            arg = (2.0*(j+1.0)-2.0)/(len(zetas)-1.0)-1.0
+            arg = (2.0 * (j + 1.0) - 2.0) / (len(zetas) - 1.0) - 1.0
             a[j, k] = leg.basis(k)(arg)
 
     return np.linalg.lstsq(a, np.log(zetas))[0]
+
 
 def zetas2eventemp(zetas):
     '''
@@ -933,7 +956,9 @@ def zetas2eventemp(zetas):
         numpy array of legendre expansion coeffcients of length kmax
     '''
 
-    return min(zetas), np.power(max(zetas)/min(zetas), 1.0/(len(zetas)-1))
+
+    return min(zetas), np.power(max(zetas) / min(zetas), 1.0 / (len(zetas) - 1))
+
 
 def generate_exponents(formula, nf, params):
     '''
@@ -966,6 +991,7 @@ def generate_exponents(formula, nf, params):
     else:
         raise ValueError('unknown sequence name: {}'.format(formula))
 
+
 def get_num_params(ftuple):
     '''
     Get the number of parameter for a given 4-tuple desciribing functions
@@ -985,6 +1011,7 @@ def get_num_params(ftuple):
         return ftuple[2]
     else:
         raise ValueError('unknown sequence name: {}'.format(formula))
+
 
 def eventemp(numexp, params):
     '''
@@ -1013,6 +1040,7 @@ def eventemp(numexp, params):
     zetas = alpha * np.power(beta, np.arange(numexp))
     return zetas[::-1]
 
+
 def welltemp(numexp, params):
     '''
     Generate a sequence of nf well tempered exponents accodring to
@@ -1039,10 +1067,11 @@ def welltemp(numexp, params):
         raise ValueError('"params" tuple should have exactly 4 entries, got {}'.format(len(params)))
 
     alpha, beta, gamma, delta = params
-    zetas = alpha*np.power(beta, np.arange(numexp))*\
-            (1+gamma*np.power(np.arange(1, numexp + 1)/numexp, delta))
+    zetas = alpha * np.power(beta, np.arange(numexp)) * \
+            (1 + gamma * np.power(np.arange(1, numexp + 1) / numexp, delta))
     zetas.sort()
     return zetas[::-1]
+
 
 def legendre(numexp, coeffs):
     '''
@@ -1074,8 +1103,9 @@ def legendre(numexp, coeffs):
         return [np.exp(coeffs[0])]
 
     poly = np.polynomial.legendre.Legendre(coeffs)
-    zetas = [poly(((2.0*(i + 1.0) - 2.0)/(numexp - 1.0)) - 1.0) for i in range(numexp)]
+    zetas = [poly(((2.0 * (i + 1.0) - 2.0) / (numexp - 1.0)) - 1.0) for i in range(numexp)]
     return np.exp(zetas[::-1])
+
 
 def splitlist(l, n):
     '''
@@ -1083,14 +1113,15 @@ def splitlist(l, n):
     '''
 
     if len(l) % n == 0:
-        splits = len(l)//n
+        splits = len(l) // n
     elif len(l) % n != 0 and len(l) > n:
-        splits = len(l)//n+1
+        splits = len(l) // n + 1
     else:
         splits = 1
 
     for i in range(splits):
-        yield l[n*i:n*i+n]
+        yield l[n * i:n * i + n]
+
 
 def sliceinto(toslice, chunk_sizes):
     '''
@@ -1106,6 +1137,7 @@ def sliceinto(toslice, chunk_sizes):
 
     sidx = [sum(chunk_sizes[:i]) for i in range(0, len(chunk_sizes))]
     return [toslice[i:i + s] for i, s in zip(sidx, chunk_sizes)]
+
 
 def xyzlist(l):
     '''
@@ -1130,14 +1162,15 @@ def xyzlist(l):
         respectively and rows correspond to functions.
     '''
 
-    ncart = (l + 1)*(l + 2) // 2
+    ncart = (l + 1) * (l + 2) // 2
     out = np.zeros((ncart, 3), dtype=np.int32)
     index = 0
     for i in range(l + 1):
         for j in range(i + 1):
-            out[index,:] = [l - i, i - j, j]
+            out[index, :] = [l - i, i - j, j]
             index += 1
     return out
+
 
 def zlmtoxyz(l):
     '''
@@ -1158,8 +1191,8 @@ def zlmtoxyz(l):
         gaussians
     '''
 
-    ncart = (l + 1)*(l + 2)//2
-    nspher = 2*l + 1
+    ncart = (l + 1) * (l + 2) // 2
+    nspher = 2 * l + 1
 
     out = np.zeros((ncart, nspher))
 
@@ -1173,20 +1206,20 @@ def zlmtoxyz(l):
         if kx + ky % 2 == 1:
             continue
         j = (kx + ky) / 2
-        tmpc = factorial2(2*kx - 1)*factorial2(2*ky - 1)*factorial2(2*kz - 1)/factorial2(2*l - 1)
-        tmpc = np.sqrt(tmpc)/factorial(j)
-        for i in range(l//2 + 1):
+        tmpc = factorial2(2 * kx - 1)*factorial2(2 * ky - 1)*factorial2(2 * kz - 1) / factorial2(2 * l - 1)
+        tmpc = np.sqrt(tmpc) / factorial(j)
+        for i in range(l // 2 + 1):
             if j > i:
                 continue
             if kx % 2 == 1:
                 continue
-            k = kx//2
+            k = kx // 2
             if k > j:
                 continue
-            tmpi = tmpc*factorial2(2*l - 2*i - 1)/factorial(l - 2*i)/factorial(i - j)/2.0**i
+            tmpi = tmpc * factorial2(2 * l - 2 * i - 1) / factorial(l - 2 * i) / factorial(i - j) / 2.0**i
             if i % 2 == 1:
                 tmpi = -tmpi
-            out[icart, l] += binom(j, k)*tmpi
+            out[icart, l] += binom(j, k) * tmpi
 
     for m in range(1, l + 1):
         for icart in range(ncart):
@@ -1198,20 +1231,20 @@ def zlmtoxyz(l):
                 continue
             if  jj < 0:
                 continue
-            j = jj//2
-            tmpc = factorial2(2*kx - 1)*factorial2(2*ky - 1)*factorial2(2*kz - 1)/factorial2(2*l - 1)
-            tmpc = np.sqrt(2.0*tmpc*factorial(l-m)/factorial(l+m))/factorial(j)
-            for i in range((l-m)//2 + 1):
+            j = jj // 2
+            tmpc = factorial2(2 * kx - 1) * factorial2(2 * ky - 1) * factorial2(2 * kz - 1) / factorial2(2 * l - 1)
+            tmpc = np.sqrt(2.0 * tmpc * factorial(l - m) / factorial(l + m)) / factorial(j)
+            for i in range((l - m) // 2 + 1):
                 if j > i:
                     continue
-                tmpi = tmpc*factorial2(2*l - 2*i-1)/factorial(l-m-2*i)/factorial(i - j)/2.0**i
+                tmpi = tmpc * factorial2(2 * l - 2 * i - 1) / factorial(l - m - 2 * i) / factorial(i - j) / 2.0**i
                 if i % 2 == 1:
                     tmpi = -tmpi
                 for k in range(j + 1):
-                    kk = kx - 2*k
+                    kk = kx - 2 * k
                     if kk < 0 or kk > m:
                         continue
-                    tmpk = tmpi*binom(j, k)*binom(m, kk)
+                    tmpk = tmpi * binom(j, k) * binom(m, kk)
                     kkk = m - kk
                     if kkk % 4 == 0:
                         out[icart, m + l] += tmpk
@@ -1222,6 +1255,7 @@ def zlmtoxyz(l):
                     else:
                         out[icart, -m + l] -= tmpk
     return out
+
 
 def bsprint():
     '''
@@ -1242,6 +1276,7 @@ def bsprint():
     method = getattr(bs, writer)
 
     print(method())
+
 
 def bsconvert():
     '''
@@ -1287,4 +1322,3 @@ def bsconvert():
             print(method())
         else:
             raise ValueError('Something went wrong')
-
