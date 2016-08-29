@@ -60,7 +60,7 @@ setup(
         'scripts/bsold2new',
                ],
     url = 'https://bitbucket.org/lukaszmentel/chemtools/',
-    version = '0.8.0',
+    version = '0.8.1',
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
