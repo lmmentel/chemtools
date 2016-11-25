@@ -138,6 +138,7 @@ class Calculator():
         '''
         pass
 
+
 def parse_objective(fname, regexp, reflags=re.I):
     '''
     Wrapper for the parse methods
@@ -166,6 +167,7 @@ def parse_objective(fname, regexp, reflags=re.I):
                     return True
         else:
             return None
+
 
 class InputTemplate(Template):
 

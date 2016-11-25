@@ -30,7 +30,16 @@ import re
 from mendeleev import element
 
 CFDTYPE = [('idx', np.int32), ('cc', np.float64)]
-SHELLS = ["s", "p", "d", "f", "g", "h", "i", "k"]
+ORBITALS = ('s', 'p', 'd', 'f', 'g', 'h', 'i', 'k')
+
+
+def get_l(shell):
+    'Return the orbital angular momentum quantum number for a given shell'
+
+    if shell in ORBITALS:
+        return ORBITALS.index(shell.lower())
+    else:
+        raise ValueError('"{}" is not a proper shell label'.format(shell))
 
 
 def parse_basis(string, fmt=None):
@@ -67,7 +76,7 @@ def parse_molpro_basis(string):
     Parse basis set from a string in Molpro format.
     '''
 
-    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL | re.IGNORECASE)
+    bas_re = re.compile(r'basis\s*=\s*\{(.*?)\}', flags=re.DOTALL | re.I)
 
     m = bas_re.search(string)
     if m:
@@ -77,7 +86,7 @@ def parse_molpro_basis(string):
 
     start = []
     for i, line in enumerate(lines):
-        if line.split(",")[0].lower() in SHELLS:
+        if line.split(",")[0].lower() in ORBITALS:
             start.append(i)
     if len(start) == 0:
         return None

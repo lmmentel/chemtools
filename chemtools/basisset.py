@@ -34,7 +34,7 @@ from itertools import chain
 import numpy as np
 from scipy.linalg import sqrtm, inv
 from scipy.special import factorial, factorial2, binom
-from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, SHELLS
+from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, get_l
 
 
 def read_pickle(fname):
@@ -170,7 +170,7 @@ class BasisSet(object):
                 nt += len(params)
                 funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
                 ni += len(params)
-        functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
+        functions = OrderedDict(sorted(funs.items(), key=lambda x: get_l(x[0])))
         bs = cls(name=name, element=element, functions=functions)
         bs.uncontract()
         return bs
@@ -202,7 +202,7 @@ class BasisSet(object):
         for shell, seq, nf, params in functs:
             funs[shell] = dict()
             funs[shell]['e'] = generate_exponents(seq, nf, params)
-        functions = OrderedDict(sorted(funs.items(), key=lambda x: SHELLS.index(x[0])))
+        functions = OrderedDict(sorted(funs.items(), key=lambda x: get_l(x[0])))
         bs = cls(name=name, element=element, functions=functions)
         bs.uncontract()
         bs.sort()
@@ -262,11 +262,13 @@ class BasisSet(object):
         if len(res) == 1:
             atom, fs = list(res.items())[0]
             return cls(name=name, element=list(res.keys())[0],
-                    functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
+                       functions=OrderedDict(sorted(fs.items(),
+                       key=lambda x: get_l(x[0]))))
         else:
             for atom, fs in res.items():
                 out[atom] = cls(name=name, element=atom,
-                        functions=OrderedDict(sorted(fs.items(), key=lambda x: SHELLS.index(x[0]))))
+                                functions=OrderedDict(sorted(fs.items(),
+                                key=lambda x: get_l(x[0]))))
             return out
 
     def append(self, other):
@@ -338,8 +340,8 @@ class BasisSet(object):
         '''
 
         am, ne, cf = [], [], []
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])):
-            am.append(SHELLS.index(shell))
+        for shell, shellfs in sorted(self.functions.items(), key=lambda x: get_l(x[0])):
+            am.append(get_l(shell))
             ne.append(len(shellfs["e"]))
             cf.append(len(shellfs["cf"]))
 
@@ -419,7 +421,7 @@ class BasisSet(object):
 
         for shell, fs in self.functions.items():
             cc = self.contraction_matrix(shell)
-            po = primitive_overlap(SHELLS.index(shell), fs['e'], fs['e'])
+            po = primitive_overlap(get_l(shell), fs['e'], fs['e'])
             for col in range(cc.shape[1]):
                 norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
                 fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col] / np.sqrt(norm2)
@@ -433,7 +435,7 @@ class BasisSet(object):
         out = list()
         for shell, fs in self.functions.items():
             cc = self.contraction_matrix(shell)
-            po = primitive_overlap(SHELLS.index(shell), fs['e'], fs['e'])
+            po = primitive_overlap(get_l(shell), fs['e'], fs['e'])
             for col in range(cc.shape[1]):
                 norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
                 out.append(tuple([shell, col, norm2]))
@@ -758,7 +760,8 @@ class BasisSet(object):
             (default), else sort exponents in ascending order
         '''
 
-        self.functions = OrderedDict(sorted(self.functions.items(), key=lambda x: SHELLS.index(x[0])))
+        self.functions = OrderedDict(sorted(self.functions.items(),
+                                            key=lambda x: get_l(x[0])))
 
         for shell, fs in self.functions.items():
             if reverse:
@@ -773,11 +776,12 @@ class BasisSet(object):
                 cf.sort(order='idx')
 
     def partial_wave_expand(self):
-        """
-        From a given basis set with shells spdf... return a list of basis sets that
-        are subsets of the entered basis set with increasing angular momentum functions
-        included [s, sp, spd, spdf, ...]
-        """
+        '''
+        From a given basis set with shells spdf... return a list of basis sets
+        that are subsets of the entered basis set with increasing angular
+        momentum functions included [s, sp, spd, spdf, ...]
+        '''
+
         res = list()
         shells = self.functions.keys()
         for i in range(1, len(shells)+1):
@@ -807,7 +811,7 @@ class BasisSet(object):
             S = self.shell_overlap(shell)
             # calculate the inverse square root of S
             X = inv(sqrtm(S))
-            SO = primitive_overlap(SHELLS.index(shell), fs['e'], zetas)
+            SO = primitive_overlap(get_l(shell), fs['e'], zetas)
             J = np.dot(np.dot(cc, X).T, SO)
             Y = np.sum(np.square(J), axis=0)
             out[:, i] = Y
@@ -827,15 +831,9 @@ class BasisSet(object):
         '''
 
         exps = self.functions[shell]['e']
-        S = primitive_overlap(SHELLS.index(shell), exps, exps)
+        S = primitive_overlap(get_l(shell), exps, exps)
         cc = self.contraction_matrix(shell)
         return np.dot(cc.T, np.dot(S, cc))
-
-
-def get_l(shell):
-    '''Return the angular momentum value of a given shell'''
-
-    return SHELLS.index(shell)
 
 
 def merge(first, other):
