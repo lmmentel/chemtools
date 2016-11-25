@@ -142,7 +142,8 @@ class BSOptimizer(object):
         calculations.
         '''
         if value is None:
-            self._fname = 'bso_' + ''.join(random.choice(string.ascii_letters) for _ in range(10)) + '.inp'
+            self._fname = 'bso_' + ''.join(random.choice(string.ascii_letters)
+                                           for _ in range(10)) + '.inp'
         else:
             self._fname = value
 
@@ -152,21 +153,24 @@ class BSOptimizer(object):
 
     @optalg.setter
     def optalg(self, value):
-        '''set default optimization options if opts not given'''
+        '''
+        set default optimization options if opts not given
+        '''
 
-        #defaults
+        # defaults
         tol = 1.0e-4
         jac = False
         mxi = 100
 
         if value is None:
-            self._optalg = {"method" : "Nelder-Mead",
-                            "tol"    : tol,
-                            "jacob"  : None,
+            self._optalg = {"method": "Nelder-Mead",
+                            "tol": tol,
+                            "jacob": None,
                             "options": {"maxiter": 100,
-                                         "disp"  : True,
+                                        "disp": True,
                                         }
                             }
+
         elif isinstance(value, dict):
             if value.get('method').lower() == "nelder-mead":
                 value['jacob'] = None
@@ -190,7 +194,8 @@ class BSOptimizer(object):
         if value is None:
             raise ValueError("no dictionary describing basis set to be optimized given")
         else:
-            self._fsopt = OrderedDict(sorted(value.items(), key=lambda t: t[0]))
+            self._fsopt = OrderedDict(sorted(value.items(),
+                                             key=lambda t: t[0]))
 
     @property
     def penaltykwargs(self):
@@ -223,9 +228,9 @@ class BSOptimizer(object):
     def jobinfo(self):
         '''Return the information on the optimization objects and parameters'''
 
-        #for name, obj in [("code", code), ("job", job), ("mol", mol),
+        # for name, obj in [("code", code), ("job", job), ("mol", mol),
         #                ("bsnoopt", bsnoopt), ("bsopt", bsopt), ("opt", opt)]:
-        # TODO add printing of static basis set 
+        # TODO add printing of static basis set
         attrs = ['code', 'mol', 'optalg']
         out = ''
         for attr in attrs:
@@ -509,8 +514,8 @@ def run_core_energy(x0, *args):
     if bso.verbose:
         print("Current exponents being optimized:")
         for atom, functs in bso.fsopt.items():
-            basis = BasisSet.from_optpars(x0, functs=functs, name='opt', element=atom,
-                                          explogs=bso.uselogs)
+            basis = BasisSet.from_optpars(x0, functs=functs, name='opt',
+                                          element=atom, explogs=bso.uselogs)
             print(atom, basis.print_functions())
 
     citote = []
@@ -519,8 +524,8 @@ def run_core_energy(x0, *args):
     inputs = [base + "_core" + str(sum(x)) + ".inp" for x in bso.core]
 
     for inpname, core in zip(inputs, bso.core):
-        bso.code.write_input(fname=inpname, core=core, basis=bsdict, mol=bso.mol,
-                             template=bso.template)
+        bso.code.write_input(fname=inpname, core=core, basis=bsdict,
+                             mol=bso.mol, template=bso.template)
 
     outputs = bso.code.run_multiple(inputs)
     for output in outputs:
@@ -530,22 +535,28 @@ def run_core_energy(x0, *args):
     if stats[0] and stats[1]:
         if bso.verbose:
             print("x0 : ", ", ".join([str(x) for x in x0]))
-            print("{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK", str(stats[0]), str(stats[1])))
-            print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format(str(bso.objective), citote[0], citote[1]))
+            print("{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK",
+                                                        str(stats[0]),
+                                                        str(stats[1])))
+            print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format(str(bso.objective),
+                                                              citote[0],
+                                                              citote[1]))
             print("-" * 84)
         coreenergy = citote[0] - citote[1]
         if coreenergy > 0.0:
             coreenergy = -1.0 * coreenergy
         if bso.verbose:
             print("{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", coreenergy * penalty))
+            print("{0:<20s} : {1:>30.10f}".format("Objective",
+                                                  coreenergy * penalty))
             print("=" * 84)
         return coreenergy * penalty
     else:
         raise ValueError("something went wrong, check outputs {0:s}".format(", ".join(outputs)))
 
 
-def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4, save=False, bsopt=None, **kwargs):
+def opt_shell_by_nf(shell=None, nfs=None, max_params=5, opt_tol=1.0e-4,
+                    save=False, bsopt=None, **kwargs):
     '''
     For a given shell optimize the functions until the convergence criterion
     is reached the energy difference for two consecutive function numbers is

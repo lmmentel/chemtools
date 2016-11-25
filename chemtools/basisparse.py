@@ -68,7 +68,7 @@ def parse_basis(string, fmt=None):
     elif fmt == 'gaussian':
         return parse_gaussian_basis(string)
     else:
-        raise ValueError("<fmt> should be one of: {}".format(", ".join(formats)))
+        raise ValueError("Can only parse <fmt>: {}".format(", ".join(formats)))
 
 
 def parse_molpro_basis(string):
@@ -98,7 +98,8 @@ def parse_molpro_basis(string):
 
     bs = {}
     for i in startstop:
-        at_symbol, shell = parse_molpro_shell(lines[i[0]], lines[i[0] + 1:i[1]])
+        at_symbol, shell = parse_molpro_shell(lines[i[0]],
+                                              lines[i[0] + 1: i[1]])
         if at_symbol in bs.keys():
             bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
         else:
@@ -119,7 +120,8 @@ def parse_molpro_shell(expsline, coeffs):
 
     shell = expsline.split(",")[0].lower()
     at_symbol = expsline.split(",")[1].strip().capitalize()
-    exps = np.array([float(real.sub('E', x)) for x in expsline.rstrip(";").split(",")[2:]])
+    exps = np.array([float(real.sub('E', x))
+                     for x in expsline.rstrip(";").split(",")[2:]])
 
     fs[shell] = {'e': exps, 'cf': []}
     if len(coeffs) != 0:
@@ -236,8 +238,11 @@ def parse_gaussian_function(lines):
     real = re.compile(r'[dD]')
 
     indxs = np.arange(len(lines), dtype=np.int32)
-    exps = np.array([float(real.sub('E', line.split()[0])) for line in lines], dtype=np.float64)
-    coeffs = np.array([[float(real.sub('E', x)) for x in line.split()[1:]] for line in lines], dtype=np.float64)
+    exps = np.array([float(real.sub('E', line.split()[0])) for line in lines],
+                    dtype=np.float64)
+    coeffs = np.array([[float(real.sub('E', x))
+                        for x in line.split()[1:]] for line in lines],
+                      dtype=np.float64)
     return (exps, indxs, coeffs)
 
 
@@ -278,7 +283,8 @@ def parse_gamessus_basis(string):
                                 functions[shell]['e'] = sexp
                                 for cf in functions[shell]['cf']:
                                     cf['idx'] = idxs[cf['idx']]
-                                newcf = np.array(list(zip(idxo[indxs-1], cc)), dtype=CFDTYPE)
+                                newcf = np.array(list(zip(idxo[indxs-1], cc)),
+                                                 dtype=CFDTYPE)
                                 functions[shell]['cf'].append(newcf)
                             else:
                                 functions[shell] = dict()
@@ -301,8 +307,10 @@ def parse_gamessus_function(lines):
     real = re.compile(r'[dD]')
 
     indxs = np.array([int(line.split()[0]) for line in lines], dtype=np.int32)
-    exps = np.array([float(real.sub('E', line.split()[1])) for line in lines], dtype=np.float64)
-    coeffs = np.array([[float(real.sub('E', x)) for x in line.split()[2:]] for line in lines], dtype=np.float64)
+    exps = np.array([float(real.sub('E', line.split()[1])) for line in lines],
+                    dtype=np.float64)
+    coeffs = np.array([[float(real.sub('E', x)) for x in line.split()[2:]]
+                        for line in lines], dtype=np.float64)
     return (exps, indxs, coeffs)
 
 

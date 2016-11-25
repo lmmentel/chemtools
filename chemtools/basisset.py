@@ -98,7 +98,8 @@ class BasisSet(object):
 
         res = ''
         for key in keys:
-            res += "{k:<20s} = {v}\n".format(k=key.capitalize(), v=getattr(self, key))
+            res += "{k:<20s} = {v}\n".format(k=key.capitalize(),
+                                             v=getattr(self, key))
         res += 'Functions:\n'
         res += self.print_functions()
         return res
@@ -118,7 +119,8 @@ class BasisSet(object):
         for oshell, ofs in other.functions.items():
             if oshell.lower() in self.functions.keys():
                 i = self.functions[oshell]['e'].size
-                newf[oshell]['e'] = np.concatenate((self.functions[oshell]['e'], ofs['e']))
+                newf[oshell]['e'] = np.concatenate((self.functions[oshell]['e'],
+                                                    ofs['e']))
                 newcf = [np.copy(cf) for cf in ofs['cf']]
                 for cf in newcf:
                     cf['idx'] = cf['idx'] + i
@@ -162,7 +164,7 @@ class BasisSet(object):
             if seq in ["exp", "exponents"]:
                 nt += nf
                 if explogs:
-                    funs[shell]['e'] = generate_exponents(seq, nf, np.exp(x0[ni:nt]))
+                    funs[shell]['e'] = generate_exponents(seq, nf, np.exp(x0[ni: nt]))
                 else:
                     funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
                 ni += nf
@@ -263,12 +265,12 @@ class BasisSet(object):
             atom, fs = list(res.items())[0]
             return cls(name=name, element=list(res.keys())[0],
                        functions=OrderedDict(sorted(fs.items(),
-                       key=lambda x: get_l(x[0]))))
+                           key=lambda x: get_l(x[0]))))
         else:
             for atom, fs in res.items():
                 out[atom] = cls(name=name, element=atom,
                                 functions=OrderedDict(sorted(fs.items(),
-                                key=lambda x: get_l(x[0]))))
+                                    key=lambda x: get_l(x[0]))))
             return out
 
     def append(self, other):
@@ -340,12 +342,14 @@ class BasisSet(object):
         '''
 
         am, ne, cf = [], [], []
-        for shell, shellfs in sorted(self.functions.items(), key=lambda x: get_l(x[0])):
+        for shell, shellfs in sorted(self.functions.items(),
+                                     key=lambda x: get_l(x[0])):
             am.append(get_l(shell))
             ne.append(len(shellfs["e"]))
             cf.append(len(shellfs["cf"]))
 
-        res = "\n{e}:{s}\n{c}\n\n".format(e=self.element, s=self.name, c=comment)
+        res = "\n{e}:{s}\n{c}\n\n".format(e=self.element, s=self.name,
+                                          c=comment)
         res += "{0:3d}\n".format(len(self.functions.keys()))
         res += "".join(["{0:5d}".format(x) for x in am]) + "\n"
         res += "".join(["{0:5d}".format(x) for x in cf]) + "\n"
@@ -354,7 +358,7 @@ class BasisSet(object):
 
         for shell, fs in self.functions.items():
             for lst in splitlist(fs['e'], 5):
-                res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst])  + "\n"
+                res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst]) + "\n"
             res += "\n"
             # create an array with all the contraction coefficients for a given shell
             cc = self.contraction_matrix(shell)
@@ -401,16 +405,16 @@ class BasisSet(object):
         res = "! {s}\n".format(s=self.name)
         for shell, fs in self.functions.items():
             res += "! {s} functions\n".format(s=shell)
-            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f=fmtlabel, p=len(fs['e']), c=len(fs['cf']))
+            res += "{f:1s}{p:>4d}{c:>4d}\n".format(f=fmtlabel, p=len(fs['e']),
+                                                   c=len(fs['cf']))
             # create an array with all the contraction coefficients for a given shell
             cc = self.contraction_matrix(shell)
-            ncont = cc.shape[1]
             for expt, row in zip(fs['e'], cc):
                 it = splitlist(row, nitems)
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=ffmt, c="".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in next(it)])) + "\n"
 
                 for row in it:
-                    res += ' '*int(ffmt.split('.')[0]) + "".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in row]) + "\n"
+                    res += ' ' * int(ffmt.split('.')[0]) + "".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in row]) + "\n"
         return res
 
     def normalze(self):
@@ -784,9 +788,10 @@ class BasisSet(object):
 
         res = list()
         shells = self.functions.keys()
-        for i in range(1, len(shells)+1):
+        for i in range(1, len(shells) + 1):
             bscopy = copy(self)
-            bscopy.functions = {k:v for k, v in self.functions.items() if k in shells[:i]}
+            bscopy.functions = {k: v for k, v in self.functions.items()
+                                if k in shells[:i]}
             res.append(bscopy)
         return res
 
@@ -870,7 +875,8 @@ def merge(first, other):
 
 def primitive_overlap(l, a, b):
     '''
-    Calculate the overlap integrals for a given shell `l` and two sets of exponents
+    Calculate the overlap integrals for a given shell `l` and two sets of
+    exponents
 
     .. math::
 
@@ -894,8 +900,8 @@ def primitive_overlap(l, a, b):
 
 def nspherical(l):
     '''
-    Calculate the number of spherical components of a function with a given angular
-    momentum value *l*.
+    Calculate the number of spherical components of a function with a given
+    angular momentum value `l`.
     '''
     return 2 * l + 1
 
@@ -954,7 +960,6 @@ def zetas2eventemp(zetas):
         numpy array of legendre expansion coeffcients of length kmax
     '''
 
-
     return min(zetas), np.power(max(zetas) / min(zetas), 1.0 / (len(zetas) - 1))
 
 
@@ -965,10 +970,10 @@ def generate_exponents(formula, nf, params):
     Args:
       formula : str
         name of the sequence from which the exponents are generated, one of:
-          - *et*, *even*, *eventemp*, *even tempered*
-          - *wt*, *well*, *welltemp*, *well tempered*
-          - *le*, *legendre*
-          - *exp*, *exponents*
+          - `et`, `even`, `eventemp`, `even tempered`
+          - `wt`, `well`, `welltemp`, `well tempered`
+          - `le`, `legendre`
+          - `exp`, `exponents`
       nf : int
         number of exponents
       params : tuple
@@ -1204,7 +1209,7 @@ def zlmtoxyz(l):
         if kx + ky % 2 == 1:
             continue
         j = (kx + ky) / 2
-        tmpc = factorial2(2 * kx - 1)*factorial2(2 * ky - 1)*factorial2(2 * kz - 1) / factorial2(2 * l - 1)
+        tmpc = factorial2(2 * kx - 1) * factorial2(2 * ky - 1) * factorial2(2 * kz - 1) / factorial2(2 * l - 1)
         tmpc = np.sqrt(tmpc) / factorial(j)
         for i in range(l // 2 + 1):
             if j > i:
@@ -1227,7 +1232,7 @@ def zlmtoxyz(l):
             jj = kx + ky - m
             if jj % 2 == 1:
                 continue
-            if  jj < 0:
+            if jj < 0:
                 continue
             j = jj // 2
             tmpc = factorial2(2 * kx - 1) * factorial2(2 * ky - 1) * factorial2(2 * kz - 1) / factorial2(2 * l - 1)
@@ -1262,7 +1267,8 @@ def bsprint():
     '''
 
     parser = ArgumentParser()
-    parser.add_argument("file", help="file name with a pickled BasisSet object")
+    parser.add_argument("file",
+                        help="file name with a pickled BasisSet object")
     parser.add_argument("-f", "--format",
                         choices=["cfour", "dalton", "gamessus", "gaussian",
                                  "molpro", "nwchem"],
@@ -1290,7 +1296,8 @@ def bsconvert():
                         default="gamessus")
     parser.add_argument("-of",
                         "--outputformat",
-                        choices=["cfour", "dalton", "gamessus", "gaussian", "molpro", "nwchem", "pickle"],
+                        choices=["cfour", "dalton", "gamessus", "gaussian",
+                                 "molpro", "nwchem", "pickle"],
                         help="Basis set output format",
                         default="gamessus")
     args = parser.parse_args()
@@ -1300,7 +1307,8 @@ def bsconvert():
     if args.inputformat == "pickle":
         bsets = read_pickle(args.filename)
     else:
-        bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat, name=name)
+        bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat,
+                                   name=name)
 
     if args.outputformat == "pickle":
         if isinstance(bsets, dict):
