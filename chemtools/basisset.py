@@ -37,18 +37,6 @@ from scipy.special import factorial, factorial2, binom
 from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, get_l
 
 
-def read_pickle(fname):
-    '''Read a pickled BasisSet object from file
-
-    Args:
-      fname : str
-        File name containing the BasisSet
-    '''
-
-    with open(fname, 'rb') as fil:
-        return pickle.load(fil)
-
-
 class BasisSet(object):
     '''
     Basis set module supporting basic operation on basis sets.
@@ -129,6 +117,25 @@ class BasisSet(object):
                 newf[oshell] = deepcopy(ofs)
 
         return BasisSet(name=self.name, element=self.element, functions=newf)
+
+    @staticmethod
+    def from_pickle(fname, **kwargs):
+        '''Read a pickled BasisSet object from a pickle file
+
+        Args:
+            fname : str
+                File name containing the BasisSet
+            kwargs : dict
+                Extra arguments for the `pickle.load` method
+
+        Raises:
+            UnicodeDecodeError
+                When you try to read a python2 pickle using python3, to fix
+                that use `encoding='latin1'` option
+        '''
+
+        with open(fname, 'rb') as fil:
+            return pickle.load(fil, **kwargs)
 
     @classmethod
     def from_optpars(cls, x0, functs=None, name=None, element=None,
