@@ -1269,7 +1269,7 @@ def zlmtoxyz(l):
 
 def bsprint():
     '''
-    CLI scrpt to read a basis set from a file in internal format and print
+    CLI script to read a basis set from a file in internal format and print
     in a specified format
     '''
 
@@ -1283,7 +1283,7 @@ def bsprint():
     args = parser.parse_args()
 
     writer = "to_" + args.format
-    bs = read_pickle(args.file)
+    bs = BasisSet.from_pickle(args.file)
     method = getattr(bs, writer)
 
     print(method())
@@ -1312,7 +1312,7 @@ def bsconvert():
     name = os.path.splitext(args.filename)[0]
 
     if args.inputformat == "pickle":
-        bsets = read_pickle(args.filename)
+        bsets = BasisSet.from_pickle(args.filename)
     else:
         bsets = BasisSet.from_file(fname=args.filename, fmt=args.inputformat,
                                    name=name)
