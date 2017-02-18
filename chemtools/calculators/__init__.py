@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
 '''
-chemtools package doscstring
+chemtools.calculators package doscstring
 '''
 
-__version__ = "0.7.2"
+from .dalton import Dalton
+from .molpro import Molpro
+
+__version__ = "0.8.1"
 
