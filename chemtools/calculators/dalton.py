@@ -30,6 +30,7 @@ from .calculator import Calculator, InputTemplate, parse_objective
 
 from ..basisset import get_l
 
+
 class Dalton(Calculator):
 
     'Wrapper for running Dalton program'
@@ -43,16 +44,17 @@ class Dalton(Calculator):
 
     def parse(self, fname, objective, regularexp=None):
         '''
-        Parse a value from the output file ``fname`` based on the ``objective``.
+        Parse a value from the output file ``fname`` based on the
+        ``objective``.
 
-        If the value of the ``objective`` is ``regexp`` then the ``regularexp`` will
-        be used to parse the file.
+        If the value of the ``objective`` is ``regexp`` then the
+        ``regularexp`` will be used to parse the file.
         '''
 
         regexps = {
-            'hf total energy'   : r'^@\s+Final HF energy:\s*(\-?\d+\.\d+)',
-            'cisd total energy' : r'\d+\s*\d+\s*(\-?\d+\.\d+).*converged',
-            'accomplished'      : r'End of Wave Function Section',
+            'hf total energy': r'^@\s+Final HF energy:\s*(\-?\d+\.\d+)',
+            'cisd total energy': r'\d+\s*\d+\s*(\-?\d+\.\d+).*converged',
+            'accomplished': r'End of Wave Function Section',
         }
 
         if objective == 'regexp':
@@ -72,8 +74,8 @@ class Dalton(Calculator):
 
         Args:
             fname : dict
-                A dictionary with keys ``mol`` and ``dal`` and their respective file name strings as
-                values
+                A dictionary with keys ``mol`` and ``dal`` and their
+                respective file name strings as values
 
         Returns:
             out : str
@@ -118,12 +120,15 @@ class Dalton(Calculator):
             fname : str
                 Name of the input file ``.dal``
             template : dict
-                Dictionary with templates for the ``dal`` and ``mol`` with those strings as keys and
-                actual templates as values
+                Dictionary with templates for the ``dal`` and ``mol``
+                with those strings as keys and actual templates as
+                values
             basis : dict
-                An instance of :py:class:`BasisSet <chemtools.basisset.BasisSet>` class or a
-                dictionary of :py:class:`BasisSet <chemtools.basisset.BasisSet>` objects with
-                element symbols as keys
+                An instance of
+                :py:class:`BasisSet <chemtools.basisset.BasisSet>`
+                class or a dictionary of
+                :py:class:`BasisSet <chemtools.basisset.BasisSet>`
+                objects with element symbols as keys
             mol : :py:class:`chemtools.molecule.Molecule`
                 Molecule object with the system geometry
             core : str
@@ -137,13 +142,14 @@ class Dalton(Calculator):
 
         # loop over different elements (not atoms)
         atomtypes = Counter([a.symbol for a in mol.atoms])
+        out = ''
         for symbol, count in atomtypes.items():
             atoms = [a for a in mol.atoms if a.symbol == symbol]
             atombasis = basis[symbol]
             # get max angular momentum + 1 and construct block string
             maxb = max([get_l(s) for s in atombasis.functions.keys()]) + 1
-            block = str(maxb) + ' 1'*maxb
-            out = 'Atoms={0:d} Charge={1:.1f} Block={2:s}\n'.format(count,
+            block = str(maxb) + ' 1' * maxb
+            out += 'Atoms={0:d} Charge={1:.1f} Block={2:s}\n'.format(count,
                                                                     float(atoms[0].atomic_number),
                                                                     block)
             for i, atom in enumerate(atoms, start=1):
