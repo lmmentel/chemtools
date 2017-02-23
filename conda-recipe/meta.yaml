@@ -1,0 +1,60 @@
+package:
+  name: chemtools
+  version: "0.8.1"
+
+source:
+  hg_url: https://bitbucket.org/lukaszmentel/chemtools
+  hg_tag: v0.8.1
+
+build:
+  # noarch_python: True
+  # preserve_egg_dir: True
+  entry_points:
+
+    - bsprint = chemtools.basisset:bsprint
+    - bsconvert = chemtools.basisset:bsconvert
+    - writeorbinp = chemtools.calculators.gamessus:writeorbinp
+
+  # If this is a new build for the same version, increment the build
+  # number. If you do not include this key, it defaults to 0.
+  number: 0
+
+channels:
+  - lmmentel
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - mendeleev
+    - numba
+    - numpy
+    - scipy
+    - pandas
+  run:
+    - python
+    - numba
+    - numpy
+    - scipy
+    - pandas
+    - numba
+    - sqlalchemy
+    - mendeleev
+
+test:
+  # Python imports
+  imports:
+    - chemtools
+
+  commands:
+    - bsprint --help
+    - bsconvert --help
+    - writeorbinp --help
+
+about:
+  home: http://chemtools.readthedocs.org/en/latest/
+  summary: A library of tools for manipulating one-electron basis sets including format conversions,
+           optimization of exponents, visualization of completeness profiles, CBS extrapolations
+           and more.
+  license: MIT
+  license_file: LICENSE.rst
