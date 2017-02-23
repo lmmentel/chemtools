@@ -146,6 +146,7 @@ class Dalton(Calculator):
         for symbol, count in atomtypes.items():
             atoms = [a for a in mol.atoms if a.symbol == symbol]
             atombasis = basis[symbol]
+            atombasis.sort()
             # get max angular momentum + 1 and construct block string
             maxb = max([get_l(s) for s in atombasis.functions.keys()]) + 1
             block = str(maxb) + ' 1' * maxb
