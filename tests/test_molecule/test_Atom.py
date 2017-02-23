@@ -2,6 +2,7 @@
 import unittest
 from chemtools import molecule
 
+
 class TestAtomAN(unittest.TestCase):
 
     def setUp(self):
@@ -15,7 +16,8 @@ class TestAtomAN(unittest.TestCase):
         self.assertEqual('H', self.h.symbol)
         self.assertEqual('Hydrogen', self.h.name)
         self.assertEqual(1, self.h.atomic_number)
-        self.assertEqual(1.00794, self.h.mass)
+        self.assertEqual(1.008, self.h.mass)
+
 
 class TestAtomSymbol(unittest.TestCase):
 
@@ -30,7 +32,8 @@ class TestAtomSymbol(unittest.TestCase):
         self.assertEqual('O', self.o.symbol)
         self.assertEqual('Oxygen', self.o.name)
         self.assertEqual(8, self.o.atomic_number)
-        self.assertEqual(15.9994, self.o.mass)
+        self.assertEqual(15.999, self.o.mass)
+
 
 if __name__ == "__main__":
     unittest.main()
