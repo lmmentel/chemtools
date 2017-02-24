@@ -6,7 +6,9 @@ from chemtools.basisset import BasisSet
 import pytest
 import os
 
-@pytest.mark.skipif(os.getenv('MOLPRO_EXE') is None, reason="<MOLPRO_EXE> undefined")
+
+@pytest.mark.skipif(os.getenv('MOLPRO_EXE') is None,
+                    reason="<MOLPRO_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
@@ -28,8 +30,7 @@ cisd
 
     mp = Molpro(exevar="MOLPRO_EXE", runopts=["-s", "-n", "1", "-d", "."])
 
-
-    corefs = {'Be' :  [('s', 'exp', 1, (1.1,)), ('p', 'exp', 1, (4.2,))]}
+    corefs = {'Be': [('s', 'exp', 1, (1.1,)), ('p', 'exp', 1, (4.2,))]}
 
     ccpvdz_str = '''basis={
 !BAZA Petersona
@@ -48,9 +49,11 @@ c,4.4,1.000000E+00;
 '''
     ccpvdz = BasisSet.from_str(ccpvdz_str, fmt='molpro')
 
-    bso = BSOptimizer(objective='cisd total energy', core=[[1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]], template=template,
-                    verbose=True, code=mp, mol=be, fsopt=corefs, staticbs=ccpvdz, uselogs=True, runcore=True,
-                    fname='be_tight.inp')
+    bso = BSOptimizer(objective='cisd total energy',
+                      core=[[1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]],
+                      template=template, verbose=True, code=mp, mol=be,
+                      fsopt=corefs, staticbs={'Be': ccpvdz}, uselogs=True,
+                      runcore=True, fname='be_tight.inp')
 
     bso.run()
     coreenergy = -0.031510764610001019
