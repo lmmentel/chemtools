@@ -1314,14 +1314,17 @@ def bsprint():
     parser.add_argument("-f", "--format",
                         choices=["cfour", "dalton", "gamessus", "gaussian",
                                  "molpro", "nwchem"],
-                        default="gamessus")
+                        default="default")
     args = parser.parse_args()
 
-    writer = "to_" + args.format
     bs = BasisSet.from_pickle(args.file)
-    method = getattr(bs, writer)
 
-    print(method())
+    if args.format == 'default':
+        print(str(bs))
+    else:
+        writer = "to_" + args.format
+        method = getattr(bs, writer)
+        print(method())
 
 
 def bsconvert():
