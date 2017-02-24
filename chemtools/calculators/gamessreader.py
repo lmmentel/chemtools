@@ -29,6 +29,7 @@
 import os
 import sys
 import numpy as np
+from collections import namedtuple
 
 from .gamessus import GamessLogParser
 
@@ -39,7 +40,8 @@ from .gamessus import GamessLogParser
 # classes
 
 # fortran modules nedded for GamessReader Class
-#from gamessusfortranext import twoe
+# from gamessusfortranext import twoe
+
 
 class GamessFortranReader(object):
     '''
@@ -50,15 +52,14 @@ class GamessFortranReader(object):
         $JOB.F15 : GUGA and ORMAS two-electron reduced density matrix,
     '''
 
-
     def __init__(self, log):
-        self.logfile    = log
+        self.logfile = log
         i = self.logfile.index("log")
-        self.filebase   = self.logfile[:i-1]
+        self.filebase = self.logfile[: i - 1]
         self.twoeaofile = self.filebase + ".F08"
         self.twoemofile = self.filebase + ".F09"
-        self.rdm2file   = self.filebase + ".F15"
-        self.gp         = GamessLogParser(log=self.logfile)
+        self.rdm2file = self.filebase + ".F15"
+        self.gp = GamessLogParser(log=self.logfile)
 
     def get_onee_size(self, aos=True):
         '''
@@ -69,7 +70,7 @@ class GamessFortranReader(object):
             n = self.gp.get_number_of_aos()
         else:
             n = self.gp.get_number_of_mos()
-        return n*(n+1)/2
+        return n * (n + 1) / 2
 
     def get_twoe_size(self, aos=False):
         '''
@@ -77,7 +78,7 @@ class GamessFortranReader(object):
         of a supermatrix of size nmos (2RDM and two-electrons integrals).
         '''
         n = self.get_onee_size(aos)
-        return n*(n+1)/2
+        return n * (n + 1) / 2
 
     def read_rdm2(self, filename=None, nmo=None):
 
@@ -138,20 +139,25 @@ class GamessFortranReader(object):
         else:
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.twoemofile))
 
+
 def ijkl(i, j, k, l):
     '''
     Based on the four orbital indices i, j, k, l return the address
     in the 1d vector.
     '''
-    ij = max(i, j)*(max(i, j) + 1)/2 + min(i, j)
-    kl = max(k, l)*(max(k, l) + 1)/2 + min(k, l)
-    return max(ij, kl)*(max(ij, kl) + 1)/2 + min(ij, kl)
+
+    ij = max(i, j) * (max(i, j) + 1) / 2 + min(i, j)
+    kl = max(k, l) * (max(k, l) + 1) / 2 + min(k, l)
+
+    return max(ij, kl) * (max(ij, kl) + 1) / 2 + min(ij, kl)
+
 
 def factor(i, j, k, l):
     '''
     Based on the orbitals indices return the factor that takes into account
     the index permutational symmetry.
     '''
+
     if i == j and k == l and i == k:
         fijkl = 1.0
     elif i == j and k == l:
@@ -162,20 +168,22 @@ def factor(i, j, k, l):
         fijkl = 8.0
     return fijkl
 
+
 def print_twoe(twoe, nbf):
     '''Print the two-electron integrals.'''
-    ij=0
+
+    ij = 0
     for i in xrange(nbf):
-        for j in xrange(i+1):
+        for j in xrange(i + 1):
             ij += 1
             kl = 0
             for k in xrange(nbf):
-                for l in xrange(k+1):
+                for l in xrange(k + 1):
                     kl += 1
                     if ij >= kl:
-                        if abs(twoe[ijkl(i,j,k,l)]) > 1.0e-10:
+                        if abs(twoe[ijkl(i, j, k, l)]) > 1.0e-10:
                             print("{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
-                                i, j, k, l, twoe[ijkl(i,j,k,l)]))
+                                i, j, k, l, twoe[ijkl(i, j, k, l)]))
 
 
 #"""
@@ -221,7 +229,6 @@ class BinaryFile(object):
             raise ValueError("order should be either 'fortran' or 'c'.")
         self.order = order
         """The order for file ('c' or 'fortran')."""
-
 
     def read(self, dtype, shape=(1,)):
         """Read an array of `dtype` and `shape` from current position.
@@ -278,7 +285,6 @@ class BinaryFile(object):
                 data = data.copy()
         return data
 
-
     def write(self, arr):
         """Write an `arr` to current position.
 
@@ -290,7 +296,6 @@ class BinaryFile(object):
             arr = arr.transpose().copy()
         # Write the data to file
         self.file.write(arr.data)
-
 
     def seek(self, offset, whence=0):
         """Move to new file position.
@@ -306,10 +311,10 @@ class BinaryFile(object):
         """
         self.file.seek(offset, whence)
 
-
     def tell(self):
         "Returns current file position, an integer (may be a long integer)."
         return self.file.tell()
+
 
 class SequentialFile(BinaryFile):
 
@@ -335,43 +340,47 @@ class SequentialFile(BinaryFile):
         in the 1d vector.
         '''
 
-        ij = max(i, j)*(max(i, j) - 1)/2 + min(i, j)
-        kl = max(k, l)*(max(k, l) - 1)/2 + min(k, l)
-        return max(ij, kl)*(max(ij, kl) - 1)/2 + min(ij, kl) - 1
+        ij = max(i, j) * (max(i, j) - 1) / 2 + min(i, j)
+        kl = max(k, l) * (max(k, l) - 1) / 2 + min(k, l)
+        return max(ij, kl) * (max(ij, kl) - 1) / 2 + min(ij, kl) - 1
 
     def get_index_buffsize(self, buff_size, int_size):
         ''' Return the index buffer size for reading 2-electron integrals'''
 
         if int_size == 4:
             if self.large_labels:
-                return 2*buff_size
+                return 2 * buff_size
             else:
                 return buff_size
         elif int_size == 8:
             if self.large_labels:
                 return buff_size
             else:
-                return (buff_size + 1)/2
+                return (buff_size + 1) / 2
         else:
             raise ValueError('wrong "int_size": {}'.format(int_size))
 
-    def readseq(self, buff_size=15000, int_size=8, mos=False, skip_first=False):
+    def readseq(self, buff_size=15000, int_size=8, mos=False,
+                skip_first=False):
         '''
-        Read FORTRAN sequential unformatted file with two-electron quantities:
+        Read FORTRAN sequential unformatted file with two-electron
+        quantities:
             - two electron integrals over AO's: .F08 file
             - two electron integrals over MO's: .F09 file
             - elements of the two particle density matrix: .F15 file
 
         Args:
             buff_size : int
-                size of the buffer holding values to be read, in gamessus it is
-                stored under ``NINTMX`` variable and in Linux version is equal to
-                15000 which is the default value,
+                size of the buffer holding values to be read, in
+                gamessus it is stored under ``NINTMX`` variable and in
+                Linux version is equal to 15000 which is the default
+                value
             large_labels : bool
-                a flag indicating if large labels should were used, if largest
-                label ``i`` (of the MO) is ``i<255`` then large_labels should be False
-                (case ``LABSIZ=1`` in gamessus), otherwise set to True (case
-                ``LABSIZ=2`` in gamess(us),
+                a flag indicating if large labels should were used, if
+                largest label ``i`` (of the MO) is ``i<255`` then
+                ``large_labels`` should be ``False``
+                (case ``LABSIZ=1`` in gamessus), otherwise set to ``True``
+                (case ``LABSIZ=2`` in gamess(us),
             skip_first : bool
                 skips the first record of the file is set to True,
 
@@ -383,8 +392,8 @@ class SequentialFile(BinaryFile):
 
         self.seek(0)
         if mos:
-            nmo = self.nmo-self.core
-            nt = self.nmo*(self.nmo+1)/2
+            nmo = self.nmo - self.core
+            nt = self.nmo * (self.nmo+1)/2
             if skip_first:
                 #n1 = nmo*(nmo+1)/2
                 #self.seek(8+8*n1)
@@ -394,11 +403,11 @@ class SequentialFile(BinaryFile):
                 self.seek(self.tell() + 4)
 
         else:
-            nt = self.nao*(self.nao+1)/2
+            nt = self.nao * (self.nao + 1) / 2
 
-        ints = np.zeros(nt*(nt+1)/2, dtype=float, order='F')
+        ints = np.zeros(nt * (nt + 1) / 2, dtype=float, order='F')
 
-        int_type = np.dtype('i'+str(int_size))
+        int_type = np.dtype('i' + str(int_size))
         index_buffer = np.zeros(indexBuffSize, dtype=int_type, order='F')
         value_buffer = np.zeros(buff_size, dtype=float, order='F')
 
@@ -412,37 +421,37 @@ class SequentialFile(BinaryFile):
             index_buffer = self.read(int_type, shape=(indexBuffSize, ))
             value_buffer = self.read('f8', shape=(buff_size, ))
 
-            for m in range(1, abs(length)+1):
+            for m in range(1, abs(length) + 1):
                 if int_size == 4:
                     if self.large_labels:
-                        label1 = int(index_buffer[2*m-1])
-                        label2 = int(index_buffer[2*m])
+                        label1 = int(index_buffer[2 * m - 1])
+                        label2 = int(index_buffer[2 * m])
                         i = label1 >> 16
                         j = label1 & 65535
                         k = label2 >> 16
                         l = label2 & 65535
                     else:
-                        label = int(index_buffer[m-1])
+                        label = int(index_buffer[m - 1])
                         i = label >> 24
                         j = label >> 16 & 255
                         k = label >>  8 & 255
                         l = label       & 255
                 elif int_size == 8:
                     if self.large_labels:
-                        label = int(index_buffer[m-1])
+                        label = int(index_buffer[m - 1])
                         i = label >> 48
                         j = label >> 32 & 65535
                         k = label >> 16 & 65535
                         l = label       & 65535
                     else:
                         if m % 2 == 0:
-                            label = int(index_buffer[m/2-1])
+                            label = int(index_buffer[m / 2 - 1])
                             i = label >> 24 & 255
                             j = label >> 16 & 255
                             k = label >>  8 & 255
                             l = label       & 255
                         else:
-                            label = int(index_buffer[m/2])
+                            label = int(index_buffer[m / 2])
                             i = label >> 56 & 255
                             j = label >> 48 & 255
                             k = label >> 40 & 255
@@ -483,16 +492,17 @@ class GamessReader(object):
     # - wrapped fortran code that need to be compiled and installed or
     # - native reader written in python using DictionaryFile and SequentialFile
     # classes
+
     def __init__(self, log):
-        self.logfile    = log
+        self.logfile = log
         i = self.logfile.index("log")
-        self.filebase   = self.logfile[:i-1]
-        self.datfile    = self.filebase + ".dat"
+        self.filebase = self.logfile[:i-1]
+        self.datfile = self.filebase + ".dat"
         self.twoeaofile = self.filebase + ".F08"
         self.twoemofile = self.filebase + ".F09"
         self.dictionary = self.filebase + ".F10"
-        self.rdm2file   = self.filebase + ".F15"
-        self.gp         = GamessLogParser(log=self.logfile)
+        self.rdm2file = self.filebase + ".F15"
+        self.gp = GamessLogParser(log=self.logfile)
 
     def get_onee_size(self, aos=True):
         '''
@@ -503,7 +513,7 @@ class GamessReader(object):
             n = self.gp.get_number_of_aos()
         else:
             n = self.gp.get_number_of_mos()
-        return n*(n+1)/2
+        return n * (n + 1) / 2
 
     def get_twoe_size(self):
         '''
@@ -511,7 +521,7 @@ class GamessReader(object):
         of a supermatrix of size nmos (2RDM and two-electrons integrals).
         '''
         n = self.get_onee_size(aos=False)
-        return n*(n+1)/2
+        return n * (n + 1) / 2
 
     def read_rdm2(self, filename=None, nmo=None):
 
@@ -520,85 +530,84 @@ class GamessReader(object):
         # initialize numpy array to zeros
         rdm2 = np.zeros(self.get_twoe_size(), dtype=float)
 
-
     def read_twoeao(self, filename=None, nmo=None):
 
         '''Read the two electron integrals from the gamess-us file'''
 
         ints = np.zeros(self.get_twoe_size(), dtype=float)
 
-from collections import namedtuple
 
 rec = namedtuple('record', ['name', 'dtype'])
 records = {
-    1 : rec("atomic coordinates", "f8"),
-    2 : rec("enrgys", "f8"),
-    3 : rec("gradient vector", "f8"),
-    4 : rec("hessian matrix", "f8"),
-    5 : rec("not used", ""),
-    6 : rec("not used", ""),
-    7 : rec("ptr", "f8"),
-    8 : rec("dtr", "f8"),
-    9 : rec("ftr", "f8"),
-   10 : rec("gtr", "f8"),
-   11 : rec("bare nucleus", "f8"),
-   12 : rec("overlap", "f8"),
-   13 : rec("kinetic energy", "f8"),
-   14 : rec("alpha fock matrix", "f8"),
-   15 : rec("alpha orbitals", "f8"),
-   16 : rec("alpha density matrix", "f8"),
-   17 : rec("alpha energies or occupation numbers", "f8"),
-   18 : rec("beta fock matrix", "f8"),
-   19 : rec("beta orbitals", "f8"),
-   20 : rec("beta density matrix", "f8"),
-   21 : rec("beta energies or occupation numbers", "f8"),
-   22 : rec("error function interpolation table", "f8"),
-   23 : rec("old alpha fock matrix", "f8"),
-   24 : rec("older alpha fock matrix", "f8"),
-   25 : rec("oldest alpha fock matrix", "f8"),
-   26 : rec("old beta fock matrix", "f8"),
-   27 : rec("older beta fock matrix", "f8"),
-   28 : rec("odest beta fock matrix", "f8"),
-   29 : rec("vib 0 gradient in FORCE", "f8"),
-   30 : rec("vib 0 alpha orbitals in FORCE", "f8"),
-   31 : rec("Vib 0 beta  orbitals in FORCE", "f8"),
-   32 : rec("Vib 0 alpha density matrix in FORCE", "f8"),
-   33 : rec("Vib 0 beta  density matrix in FORCE", "f8"),
-   34 : rec("dipole derivative tensor in FORCE", "f8"),
-   35 : rec("frozen core Fock operator", "f8"),
-   36 : rec("RHF/UHF/ROHF Lagrangian", "f8"),
-   37 : rec("floating point part of common block /OPTGRD/", "f8"),
-   38 : rec("integer part of common block /OPTGRD/", "i8"),
-   39 : rec("ZMAT of input internal coords", "f8"),
-   40 : rec("IZMAT of input internal coords", "i8"),
-   41 : rec("B matrix of redundant internal coords", "f8"),
-   42 : rec("pristine core Fock matrix in MO basis (see 87)", "f8"),
-   43 : rec("Force constant matrix in internal coordinates", "f8"),
-   44 : rec("SALC transformation", "f8"),
-   45 : rec("symmetry adapted Q matrix", "f8"),
-   46 : rec("S matrix for symmetry coordinates", "f8"),
-   47 : rec("ZMAT for symmetry internal coords", "f8"),
-   48 : rec("IZMAT for symmetry internal coords", "i8"),
-   49 : rec("B matrix", "f8"),
-   50 : rec("B inverse matrix", "f8"),
-   69 : rec("alpha Lowdin populations", "f8"),
-   70 : rec("beta Lowdin populations", "f8"),
-   71 : rec("alpha orbitals during localization", "f8"),
-   72 : rec("betha orbitals during localization", "f8"),
-   73 : rec("alpha localization transformation", "f8"),
-   74 : rec("beta localization transformation", "f8"),
-   95 : rec("x dipole integrals in AO basis", "f8"),
-   96 : rec("y dipole integrals in AO basis", "f8"),
-   97 : rec("z dipole integrals in AO basis", "f8"),
-  251 : rec("static polarizability tensor alpha", "f8"),
-  252 : rec("X dipole integrals in MO basis", "f8"),
-  253 : rec("Y dipole integrals in MO basis", "f8"),
-  254 : rec("Z dipole integrals in MO basis", "f8"),
-  255 : rec("alpha MO symmetry labels", "S8"),
-  256 : rec("beta MO symmetry labels", "S8"),
-  286 : rec("oriented localized molecular orbitals", "f8"),
-  379 : rec("Lz integrals", "f8"),
+    1: rec("atomic coordinates", "f8"),
+    2: rec("enrgys", "f8"),
+    3: rec("gradient vector", "f8"),
+    4: rec("hessian matrix", "f8"),
+    5: rec("not used", ""),
+    6: rec("not used", ""),
+    7: rec("ptr", "f8"),
+    8: rec("dtr", "f8"),
+    9: rec("ftr", "f8"),
+   10: rec("gtr", "f8"),
+   11: rec("bare nucleus", "f8"),
+   12: rec("overlap", "f8"),
+   13: rec("kinetic energy", "f8"),
+   14: rec("alpha fock matrix", "f8"),
+   15: rec("alpha orbitals", "f8"),
+   16: rec("alpha density matrix", "f8"),
+   17: rec("alpha energies or occupation numbers", "f8"),
+   18: rec("beta fock matrix", "f8"),
+   19: rec("beta orbitals", "f8"),
+   20: rec("beta density matrix", "f8"),
+   21: rec("beta energies or occupation numbers", "f8"),
+   22: rec("error function interpolation table", "f8"),
+   23: rec("old alpha fock matrix", "f8"),
+   24: rec("older alpha fock matrix", "f8"),
+   25: rec("oldest alpha fock matrix", "f8"),
+   26: rec("old beta fock matrix", "f8"),
+   27: rec("older beta fock matrix", "f8"),
+   28: rec("odest beta fock matrix", "f8"),
+   29: rec("vib 0 gradient in FORCE", "f8"),
+   30: rec("vib 0 alpha orbitals in FORCE", "f8"),
+   31: rec("Vib 0 beta  orbitals in FORCE", "f8"),
+   32: rec("Vib 0 alpha density matrix in FORCE", "f8"),
+   33: rec("Vib 0 beta  density matrix in FORCE", "f8"),
+   34: rec("dipole derivative tensor in FORCE", "f8"),
+   35: rec("frozen core Fock operator", "f8"),
+   36: rec("RHF/UHF/ROHF Lagrangian", "f8"),
+   37: rec("floating point part of common block /OPTGRD/", "f8"),
+   38: rec("integer part of common block /OPTGRD/", "i8"),
+   39: rec("ZMAT of input internal coords", "f8"),
+   40: rec("IZMAT of input internal coords", "i8"),
+   41: rec("B matrix of redundant internal coords", "f8"),
+   42: rec("pristine core Fock matrix in MO basis (see 87)", "f8"),
+   43: rec("Force constant matrix in internal coordinates", "f8"),
+   44: rec("SALC transformation", "f8"),
+   45: rec("symmetry adapted Q matrix", "f8"),
+   46: rec("S matrix for symmetry coordinates", "f8"),
+   47: rec("ZMAT for symmetry internal coords", "f8"),
+   48: rec("IZMAT for symmetry internal coords", "i8"),
+   49: rec("B matrix", "f8"),
+   50: rec("B inverse matrix", "f8"),
+   69: rec("alpha Lowdin populations", "f8"),
+   70: rec("beta Lowdin populations", "f8"),
+   71: rec("alpha orbitals during localization", "f8"),
+   72: rec("betha orbitals during localization", "f8"),
+   73: rec("alpha localization transformation", "f8"),
+   74: rec("beta localization transformation", "f8"),
+   95: rec("x dipole integrals in AO basis", "f8"),
+   96: rec("y dipole integrals in AO basis", "f8"),
+   97: rec("z dipole integrals in AO basis", "f8"),
+  251: rec("static polarizability tensor alpha", "f8"),
+  252: rec("X dipole integrals in MO basis", "f8"),
+  253: rec("Y dipole integrals in MO basis", "f8"),
+  254: rec("Z dipole integrals in MO basis", "f8"),
+  255: rec("alpha MO symmetry labels", "S8"),
+  256: rec("beta MO symmetry labels", "S8"),
+  286: rec("oriented localized molecular orbitals", "f8"),
+  379: rec("Lz integrals", "f8"),
 }
+
 
 class DictionaryFile(BinaryFile):
     '''
@@ -628,11 +637,11 @@ class DictionaryFile(BinaryFile):
         self.int_size = int_size
         # read the first record with the information about the
         # structure of the dictionary file
-        self.irecst = self.read(np.dtype('i'+str(self.int_size)))
-        self.ioda   = self.read(np.dtype('i'+str(self.int_size)), shape=(950,))
-        self.ifilen = self.read(np.dtype('i'+str(self.int_size)), shape=(950,))
-        self.iss    = self.read(np.dtype('i'+str(self.int_size)))
-        self.ipk    = self.read(np.dtype('i'+str(self.int_size)))
+        self.irecst = self.read(np.dtype('i' + str(self.int_size)))
+        self.ioda = self.read(np.dtype('i' + str(self.int_size)), shape=(950,))
+        self.ifilen = self.read(np.dtype('i' + str(self.int_size)), shape=(950,))
+        self.iss = self.read(np.dtype('i' + str(self.int_size)))
+        self.ipk = self.read(np.dtype('i' + str(self.int_size)))
 
     def read_record(self, nrec, dtype=None):
         '''
@@ -644,21 +653,23 @@ class DictionaryFile(BinaryFile):
         if self.ioda[nrec-1] < 0:
             raise IOError("Record {0} was not previously written, IODA[{0}]={1}".format(nrec, self.ioda[nrec-1]))
 
-        self.seek(8*self.irecln*(int(self.ioda[nrec-1])-1))
+        self.seek(8 * self.irecln * (int(self.ioda[nrec - 1]) - 1))
         if dtype is not None:
-            return self.read(dtype, shape=(self.ifilen[nrec-1],))
+            return self.read(dtype, shape=(self.ifilen[nrec - 1],))
         else:
-            return self.read(records[nrec].dtype, shape=(self.ifilen[nrec-1],))
+            return self.read(records[nrec].dtype, shape=(self.ifilen[nrec - 1],))
+
 
 def tri2full(vector, sym=True):
     '''
-    Convert a triagonal matrix whose elements are stored in the `vector` into a 
+    Convert a triagonal matrix whose elements are stored in the `vector` into a
     rectangular matrix of the shape given by `shape` tuple.
     '''
 
     # get the shape of the symmetric matrix from solving n^2 + n - 2s = 0 equation
     # where n is the number of rows/columns and s is the size of 1D vector
-    n = int((np.sqrt(8.0*vector.size + 1) - 1.0)/2.0)
+
+    n = int((np.sqrt(8.0 * vector.size + 1) - 1.0) / 2.0)
     matrix = np.zeros((n, n), dtype=float, order='F')
 
     ij = -1
