@@ -28,3 +28,7 @@ build/**
 *.ind
 *.out
 *.fdb_latexmk
+# sublime test
+chemtools.sublime-project
+chemtools.sublime-workspace
+
