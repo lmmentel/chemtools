@@ -28,6 +28,7 @@ import os
 
 from .calculator import Calculator, InputTemplate, parse_objective
 
+
 class Psi4(Calculator):
     '''
     Wrapper for the Psi4 program.

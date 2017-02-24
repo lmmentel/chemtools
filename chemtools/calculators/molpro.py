@@ -29,6 +29,7 @@ import os
 
 from .calculator import Calculator, InputTemplate, parse_objective
 
+
 class Molpro(Calculator):
     '''
     Wrapper for the Molpro program.
