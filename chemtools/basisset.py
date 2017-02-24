@@ -75,27 +75,6 @@ class BasisSet(object):
         self.functions = functions
         self.info = info
 
-    def __repr__(self):
-        keys = ['name', 'element', 'family', 'kind']
-
-        res = "<BasisSet(\n"
-        for key in keys:
-            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
-        res += self.print_functions()
-        res += ")>"
-        return res
-
-    def __str__(self):
-        keys = ['name', 'element', 'family', 'kind']
-
-        res = ''
-        for key in keys:
-            res += "{k:<20s} = {v}\n".format(k=key.capitalize(),
-                                             v=getattr(self, key))
-        res += 'Functions:\n'
-        res += self.print_functions()
-        return res
-
     def __add__(self, other):
         '''Add functions from another BasisSet object
 
@@ -181,7 +160,8 @@ class BasisSet(object):
                 ni += nf
             else:
                 # TODO:
-                # params shouldn't be here since it can have a dummy, real values are taken from x0
+                # params shouldn't be here since it can have a dummy,
+                # real values are taken from x0
                 nt += len(params)
                 functions[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
                 ni += len(params)
@@ -307,6 +287,103 @@ class BasisSet(object):
             else:
                 self.functions[oshell] = deepcopy(ofs)
 
+    def completeness_profile(self, zetas):
+        '''
+        Calculate the completeness profile of each shell of the basis set
+
+        Args:
+          zetas : numpy.array
+            Scaning exponents
+
+        Returns:
+          out : numpy.array
+            numpy array with values of the profile (shells, zetas)
+        '''
+
+        out = np.zeros((zetas.size, len(self.functions.keys())))
+
+        for i, (shell, fs) in enumerate(self.functions.items()):
+            cc = self.contraction_matrix(shell)
+            # calculate the overlap matrix
+            S = self.shell_overlap(shell)
+            # calculate the inverse square root of S
+            X = inv(sqrtm(S))
+            SO = primitive_overlap(get_l(shell), fs['e'], zetas)
+            J = np.dot(np.dot(cc, X).T, SO)
+            Y = np.sum(np.square(J), axis=0)
+            out[:, i] = Y
+        return out
+
+    def contraction_matrix(self, shell):
+        '''
+        Return the contraction coefficients for a given shell in a
+        matrix form with size `ne * nc`, where `ne` is the number of
+        exponents and `nc` is the number of contracted functions
+
+        Args:
+          shell : str
+            shell label, *s*, *p*, *d*, ...
+
+        Returns:
+          out : 2D numpy.array
+            2D array with contraction coefficients
+        '''
+
+        if shell in self.functions.keys():
+            fs = self.functions[shell]
+            out = np.zeros((fs['e'].size, len(fs['cf'])))
+            for i, cf in enumerate(fs['cf']):
+                out[cf['idx'], i] = cf['cc']
+            return out
+        else:
+            raise ValueError("shell '{}' is not present in the BasisSet".format(shell))
+
+    def contractions_per_shell(self):
+        '''
+        Calculate how many contracted functions are in each shell.
+
+        Returns:
+          out : list of ints
+        '''
+
+        return [len(f['cf']) for s, f in self.functions.items()]
+
+    def contraction_scheme(self):
+        '''
+        Return a string describing the contraction scheme.
+        '''
+
+        cs, ec = [], []
+        for shell, fs in self.functions.items():
+            cs.append((shell, len(fs['e']), len(fs['cf'])))
+            ec.append([len(cfs) for cfs in fs['cf']])
+        return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
+            p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
+            c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
+            ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
+
+    def contraction_type(self):
+        '''
+        Try to determine the contraction type: segmented, general,
+        uncontracted, unknown.
+        '''
+
+        pps = self.primitives_per_shell()
+        ppc = self.primitives_per_contraction()
+
+        if any(x > 1 for x in pps):
+            if all(all(x == 1 for x in shell) for shell in ppc):
+                return "uncontracted"
+            elif all(all(pinc == np for pinc in shell)
+                     for np, shell in zip(pps, ppc)):
+                return "general"
+            else:
+                return "unknown"
+
+        # one function per shell case
+        if all(all(x == 1 for x in shell) for shell in ppc):
+            return "uncontracted 1fps"
+
     def get_exponents(self, shell=None):
         '''
         Return the exponents of a given shell or if the shell isn't specified
@@ -318,6 +395,116 @@ class BasisSet(object):
                                         for k in self.functions.keys()])
         else:
             return self.functions[shell]['e']
+
+    def nf(self, spherical=True):
+        '''
+        Calculate the number of basis functions
+
+        Args:
+          spherical : bool
+            flag indicating if spherical or cartesian functions should be used,
+            default: True
+
+        Returns:
+          res : int
+            number of basis functions
+        '''
+
+        if spherical:
+            return sum(nspherical(get_l(shell)) * len(fs['cf'])
+                       for shell, fs in self.functions.items())
+        else:
+            return sum(ncartesian(get_l(shell)) * len(fs['cf'])
+                       for shell, fs in self.functions.items())
+
+    def normalze(self):
+        '''
+        Normalize contraction coefficients for each contracted functions based
+        on the primitive overlaps so that the norm is equal to 1.
+        '''
+
+        for shell, fs in self.functions.items():
+            cc = self.contraction_matrix(shell)
+            po = primitive_overlap(get_l(shell), fs['e'], fs['e'])
+            for col in range(cc.shape[1]):
+                norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
+                fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col] / np.sqrt(norm2)
+
+    def normalzation(self):
+        '''
+        For each function (contracted) calculate the norm and return a list of
+        tuples containing the shell, function index and the norm respectively.
+        '''
+
+        out = list()
+        for shell, fs in self.functions.items():
+            cc = self.contraction_matrix(shell)
+            po = primitive_overlap(get_l(shell), fs['e'], fs['e'])
+            for col in range(cc.shape[1]):
+                norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
+                out.append(tuple([shell, col, norm2]))
+        return out
+
+    def nprimitive(self, spherical=True):
+        '''
+        Return the number of primitive functions assuming sphrical or cartesian
+        gaussians.
+
+        Args:
+          spherical : bool
+            A flag to select either spherical or cartesian gaussians
+
+        Returns:
+          out : int
+            Number of primitive function in the basis set
+        '''
+
+        if spherical:
+            # calculate the number of spherical components per shell
+            ncomp = [nspherical(get_l(shell))
+                     for shell in self.functions.keys()]
+        else:
+            # calculate the number of cartesian components per shell
+            ncomp = [ncartesian(get_l(shell))
+                     for shell in self.functions.keys()]
+
+        return sum([prim * nc for prim, nc in zip(self.primitives_per_shell(),
+                                                  ncomp)])
+
+    def partial_wave_expand(self):
+        '''
+        From a given basis set with shells spdf... return a list of basis sets
+        that are subsets of the entered basis set with increasing angular
+        momentum functions included [s, sp, spd, spdf, ...]
+        '''
+
+        res = list()
+        shells = self.functions.keys()
+        for i in range(1, len(shells) + 1):
+            bscopy = copy(self)
+            bscopy.functions = {k: v for k, v in self.functions.items()
+                                if k in shells[:i]}
+            res.append(bscopy)
+        return res
+
+    def primitives_per_shell(self):
+        '''
+        Calculate how many primitive functions are in each shell.
+
+        Returns:
+          out : list of ints
+        '''
+
+        return [len(f['e']) for s, f in self.functions.items()]
+
+    def primitives_per_contraction(self):
+        '''
+        Calculate how many primities are used in each contracted function.
+
+        Returns:
+          out : list of ints
+        '''
+        return [[len(cc) for cc in f['cf']] for s, f in self.functions.items()]
 
     def uncontract(self, copy=False):
         '''
@@ -340,6 +527,51 @@ class BasisSet(object):
             for shell, fs in self.functions.items():
                 fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE)
                             for i, _ in enumerate(fs['e'])]
+
+    def shell_overlap(self, shell):
+        '''
+        Calculate the overlap integrals for a given shell
+
+        Args:
+          shell : str
+            Shell
+
+        Returns:
+          out : numpy.array
+            Overlap integral matrix
+        '''
+
+        exps = self.functions[shell]['e']
+        S = primitive_overlap(get_l(shell), exps, exps)
+        cc = self.contraction_matrix(shell)
+        return np.dot(cc.T, np.dot(S, cc))
+
+    def sort(self, reverse=False):
+        '''
+        Sort shells in the order of increasing angular momentum and for each
+        shell sort the exponents.
+
+        Args:
+          reverse : bool
+            If `False` sort the exponents in each shell in the descending order
+            (default), else sort exponents in ascending order
+        '''
+
+        self.functions = OrderedDict(sorted(self.functions.items(),
+                                            key=lambda x: get_l(x[0])))
+
+        for shell, fs in self.functions.items():
+            if reverse:
+                idx = np.argsort(fs['e'])
+            else:
+                idx = np.argsort(fs['e'])[::-1]
+
+            # actually sort the exponents and coefficients
+            fs['e'] = fs['e'][idx]
+            for cf in fs['cf']:
+                cf['idx'] = np.asarray([np.nonzero(idx == y)[0][0]
+                                        for y in cf['idx']])
+                cf.sort(order='idx')
 
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
@@ -436,58 +668,6 @@ class BasisSet(object):
                 for row in it:
                     res += ' ' * int(ffmt.split('.')[0]) + "".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in row]) + "\n"
         return res
-
-    def normalze(self):
-        '''
-        Normalize contraction coefficients for each contracted functions based
-        on the primitive overlaps so that the norm is equal to 1.
-        '''
-
-        for shell, fs in self.functions.items():
-            cc = self.contraction_matrix(shell)
-            po = primitive_overlap(get_l(shell), fs['e'], fs['e'])
-            for col in range(cc.shape[1]):
-                norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
-                fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col] / np.sqrt(norm2)
-
-    def normalzation(self):
-        '''
-        For each function (contracted) calculate the norm and return a list of
-        tuples containing the shell, function index and the norm respectively.
-        '''
-
-        out = list()
-        for shell, fs in self.functions.items():
-            cc = self.contraction_matrix(shell)
-            po = primitive_overlap(get_l(shell), fs['e'], fs['e'])
-            for col in range(cc.shape[1]):
-                norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
-                out.append(tuple([shell, col, norm2]))
-        return out
-
-    def contraction_matrix(self, shell):
-        '''
-        Return the contraction coefficients for a given shell in a
-        matrix form with size `ne * nc`, where `ne` is the number of
-        exponents and `nc` is the number of contracted functions
-
-        Args:
-          shell : str
-            shell label, *s*, *p*, *d*, ...
-
-        Returns:
-          out : 2D numpy.array
-            2D array with contraction coefficients
-        '''
-
-        if shell in self.functions.keys():
-            fs = self.functions[shell]
-            out = np.zeros((fs['e'].size, len(fs['cf'])))
-            for i, cf in enumerate(fs['cf']):
-                out[cf['idx'], i] = cf['cc']
-            return out
-        else:
-            raise ValueError("shell '{}' is not present in the BasisSet".format(shell))
 
     def to_gamessus(self, efmt="20.10f", cfmt="15.8f"):
         '''
@@ -681,205 +861,26 @@ class BasisSet(object):
                     res += "{i:5d}{e:>{efmt}}{c:>{cfmt}}".format(i=count, e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
         return res
 
-    def nf(self, spherical=True):
-        '''
-        Calculate the number of basis functions
+    def __repr__(self):
+        keys = ['name', 'element', 'family', 'kind']
 
-        Args:
-          spherical : bool
-            flag indicating if spherical or cartesian functions should be used,
-            default: True
-
-        Returns:
-          res : int
-            number of basis functions
-        '''
-
-        if spherical:
-            return sum(nspherical(get_l(shell)) * len(fs['cf'])
-                       for shell, fs in self.functions.items())
-        else:
-            return sum(ncartesian(get_l(shell)) * len(fs['cf'])
-                       for shell, fs in self.functions.items())
-
-    def nprimitive(self, spherical=True):
-        '''
-        Return the number of primitive functions assuming sphrical or cartesian
-        gaussians.
-
-        Args:
-          spherical : bool
-            A flag to select either spherical or cartesian gaussians
-
-        Returns:
-          out : int
-            Number of primitive function in the basis set
-        '''
-
-        if spherical:
-            # calculate the number of spherical components per shell
-            ncomp = [nspherical(get_l(shell))
-                     for shell in self.functions.keys()]
-        else:
-            # calculate the number of cartesian components per shell
-            ncomp = [ncartesian(get_l(shell))
-                     for shell in self.functions.keys()]
-
-        return sum([prim * nc for prim, nc in zip(self.primitives_per_shell(),
-                                                  ncomp)])
-
-    def contraction_scheme(self):
-        '''
-        Return a string describing the contraction scheme.
-        '''
-
-        cs, ec = [], []
-        for shell, fs in self.functions.items():
-            cs.append((shell, len(fs['e']), len(fs['cf'])))
-            ec.append([len(cfs) for cfs in fs['cf']])
-        return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
-            p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
-            c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
-            ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
-
-    def primitives_per_shell(self):
-        '''
-        Calculate how many primitive functions are in each shell.
-
-        Returns:
-          out : list of ints
-        '''
-
-        return [len(f['e']) for s, f in self.functions.items()]
-
-    def contractions_per_shell(self):
-        '''
-        Calculate how many contracted functions are in each shell.
-
-        Returns:
-          out : list of ints
-        '''
-
-        return [len(f['cf']) for s, f in self.functions.items()]
-
-    def primitives_per_contraction(self):
-        '''
-        Calculate how many primities are used in each contracted function.
-
-        Returns:
-          out : list of ints
-        '''
-        return [[len(cc) for cc in f['cf']] for s, f in self.functions.items()]
-
-    def contraction_type(self):
-        '''
-        Try to determine the contraction type: segmented, general,
-        uncontracted, unknown.
-        '''
-
-        pps = self.primitives_per_shell()
-        ppc = self.primitives_per_contraction()
-
-        if any(x > 1 for x in pps):
-            if all(all(x == 1 for x in shell) for shell in ppc):
-                return "uncontracted"
-            elif all(all(pinc == np for pinc in shell)
-                     for np, shell in zip(pps, ppc)):
-                return "general"
-            else:
-                return "unknown"
-
-        # one function per shell case
-        if all(all(x == 1 for x in shell) for shell in ppc):
-            return "uncontracted 1fps"
-
-    def sort(self, reverse=False):
-        '''
-        Sort shells in the order of increasing angular momentum and for each
-        shell sort the exponents.
-
-        Args:
-          reverse : bool
-            If `False` sort the exponents in each shell in the descending order
-            (default), else sort exponents in ascending order
-        '''
-
-        self.functions = OrderedDict(sorted(self.functions.items(),
-                                            key=lambda x: get_l(x[0])))
-
-        for shell, fs in self.functions.items():
-            if reverse:
-                idx = np.argsort(fs['e'])
-            else:
-                idx = np.argsort(fs['e'])[::-1]
-
-            # actually sort the exponents and coefficients
-            fs['e'] = fs['e'][idx]
-            for cf in fs['cf']:
-                cf['idx'] = np.asarray([np.nonzero(idx == y)[0][0]
-                                        for y in cf['idx']])
-                cf.sort(order='idx')
-
-    def partial_wave_expand(self):
-        '''
-        From a given basis set with shells spdf... return a list of basis sets
-        that are subsets of the entered basis set with increasing angular
-        momentum functions included [s, sp, spd, spdf, ...]
-        '''
-
-        res = list()
-        shells = self.functions.keys()
-        for i in range(1, len(shells) + 1):
-            bscopy = copy(self)
-            bscopy.functions = {k: v for k, v in self.functions.items()
-                                if k in shells[:i]}
-            res.append(bscopy)
+        res = "<BasisSet(\n"
+        for key in keys:
+            res += "\t{k:<20s} = {v}\n".format(k=key, v=getattr(self, key))
+        res += self.print_functions()
+        res += ")>"
         return res
 
-    def completeness_profile(self, zetas):
-        '''
-        Calculate the completeness profile of each shell of the basis set
+    def __str__(self):
+        keys = ['name', 'element', 'family', 'kind']
 
-        Args:
-          zetas : numpy.array
-            Scaning exponents
-
-        Returns:
-          out : numpy.array
-            numpy array with values of the profile (shells, zetas)
-        '''
-
-        out = np.zeros((zetas.size, len(self.functions.keys())))
-
-        for i, (shell, fs) in enumerate(self.functions.items()):
-            cc = self.contraction_matrix(shell)
-            # calculate the overlap matrix
-            S = self.shell_overlap(shell)
-            # calculate the inverse square root of S
-            X = inv(sqrtm(S))
-            SO = primitive_overlap(get_l(shell), fs['e'], zetas)
-            J = np.dot(np.dot(cc, X).T, SO)
-            Y = np.sum(np.square(J), axis=0)
-            out[:, i] = Y
-        return out
-
-    def shell_overlap(self, shell):
-        '''
-        Calculate the overlap integrals for a given shell
-
-        Args:
-          shell : str
-            Shell
-
-        Returns:
-          out : numpy.array
-            Overlap integral matrix
-        '''
-
-        exps = self.functions[shell]['e']
-        S = primitive_overlap(get_l(shell), exps, exps)
-        cc = self.contraction_matrix(shell)
-        return np.dot(cc.T, np.dot(S, cc))
+        res = ''
+        for key in keys:
+            res += "{k:<20s} = {v}\n".format(k=key.capitalize(),
+                                             v=getattr(self, key))
+        res += 'Functions:\n'
+        res += self.print_functions()
+        return res
 
 
 def merge(first, other):
