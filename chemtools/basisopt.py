@@ -338,7 +338,7 @@ def get_basis_dict(bso, x0):
 
     bsdict = dict()
     for atom, functs in bso.fsopt.items():
-        bsdict[atom] = BasisSet.from_optpars(x0, functs=functs, name='opt',
+        bsdict[atom] = BasisSet.from_optpars(x0, funs=functs, name='opt',
                                              element=atom, explogs=bso.uselogs)
 
     if bso.staticbs is not None:
@@ -444,7 +444,7 @@ def run_total_energy(x0, *args):
     if bso.verbose:
         print("Current exponents being optimized:")
         for atom, functs in bso.fsopt.items():
-            basis = BasisSet.from_optpars(x0, functs=functs, name='opt',
+            basis = BasisSet.from_optpars(x0, funs=functs, name='opt',
                                           element=atom, explogs=bso.uselogs)
             print(atom, basis.print_functions())
 
@@ -514,7 +514,7 @@ def run_core_energy(x0, *args):
     if bso.verbose:
         print("Current exponents being optimized:")
         for atom, functs in bso.fsopt.items():
-            basis = BasisSet.from_optpars(x0, functs=functs, name='opt',
+            basis = BasisSet.from_optpars(x0, funs=functs, name='opt',
                                           element=atom, explogs=bso.uselogs)
             print(atom, basis.print_functions())
 
