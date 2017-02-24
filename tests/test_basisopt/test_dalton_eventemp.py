@@ -1,11 +1,13 @@
+
 import os
 from chemtools.calculators.dalton import Dalton
 from chemtools.molecule import Molecule
 from chemtools.basisopt import BSOptimizer
 import pytest
-import os
 
-@pytest.mark.skipif(os.getenv('DALTON_EXE') is None, reason="<DALTON_EXE> undefined")
+
+@pytest.mark.skipif(os.getenv('DALTON_EXE') is None,
+                    reason="<DALTON_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
@@ -17,14 +19,14 @@ Atomtypes=1 Integrals=1.0D-20
 %basis
 '''
 
-    hftemplate='''**DALTON INPUT
+    hftemplate = '''**DALTON INPUT
 .RUN WAVE FUNCTIONS
 **WAVE FUNCTION
 .HF
 **END OF DALTON INPUT
 '''
 
-    daltemplate ='''**DALTON INPUT
+    daltemplate = '''**DALTON INPUT
 .RUN WAVE FUNCTIONS
 **WAVE FUNCTIONS
 .HF
@@ -48,14 +50,16 @@ GASCI
 **END OF DALTON INPUT
 '''
 
-    dalton = Dalton(exevar='DALTON_EXE', runopts=['-nobackup', '-noarch', '-d'])
+    dalton = Dalton(exevar='DALTON_EXE',
+                    runopts=['-nobackup', '-noarch', '-d'])
 
-    fname = {'dal' : 'hf.dal', 'mol' : 'He_5s.mol'}
-    template = {'mol' : moltemplate, 'dal' : hftemplate}
-    fsopt = {'He' : [('s', 'et', 5, (0.5, 2.0))]}
-    he = Molecule(name='He', atoms=[('He', ) ])
-    bso = BSOptimizer(objective='hf total energy', template=template, verbose=False, code=dalton,
-                      mol=he, fsopt=fsopt, fname=fname)
+    fname = {'dal': 'hf.dal', 'mol': 'He_5s.mol'}
+    template = {'mol': moltemplate, 'dal': hftemplate}
+    fsopt = {'He': [('s', 'et', 5, (0.5, 2.0))]}
+    he = Molecule(name='He', atoms=[('He', )])
+    bso = BSOptimizer(objective='hf total energy', template=template,
+                      verbose=False, code=dalton, mol=he, fsopt=fsopt,
+                      fname=fname)
 
     bso.run()
     energy = -2.8586246608170001
