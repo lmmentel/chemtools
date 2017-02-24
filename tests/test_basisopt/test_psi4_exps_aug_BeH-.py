@@ -5,7 +5,9 @@ from chemtools.basisset import BasisSet
 import pytest
 import os
 
-@pytest.mark.skipif(os.getenv('PSI4_EXE') is None, reason="<PSI4_EXE> undefined")
+
+@pytest.mark.skipif(os.getenv('PSI4_EXE') is None,
+                    reason="<PSI4_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
@@ -14,7 +16,6 @@ def test_optimize(tmpdir):
 
     beh = Molecule(name="BeH-", atoms=[('Be',), ('H', (0.0, 0.0, 2.724985))],
                    sym="cnv 2", charge=-1, multiplicity=1)
-
 
     psitemp = '''#! test BeH-
 
@@ -50,10 +51,10 @@ d_convergence 10
 energy('cisd')
 '''
 
-    optimization = {"method"  : "Nelder-Mead",
-                    "tol"     : 1.0e-4,
-                    "options" : {"maxiter" : 100,
-                                 "disp"    : True,
+    optimization = {"method": "Nelder-Mead",
+                    "tol": 1.0e-4,
+                    "options": {"maxiter": 100,
+                                "disp": True,
                                 }
                     }
 
@@ -82,12 +83,13 @@ c, 2.2, 1
 
     ccpvdz = BasisSet.from_str(ccpvdz_str, fmt='molpro')
 
-    augfs = {'Be' : [('s', 'exp', 1, (0.02,)),
-                     ('p', 'exp', 1, (0.01,)),
-                     ('d', 'exp', 1, (0.07,))]}
+    augfs = {'Be': [('s', 'exp', 1, (0.02,)),
+                    ('p', 'exp', 1, (0.01,)),
+                    ('d', 'exp', 1, (0.07,))]}
 
-    bso = BSOptimizer(objective='cisd total energy', template=psitemp, code=psi, mol=beh,
-                      fsopt=augfs, staticbs=ccpvdz, core=[1,0,0,0,0,0,0,0], verbose=True,
+    bso = BSOptimizer(objective='cisd total energy', template=psitemp,
+                      code=psi, mol=beh, fsopt=augfs, staticbs=ccpvdz,
+                      core=[1, 0, 0, 0, 0, 0, 0, 0], verbose=True,
                       optalg=optimization, fname='beh_aug.dat')
 
     bso.run()
