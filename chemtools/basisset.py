@@ -1344,7 +1344,7 @@ def bsconvert():
                         choices=["cfour", "dalton", "gamessus", "gaussian",
                                  "molpro", "nwchem", "pickle"],
                         help="Basis set output format",
-                        default="std")
+                        default="molpro")
     args = parser.parse_args()
 
     name = os.path.splitext(args.filename)[0]
