@@ -1,9 +1,14 @@
 
+import os
+import pytest
 from chemtools.basisopt import BSOptimizer
 from chemtools.molecule import Molecule
 from chemtools.calculators.gamessus import GamessUS
 from chemtools.basisset import BasisSet
 
+
+@pytest.mark.skipif(os.getenv('GAMESS_EXE') is None,
+                    reason="<GAMESS_EXE> undefined")
 def test_optimize(tmpdir):
 
     tmpdir.chdir()
@@ -55,19 +60,20 @@ c,1.1,1.000000E+00;
 
     vdz = BasisSet.from_str(bsstr, fmt='molpro')
 
-    optimization = {"method"  : "CG",
-                    "tol"     : 1.0e-4,
-                    "jacob"   : False,
-                    "options" : {"maxiter" : 100, "disp" : True, 'eps' : 1.0e-3},
-                   }
+    optimization = {"method": "CG",
+                    "tol": 1.0e-4,
+                    "jacob": False,
+                    "options": {"maxiter": 100, "disp": True, 'eps': 1.0e-3}}
 
     gams = GamessUS(exevar="GAMESS_EXE", runopts=['1'])
 
-    midbond = {'H' : [('s', 'et', 4, (0.05, 2.0)), ('p', 'et', 4, (0.04, 2.0))]}
+    midbond = {'H': [('s', 'et', 4, (0.05, 2.0)),
+                     ('p', 'et', 4, (0.04, 2.0))]}
 
-    bso = BSOptimizer(objective='cisd total energy', template=gamesstemp, code=gams, mol=be2X,
-                      fsopt=midbond, staticbs=vdz, core=2, fname='midbond.inp',
-                      verbose=True, optalg=optimization)
+    bso = BSOptimizer(objective='cisd total energy', template=gamesstemp,
+                      code=gams, mol=be2X, fsopt=midbond, staticbs={'Be': vdz},
+                      core=2, fname='midbond.inp', verbose=True,
+                      optalg=optimization)
 
     bso.run()
     energy = -29.1326831928
