@@ -27,7 +27,7 @@ from __future__ import division, print_function
 import os
 import pickle
 import re
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
 from copy import copy, deepcopy
 from argparse import ArgumentParser
 from itertools import chain
@@ -35,6 +35,9 @@ import numpy as np
 from scipy.linalg import sqrtm, inv
 from scipy.special import factorial, factorial2, binom
 from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, get_l
+
+
+Fun = namedtuple('Function', ['shell', 'seq', 'nf', 'params'])
 
 
 class BasisSet(object):
@@ -63,13 +66,14 @@ class BasisSet(object):
         '''
 
     def __init__(self, name, element, family=None, kind=None,
-                 functions=None):
+                 functions=None, info=None):
 
         self.name = name
         self.element = element
         self.family = family
         self.kind = kind
         self.functions = functions
+        self.info = info
 
     def __repr__(self):
         keys = ['name', 'element', 'family', 'kind']
@@ -138,7 +142,7 @@ class BasisSet(object):
             return pickle.load(fil, **kwargs)
 
     @classmethod
-    def from_optpars(cls, x0, functs=None, name=None, element=None,
+    def from_optpars(cls, x0, funs=None, name=None, element=None,
                      explogs=False):
         '''
         Return a basis set object generated from a sequence based on the
@@ -148,7 +152,7 @@ class BasisSet(object):
           x0 : list or numpy.array
             Parameters to generate the basis set as a continuous list or array
 
-          functs : list of tuples
+          funs : list of tuples
             A list of tuple specifying the shell type, number of functions and
             parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3,
             (1.0, 3.0))]`
@@ -163,35 +167,38 @@ class BasisSet(object):
           out : BasisSet
         '''
 
-        funs = dict()
+        functions = dict()
         ni = 0
         nt = 0
-        for shell, seq, nf, params in functs:
-            funs[shell] = dict()
+        for shell, seq, nf, params in funs:
+            functions[shell] = dict()
             if seq in ["exp", "exponents"]:
                 nt += nf
                 if explogs:
-                    funs[shell]['e'] = generate_exponents(seq, nf, np.exp(x0[ni: nt]))
+                    functions[shell]['e'] = generate_exponents(seq, nf, np.exp(x0[ni: nt]))
                 else:
-                    funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
+                    functions[shell]['e'] = generate_exponents(seq, nf, x0[ni: nt])
                 ni += nf
             else:
+                # TODO:
+                # params shouldn't be here since it can have a dummy, real values are taken from x0
                 nt += len(params)
-                funs[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
+                functions[shell]['e'] = generate_exponents(seq, nf, x0[ni:nt])
                 ni += len(params)
-        functions = OrderedDict(sorted(funs.items(), key=lambda x: get_l(x[0])))
+        functions = OrderedDict(sorted(functions.items(),
+                                key=lambda x: get_l(x[0])))
         bs = cls(name=name, element=element, functions=functions)
         bs.uncontract()
         return bs
 
     @classmethod
-    def from_sequence(cls, functs=None, name=None, element=None):
+    def from_sequence(cls, funs=None, name=None, element=None):
         '''
         Return a basis set object generated from a sequence based on the
         specified arguments.
 
         Args:
-          functs : list of tuples
+          funs : list of tuples
             A list of tuple specifying the shell type, number of functions and
             parameters, e.g. `[('s', 'et', 4, (0.5, 2.0)), ('p', 'et', 3,
             (1.0, 3.0))]`
@@ -206,12 +213,13 @@ class BasisSet(object):
           out : BasisSet
         '''
 
-        funs = dict()
+        functions = dict()
 
-        for shell, seq, nf, params in functs:
-            funs[shell] = dict()
-            funs[shell]['e'] = generate_exponents(seq, nf, params)
-        functions = OrderedDict(sorted(funs.items(), key=lambda x: get_l(x[0])))
+        for shell, seq, nf, params in funs:
+            functions[shell] = dict()
+            functions[shell]['e'] = generate_exponents(seq, nf, params)
+        functions = OrderedDict(sorted(functions.items(),
+                                key=lambda x: get_l(x[0])))
         bs = cls(name=name, element=element, functions=functions)
         bs.uncontract()
         bs.sort()
@@ -272,12 +280,12 @@ class BasisSet(object):
             atom, fs = list(res.items())[0]
             return cls(name=name, element=list(res.keys())[0],
                        functions=OrderedDict(sorted(fs.items(),
-                           key=lambda x: get_l(x[0]))))
+                                             key=lambda x: get_l(x[0]))))
         else:
             for atom, fs in res.items():
                 out[atom] = cls(name=name, element=atom,
                                 functions=OrderedDict(sorted(fs.items(),
-                                    key=lambda x: get_l(x[0]))))
+                                                      key=lambda x: get_l(x[0]))))
             return out
 
     def append(self, other):
@@ -306,7 +314,8 @@ class BasisSet(object):
         '''
 
         if shell is None:
-            return chain.from_iterable([self.functions[k]['e'] for k in self.functions.keys()])
+            return chain.from_iterable([self.functions[k]['e']
+                                        for k in self.functions.keys()])
         else:
             return self.functions[shell]['e']
 
@@ -324,11 +333,13 @@ class BasisSet(object):
         if copy:
             res = deepcopy(self)
             for shell, fs in res.functions.items():
-                fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
+                fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE)
+                            for i, _ in enumerate(fs['e'])]
             return res
         else:
             for shell, fs in self.functions.items():
-                fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE) for i, _ in enumerate(fs['e'])]
+                fs['cf'] = [np.array([tuple([i, 1.0])], dtype=CFDTYPE)
+                            for i, _ in enumerate(fs['e'])]
 
     def to_cfour(self, comment="", efmt="15.8f", cfmt="15.8f"):
         '''
@@ -338,10 +349,11 @@ class BasisSet(object):
           comment : str
             comment string
           efmt : str
-            string describing output format for the exponents, default: "20.10f"
+            string describing output format for the exponents,
+            default: "20.10f"
           cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+            string describing output format for the contraction
+            coefficients, default: "15.8f"
 
         Returns:
           res : str
@@ -365,7 +377,8 @@ class BasisSet(object):
 
         for shell, fs in self.functions.items():
             for lst in splitlist(fs['e'], 5):
-                res += "".join(["{0:>{efmt}}".format(e, efmt=efmt) for e in lst]) + "\n"
+                res += "".join(["{0:>{efmt}}".format(e, efmt=efmt)
+                                for e in lst]) + "\n"
             res += "\n"
             # create an array with all the contraction coefficients for a given shell
             cc = self.contraction_matrix(shell)
@@ -454,9 +467,9 @@ class BasisSet(object):
 
     def contraction_matrix(self, shell):
         '''
-        Return the contraction coefficients for a given shell in a matrix form
-        with size ne*nc, where ne is the number of exponents and nc is the number
-        of contracted functions
+        Return the contraction coefficients for a given shell in a
+        matrix form with size `ne * nc`, where `ne` is the number of
+        exponents and `nc` is the number of contracted functions
 
         Args:
           shell : str
@@ -482,10 +495,11 @@ class BasisSet(object):
 
         Args:
           efmt : str
-            string describing output format for the exponents, default: "20.10f"
+            string describing output format for the exponents,
+            default: "20.10f"
           cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+            string describing output format for the contraction
+            coefficients, default: "15.8f"
 
         Returns:
           res : str
@@ -506,10 +520,11 @@ class BasisSet(object):
 
         Args:
           efmt : str
-            string describing output format for the exponents, default: "20.10f"
+            string describing output format for the exponents,
+            default: "20.10f"
           cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+            string describing output format for the contraction
+            coefficients, default: "15.8f"
 
         Returns:
           res : str
@@ -530,11 +545,13 @@ class BasisSet(object):
 
         Args:
             withpars : bool
-                A flag to indicate whether to wrap the basis with "basis={ }" string
+                A flag to indicate whether to wrap the basis with
+                `basis={ }` string
             efmt : str
                 Output format for the exponents, default: "20.10f"
             cfmt : str
-                Output format for the contraction coefficients, default: "15.8f"
+                Output format for the contraction coefficients,
+                default: "15.8f"
 
         Returns:
             res : str
@@ -568,10 +585,11 @@ class BasisSet(object):
 
         Args:
           efmt : str
-            string describing output format for the exponents, default: "20.10f"
+            string describing output format for the exponents,
+            default: "20.10f"
           cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+            string describing output format for the contraction
+            coefficients, default: "15.8f"
 
         Returns:
           res : str
@@ -620,10 +638,11 @@ class BasisSet(object):
 
         Args:
           efmt : str
-            string describing output format for the exponents, default: "20.10f"
+            string describing output format for the exponents,
+            default: "20.10f"
           cfmt : str
-            string describing output format for the contraction coefficients,
-            default: "15.8f"
+            string describing output format for the contraction
+            coefficients, default: "15.8f"
 
         Returns:
           res : str
@@ -632,24 +651,31 @@ class BasisSet(object):
 
         res = ''
         for shell, fs in self.functions.items():
-            # create an array with all the contraction coefficients for a given shell
+            # create an array with all the contraction coefficients
+            # for a given shell
             res += "\n" + "{s} shell".format(s=shell).center(40, '=') + "\n"
             cc = self.contraction_matrix(shell)
             count = 0
             # select columns with more than 1 non zero coefficients
-            nonzerocolmask = np.array([np.count_nonzero(col) > 1 for col in cc.T])
-            nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
+            nonzerocolmask = np.array([np.count_nonzero(col) > 1
+                                       for col in cc.T])
+            nonzerorowmask = np.array([np.count_nonzero(row) > 0
+                                       for row in cc[:, nonzerocolmask]])
             if np.any(nonzerocolmask):
                 res += 'Contracted:\n'
-                for expt, cfc in zip(fs['e'][nonzerorowmask], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
+                for expt, cfc in zip(fs['e'][nonzerorowmask],
+                                     cc[np.ix_(nonzerorowmask,
+                                               nonzerocolmask)]):
                     count += 1
-                    res += "{i:5d}{e:>{efmt}}{c}".format(i=count, e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
+                    res += "{i:5d}{e:>{efmt}}{c}".format(i=count, e=expt,
+                                                         efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
 
             if np.any(np.logical_not(nonzerocolmask)):
                 res += 'Uncontracted:\n'
                 for colidx in np.where(np.logical_not(nonzerocolmask))[0]:
                     count += 1
-                    nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, colidx]])
+                    nonzerorowmask = np.array([np.count_nonzero(row) > 0
+                                               for row in cc[:, colidx]])
                     e = fs['e'][nonzerorowmask][0]
                     c = cc[nonzerorowmask, :][0][colidx]
                     res += "{i:5d}{e:>{efmt}}{c:>{cfmt}}".format(i=count, e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
@@ -670,9 +696,11 @@ class BasisSet(object):
         '''
 
         if spherical:
-            return sum(nspherical(get_l(shell))*len(fs['cf']) for shell, fs in self.functions.items())
+            return sum(nspherical(get_l(shell)) * len(fs['cf'])
+                       for shell, fs in self.functions.items())
         else:
-            return sum(ncartesian(get_l(shell))*len(fs['cf']) for shell, fs in self.functions.items())
+            return sum(ncartesian(get_l(shell)) * len(fs['cf'])
+                       for shell, fs in self.functions.items())
 
     def nprimitive(self, spherical=True):
         '''
@@ -690,12 +718,15 @@ class BasisSet(object):
 
         if spherical:
             # calculate the number of spherical components per shell
-            ncomp = [nspherical(get_l(shell)) for shell in self.functions.keys()]
+            ncomp = [nspherical(get_l(shell))
+                     for shell in self.functions.keys()]
         else:
             # calculate the number of cartesian components per shell
-            ncomp = [ncartesian(get_l(shell)) for shell in self.functions.keys()]
+            ncomp = [ncartesian(get_l(shell))
+                     for shell in self.functions.keys()]
 
-        return sum([prim*nc for prim, nc in zip(self.primitives_per_shell(), ncomp)])
+        return sum([prim * nc for prim, nc in zip(self.primitives_per_shell(),
+                                                  ncomp)])
 
     def contraction_scheme(self):
         '''
@@ -707,9 +738,9 @@ class BasisSet(object):
             cs.append((shell, len(fs['e']), len(fs['cf'])))
             ec.append([len(cfs) for cfs in fs['cf']])
         return "({p:s}) -> [{c:s}] : {{{ec}}}".format(
-                p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
-                c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
-                ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
+            p="".join(["{0:d}{1:s}".format(c[1], c[0]) for c in cs]),
+            c="".join(["{0:d}{1:s}".format(c[2], c[0]) for c in cs]),
+            ec="/".join([" ".join(["{0:d}".format(c) for c in x]) for x in ec]))
 
     def primitives_per_shell(self):
         '''
@@ -742,7 +773,8 @@ class BasisSet(object):
 
     def contraction_type(self):
         '''
-        Try to determine the contraction type: segmented, general, uncontracted, unknown.
+        Try to determine the contraction type: segmented, general,
+        uncontracted, unknown.
         '''
 
         pps = self.primitives_per_shell()
@@ -751,7 +783,8 @@ class BasisSet(object):
         if any(x > 1 for x in pps):
             if all(all(x == 1 for x in shell) for shell in ppc):
                 return "uncontracted"
-            elif all(all(pinc == np for pinc in shell) for np, shell in zip(pps, ppc)):
+            elif all(all(pinc == np for pinc in shell)
+                     for np, shell in zip(pps, ppc)):
                 return "general"
             else:
                 return "unknown"
@@ -783,7 +816,8 @@ class BasisSet(object):
             # actually sort the exponents and coefficients
             fs['e'] = fs['e'][idx]
             for cf in fs['cf']:
-                cf['idx'] = np.asarray([np.nonzero(idx == y)[0][0] for y in cf['idx']])
+                cf['idx'] = np.asarray([np.nonzero(idx == y)[0][0]
+                                        for y in cf['idx']])
                 cf.sort(order='idx')
 
     def partial_wave_expand(self):
@@ -1197,8 +1231,8 @@ def zlmtoxyz(l):
 
     Returns:
       out :math:`((l+1)*(l+2)/2, 2*l + 1)` : numpy.array
-        Expansion coefficients of real spherical harmonics in terms of cartesian
-        gaussians
+        Expansion coefficients of real spherical harmonics in terms of
+        cartesian gaussians
     '''
 
     ncart = (l + 1) * (l + 2) // 2
@@ -1295,18 +1329,18 @@ def bsconvert():
     '''
 
     parser = ArgumentParser(description='Convert basis set between formats of different programs')
-    parser.add_argument("filename", help="file name with a basis set")
+    parser.add_argument("filename", help="file name with a basis set, default='pickle'")
     parser.add_argument("-if",
                         "--inputformat",
                         choices=["gamessus", "gaussian", "molpro", "pickle"],
                         help="Basis set input format",
-                        default="gamessus")
+                        default="pickle")
     parser.add_argument("-of",
                         "--outputformat",
                         choices=["cfour", "dalton", "gamessus", "gaussian",
                                  "molpro", "nwchem", "pickle"],
                         help="Basis set output format",
-                        default="gamessus")
+                        default="std")
     args = parser.parse_args()
 
     name = os.path.splitext(args.filename)[0]
