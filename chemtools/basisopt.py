@@ -38,6 +38,7 @@ from collections import OrderedDict
 import numpy as np
 from scipy.optimize import minimize
 
+from chemtools.basisparse import ORBITALS
 from chemtools.basisset import BasisSet, get_num_params, sliceinto
 
 
@@ -191,9 +192,28 @@ class BSOptimizer(object):
     @fsopt.setter
     def fsopt(self, value):
 
+        seqs = ["et", "even", "eventemp", "even tempered",
+                "wt", "well", "welltemp", "well tempered",
+                "le", "legendre", "exp", "exponents"]
+
         if value is None:
-            raise ValueError("no dictionary describing basis set to be optimized given")
+            raise ValueError("<fsopt> cannot be None")
         else:
+            if isinstance(value, dict):
+                for symbol, v in value.items():
+                    if v[0].lower() not in ORBITALS:
+                        msg = '<{}>: <shell> '.format(symbol) +\
+                              ' should be one of {}'.format(', '.join(ORBITALS)) +\
+                              ', got: {}'.format(v[0])
+                        raise ValueError(msg)
+                    if v[1] not in seqs:
+                        msg = '<{}>: <seq> '.format(symbol) +\
+                              ' should be one of {}'.format(', '.join(seqs)) +\
+                              ', got: {}'.format(v[1])
+                        raise ValueError(msg)
+            else:
+                ValueError('<fsopt> should be a dict, got: {}'.format(type(value)))
+
             self._fsopt = OrderedDict(sorted(value.items(),
                                              key=lambda t: t[0]))
 
