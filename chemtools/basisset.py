@@ -666,7 +666,8 @@ class BasisSet(object):
                 res += "{e:>{efmt}}{c}".format(e=expt, efmt=ffmt, c="".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in next(it)])) + "\n"
 
                 for row in it:
-                    res += ' ' * int(ffmt.split('.')[0]) + "".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in row]) + "\n"
+                    res += ' ' * int(ffmt.split('.')[0]) + \
+                        "".join(["{0:{cfmt}}".format(c, cfmt=ffmt) for c in row]) + "\n"
         return res
 
     def to_gamessus(self, efmt="20.10f", cfmt="15.8f"):
@@ -689,9 +690,14 @@ class BasisSet(object):
         res = ''
         for shell, fs in self.functions.items():
             for contraction in fs["cf"]:
-                res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(), n=len(contraction))
+                res += "{s:<1s}{n:>3d}\n".format(s=shell.upper(),
+                                                 n=len(contraction))
                 for i, (idx, coeff) in enumerate(contraction, start=1):
-                    res += "{i:3d}{e:>{efmt}}{c:>{cfmt}}".format(i=i, e=fs['e'][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
+                    res += "{i:3d}{e:>{efmt}}{c:>{cfmt}}".format(i=i,
+                                                                 e=fs['e'][idx],
+                                                                 efmt=efmt,
+                                                                 c=coeff,
+                                                                 cfmt=cfmt) + "\n"
         return res + "\n"
 
     def to_gaussian(self, efmt="20.10f", cfmt="15.8f"):
@@ -714,9 +720,13 @@ class BasisSet(object):
         res = "****\n{e:<7s}0\n".format(e=self.element)
         for shell, fs in self.functions.items():
             for contraction in fs["cf"]:
-                res += "{s:<1s}{n:>4d}{i:>7.2f}\n".format(s=shell.upper(), n=len(contraction),i=1.0)
+                res += "{s:<1s}{n:>4d}{i:>7.2f}\n".format(s=shell.upper(),
+                                                          n=len(contraction),
+                                                          i=1.0)
                 for idx, coeff in contraction:
-                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=fs['e'][idx], efmt=efmt, c=coeff, cfmt=cfmt)+ "\n"
+                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=fs['e'][idx],
+                                                           efmt=efmt, c=coeff,
+                                                           cfmt=cfmt) + "\n"
         return res + "****\n"
 
     def to_molpro(self, withpars=False, efmt="20.10f", cfmt="15.8f"):
@@ -738,23 +748,31 @@ class BasisSet(object):
                 basis set string
         '''
 
+        # reorder indices of cf if necessary without modiyfing the instance
+        funs = deepcopy(self.functions)
+        for shell, fs in funs.items():
+            if not has_consecutive_indices(fs):
+                funs[shell] = reorder_shell_to_consecutive(fs)
+
         res = ""
-        for shell, fs in self.functions.items():
-            exps = ", ".join(["{0:>{efmt}}".format(e, efmt=efmt).lstrip() for e in fs['e']])
-            res += "{s:>s}, {e:>s}, ".format(s=shell, e=self.element) + exps + '\n'
-            cm = self.contraction_matrix(shell)
+        for shell, fs in funs.items():
+            exps = ", ".join(["{0:>{efmt}}".format(e, efmt=efmt).lstrip()
+                              for e in fs['e']]) + '\n'
+            res += "{s:>s}, {e:>s}, ".format(s=shell, e=self.element) + exps
+
             for icol, cf in enumerate(fs['cf']):
                 if cf.size == 1:
-                    coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cf['cc']])
-                    res += "c, {0:d}.{0:d}, ".format(cf['idx'][0] + 1) + coeffs + '\n'
+                    coeffs = ", ".join(["{0:>{cfmt}}".format(cc,
+                        cfmt=cfmt).lstrip() for cc in cf['cc']])
+                    res += "c, {0:d}.{0:d}, ".format(cf['idx'][0] + 1) + \
+                        coeffs + '\n'
                 else:
-                    # check if indices are consecutive
-                    if np.all(np.sort(cf['idx'])[1:] - np.sort(cf['idx'])[:-1] == 1):
-                        coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cf['cc']])
-                        res += "c, {0:d}.{1:d}, ".format(cf['idx'].min() + 1, cf['idx'].max() + 1) + coeffs + '\n'
-                    else:
-                        coeffs = ", ".join(["{0:>{cfmt}}".format(cc, cfmt=cfmt).lstrip() for cc in cm[:, icol]])
-                        res += "c, {0:d}.{1:d}, ".format(cf['idx'].min() + 1, cf['idx'].max() + 1) + coeffs + '\n'
+                    # indices should be consecutive
+                    coeffs = ", ".join(["{0:>{cfmt}}".format(cc,
+                        cfmt=cfmt).lstrip() for cc in cf['cc']])
+                    res += "c, {0:d}.{1:d}, ".format(cf['idx'].min() + 1,
+                                                     cf['idx'].max() + 1) +\
+                        coeffs + '\n'
         if withpars:
             res = 'basis={\n' + res + '}'
         return res
@@ -778,24 +796,29 @@ class BasisSet(object):
 
         res = 'BASIS "ao basis" PRINT\n'
         for shell, fs in self.functions.items():
-            # create an array with all the contraction coefficients for a given shell
+            # create an array of contraction coefficients for a given shell
             cc = self.contraction_matrix(shell)
 
             # select columns with more than 1 non zero coefficients
-            nonzerocolmask = np.array([np.count_nonzero(col) > 1 for col in cc.T])
-            nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, nonzerocolmask]])
+            nonzerocolmask = np.array([np.count_nonzero(col) > 1
+                                       for col in cc.T])
+            nonzerorowmask = np.array([np.count_nonzero(row) > 0
+                                       for row in cc[:, nonzerocolmask]])
             if np.any(nonzerocolmask):
                 res += "{e} {s}\n".format(e=self.element, s=shell)
-                for expt, cfc in zip(fs['e'][nonzerorowmask], cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
+                for expt, cfc in zip(fs['e'][nonzerorowmask],
+                                     cc[np.ix_(nonzerorowmask, nonzerocolmask)]):
                     res += "{e:>{efmt}}{c}".format(e=expt, efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
 
             if np.any(np.logical_not(nonzerocolmask)):
                 for colidx in np.where(np.logical_not(nonzerocolmask))[0]:
                     res += "{e} {s}\n".format(e=self.element, s=shell)
-                    nonzerorowmask = np.array([np.count_nonzero(row) > 0 for row in cc[:, colidx]])
+                    nonzerorowmask = np.array([np.count_nonzero(row) > 0
+                                               for row in cc[:, colidx]])
                     e = fs['e'][nonzerorowmask][0]
                     c = cc[nonzerorowmask, :][0][colidx]
-                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
+                    res += "{e:>{efmt}}{c:>{cfmt}}".format(e=e, efmt=efmt, c=c,
+                                                           cfmt=cfmt) + "\n"
         return res + "END\n"
 
     def to_pickle(self, fname=None):
@@ -847,8 +870,11 @@ class BasisSet(object):
                                      cc[np.ix_(nonzerorowmask,
                                                nonzerocolmask)]):
                     count += 1
+                    coeffrow = "".join(["{0:{cfmt}}".format(c, cfmt=cfmt)
+                                        for c in cfc])
                     res += "{i:5d}{e:>{efmt}}{c}".format(i=count, e=expt,
-                                                         efmt=efmt, c="".join(["{0:{cfmt}}".format(c, cfmt=cfmt) for c in cfc])) + "\n"
+                                                         efmt=efmt,
+                                                         c=coeffrow) + "\n"
 
             if np.any(np.logical_not(nonzerocolmask)):
                 res += 'Uncontracted:\n'
@@ -858,7 +884,10 @@ class BasisSet(object):
                                                for row in cc[:, colidx]])
                     e = fs['e'][nonzerorowmask][0]
                     c = cc[nonzerorowmask, :][0][colidx]
-                    res += "{i:5d}{e:>{efmt}}{c:>{cfmt}}".format(i=count, e=e, efmt=efmt, c=c, cfmt=cfmt) + "\n"
+                    res += "{i:5d}{e:>{efmt}}{c:>{cfmt}}".format(i=count, e=e,
+                                                                 efmt=efmt,
+                                                                 c=c,
+                                                                 cfmt=cfmt) + "\n"
         return res
 
     def __repr__(self):
@@ -881,6 +910,66 @@ class BasisSet(object):
         res += 'Functions:\n'
         res += self.print_functions()
         return res
+
+
+def has_consecutive_indices(shell):
+    '''
+    Check if all the contracted functions have consecutive indices
+
+    Args:
+        shell : dict
+            Basis functions for a given shell asa dict with structure
+            ``{'e' : np.array(), 'cf': [np.array(), np.array(), ...]}``
+    '''
+
+    for i, cf in enumerate(shell['cf']):
+        if len(cf) > 1:
+            if not np.all(np.sort(cf['idx'])[1:] -
+                          np.sort(cf['idx'])[:-1] == 1):
+                return False
+    else:
+        return True
+
+
+def reorder_shell_to_consecutive(shell):
+    '''
+    Reorder the exponents so that the indices of the contracted functions
+    have consecutive inidices.
+
+    Args:
+        shell : dict
+            Basis functions for a given shell asa dict with structure
+            ``{'e' : np.array(), 'cf': [np.array(), np.array(), ...]}``
+
+    Returns:
+        shell : dict
+            Same shell as on input but with reordered exponents and relabelled
+            contracted functions
+    '''
+
+    # get the index of the largest contracted function
+    cfidx = np.argmax([len(x) for x in shell['cf']])
+
+    # get the new indices where the ones corresponding to the contracted
+    # function are consecutive
+    oldidx = shell['cf'][cfidx]['idx']
+    conidx = np.arange(shell['e'].size, dtype=int)
+    restidx = np.setdiff1d(conidx, oldidx)
+    newidx = np.concatenate((oldidx, restidx))
+
+    funs = {'e': shell['e'][newidx], 'cf': []}
+
+    newidxlist = newidx.tolist()
+
+    for cf in shell['cf']:
+        funs['cf'].append(np.array([(newidxlist.index(i), c) for i, c in cf],
+                                   dtype=CFDTYPE))
+
+    # check if all the contracted functions have consecutive indices
+    if not has_consecutive_indices(funs):
+        raise ValueError('cannot reorder functions, check #cf: {}'.format(i))
+
+    return funs
 
 
 def merge(first, other):
