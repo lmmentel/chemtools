@@ -36,13 +36,15 @@ from string import Template
 
 from abc import ABCMeta, abstractmethod
 
+
 class Calculator():
     '''
     Abstract class that should be subclassed when adding a new code interace.
     '''
     __metaclass__ = ABCMeta
 
-    def __init__(self, exevar=None, executable=None, runopts=None, scratch=None):
+    def __init__(self, exevar=None, executable=None, runopts=None,
+                 scratch=None):
 
         self.exevar = exevar
 
@@ -100,7 +102,6 @@ class Calculator():
             self._scratch = path
         else:
             raise ValueError("Scratch directory doesn't exist: {}".format(path))
-
 
     @abstractmethod
     def parse(self, fname, objective, regexp=None):
