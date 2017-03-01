@@ -752,7 +752,7 @@ class BasisSet(object):
         nccols = ncf[idx]
 
         out = '\\begin{{tabular}}{{{}}}\n'.format('r' * (nccols + 2))
-        out += 'No. & \multicolumn{{1}}{{c}}{{Exponent}} & ' +\
+        out += 'No. & \multicolumn{1}{c}{Exponent} & ' +\
                '\multicolumn{{{0:d}}}{{c}}{{Coefficients }} \\\ \n'.format(nccols)
 
         for shell, fs in self.functions.items():
