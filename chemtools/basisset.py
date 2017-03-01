@@ -729,6 +729,68 @@ class BasisSet(object):
                                                            cfmt=cfmt) + "\n"
         return res + "****\n"
 
+    def to_latex(self, efmt="20.10f", cfmt="15.8f"):
+        '''
+        Return a string with the basis set as LaTeX table/
+
+        Args:
+            efmt : str
+                Output format for the exponents, default: "20.10f"
+            cfmt : str
+                Output format for the contraction coefficients,
+                default: "15.8f"
+
+        Returns:
+            res : str
+                basis set string in LaTeX format
+        '''
+
+        # get the number of contracted functions per shell
+        ncf = [sum([len(cfs) > 1 for cfs in fs['cf']])
+               for sh, fs in self.functions.items()]
+        idx = np.argmax(ncf)
+        nccols = ncf[idx]
+
+        out = '\\begin{{tabular}}{{{}}}\n'.format('r' * (nccols + 2))
+        out += 'No. & \multicolumn{{1}}{{c}}{{Exponent}} & ' +\
+               '\multicolumn{{{0:d}}}{{c}}{{Coefficients }} \\\ \n'.format(nccols)
+
+        for shell, fs in self.functions.items():
+            out += '\hline \n'
+            out += '\multicolumn{{{0:d}}}{{c}}{{ {1:s} shell }} \\\ \hline \n'.format(nccols + 2, shell)
+
+            cc = self.contraction_matrix(shell)
+            count = 0
+            # select columns with more than 1 non zero coefficients
+            nonzerocolmask = np.array([np.count_nonzero(col) > 1
+                                       for col in cc.T])
+            nonzerorowmask = np.array([np.count_nonzero(row) > 0
+                                       for row in cc[:, nonzerocolmask]])
+            if np.any(nonzerocolmask):
+                for expt, cfc in zip(fs['e'][nonzerorowmask],
+                                     cc[np.ix_(nonzerorowmask,
+                                               nonzerocolmask)]):
+                    count += 1
+                    coeffrow = " & ".join(["{0:{cfmt}}".format(c, cfmt=cfmt)
+                                           for c in cfc])
+                    out += "{i:5d} & {e:>{efmt}} & {c}".format(i=count, e=expt,
+                                                               efmt=efmt,
+                                                               c=coeffrow) + " \\\ \n"
+
+            if np.any(np.logical_not(nonzerocolmask)):
+                for colidx in np.where(np.logical_not(nonzerocolmask))[0]:
+                    count += 1
+                    nonzerorowmask = np.array([np.count_nonzero(row) > 0
+                                               for row in cc[:, colidx]])
+                    e = fs['e'][nonzerorowmask][0]
+                    c = cc[nonzerorowmask, :][0][colidx]
+                    out += "{i:5d} & {e:>{efmt}} & {c:>{cfmt}} \\\ \n".format(i=count, e=e,
+                                                                              efmt=efmt,
+                                                                              c=c,
+                                                                              cfmt=cfmt)
+        out += '\end{tabular}'
+        return out
+
     def to_molpro(self, withpars=False, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set in MOLPRO format.
