@@ -63,7 +63,7 @@ setup(
         'chemtools/submitmolpro.py',
         'scripts/bsold2new'],
     url='https://bitbucket.org/lukaszmentel/chemtools/',
-    version='0.8.1',
+    version='0.8.2',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
