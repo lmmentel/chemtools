@@ -28,8 +28,8 @@ Module for handling atoms and molecules.
 
 from math import sqrt
 import numpy as np
-import os
 from mendeleev import element
+
 
 class Atom(object):
 
@@ -92,6 +92,7 @@ class Atom(object):
         out = "{0:<10s} {1:14.2f}\t{2:15.5f}{3:15.5f}{4:15.5f}\n".format(
                 self.symbol, float(self.atomic_number), self.xyz[0], self.xyz[1], self.xyz[2])
         return out
+
 
 class Molecule(object):
 
