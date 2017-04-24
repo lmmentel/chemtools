@@ -34,7 +34,7 @@ ORBITALS = ('s', 'p', 'd', 'f', 'g', 'h', 'i', 'k')
 
 
 def get_l(shell):
-    'Return the orbital angular momentum quantum number for a given shell'
+    'Return the orbital angular momentum quantum number for a given subshell'
 
     if shell in ORBITALS:
         return ORBITALS.index(shell.lower())
