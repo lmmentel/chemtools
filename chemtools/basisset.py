@@ -784,10 +784,8 @@ class BasisSet(object):
                                                for row in cc[:, colidx]])
                     e = fs['e'][nonzerorowmask][0]
                     c = cc[nonzerorowmask, :][0][colidx]
-                    out += "{i:5d} & {e:>{efmt}} & {c:>{cfmt}} \\\ \n".format(i=count, e=e,
-                                                                              efmt=efmt,
-                                                                              c=c,
-                                                                              cfmt=cfmt)
+                    out += "{i:5d} & {e:>{efmt}} & \\\ \n".format(i=count, e=e,
+                                                                  efmt=efmt)
         out += '\end{tabular}'
         return out
 
