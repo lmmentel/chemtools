@@ -33,7 +33,6 @@ requirements:
     - pandas
   run:
     - python
-    - numba
     - numpy
     - scipy
     - pandas
