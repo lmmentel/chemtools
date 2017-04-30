@@ -27,6 +27,7 @@ def grid_product(dicts):
     '''
     return (dict(zip(dicts, x)) for x in product(*dicts.itervalues()))
 
+
 def expand_grids(grids=[], debug=False):
 
     '''Expand the grid definition and calculate all the grid points.'''
@@ -41,6 +42,7 @@ def expand_grids(grids=[], debug=False):
 
 # controller methods
 
+
 def add_atom(session, name, basisset):
 
     atom = Atom(name=name,
@@ -54,6 +56,7 @@ def add_atom(session, name, basisset):
     session.add(atom)
     session.commit()
     return True
+
 
 def add_trimer(session, name, basisset, ram, raa, gamma):
     '''
@@ -76,6 +79,7 @@ def add_trimer(session, name, basisset, ram, raa, gamma):
     session.commit()
     return True
 
+
 def add_tetramer(session, name, basisset, r_mol1_mol2, r_mol1, r_mol2, phi_1,
                  phi_2, gamma):
     '''
@@ -95,6 +99,7 @@ def add_tetramer(session, name, basisset, r_mol1_mol2, r_mol1, r_mol2, phi_1,
     session.commit()
     return True
 
+
 def add_dimer(session, name, basisset, raa):
     '''
     Loop over all jobs and return a list of dicts with job info
@@ -104,7 +109,7 @@ def add_dimer(session, name, basisset, raa):
         database session object (connection)
       name : str
         name of the system
-      basissets : list 
+      basissets : list
         list of strings with basis set names
       grids : numpy.array
         1-D numpy array with the values of the internuclear distances
@@ -123,6 +128,7 @@ def add_dimer(session, name, basisset, raa):
     session.add(dimer)
     session.commit()
     return True
+
 
 def create_dirs(session, modelobj=None, workdir=os.getcwd()):
     '''

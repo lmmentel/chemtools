@@ -200,17 +200,18 @@ class BSOptimizer(object):
             raise ValueError("<fsopt> cannot be None")
         else:
             if isinstance(value, dict):
-                for symbol, v in value.items():
-                    if v[0].lower() not in ORBITALS:
-                        msg = '<{}>: <shell> '.format(symbol) +\
-                              ' should be one of {}'.format(', '.join(ORBITALS)) +\
-                              ', got: {}'.format(v[0])
-                        raise ValueError(msg)
-                    if v[1] not in seqs:
-                        msg = '<{}>: <seq> '.format(symbol) +\
-                              ' should be one of {}'.format(', '.join(seqs)) +\
-                              ', got: {}'.format(v[1])
-                        raise ValueError(msg)
+                for symbol, funlist in value.items():
+                    for funtuple in funlist:
+                        if funtuple[0].lower() not in ORBITALS:
+                            msg = '<{}>: <shell> '.format(symbol) +\
+                                  ' should be one of {}'.format(', '.join(ORBITALS)) +\
+                                  ', got: {}'.format(funtuple[0])
+                            raise ValueError(msg)
+                        if funtuple[1] not in seqs:
+                            msg = '<{}>: <seq> '.format(symbol) +\
+                                  ' should be one of {}'.format(', '.join(seqs)) +\
+                                  ', got: {}'.format(funtuple[1])
+                            raise ValueError(msg)
             else:
                 ValueError('<fsopt> should be a dict, got: {}'.format(type(value)))
 
