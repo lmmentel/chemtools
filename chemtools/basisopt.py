@@ -27,6 +27,8 @@
 exponents of basis sets"""
 
 from __future__ import division, print_function
+
+import atexit
 import datetime
 import os
 import pprint
@@ -109,7 +111,8 @@ class BSOptimizer(object):
     def __init__(self, objective=None, core=None, template=None,
                  regexp=None, verbose=False, code=None, optalg=None, mol=None,
                  fsopt=None, staticbs=None, fname=None, uselogs=True,
-                 runcore=False, penalize=None, penaltykwargs=None):
+                 runcore=False, penalize=None, penaltykwargs=None,
+                 logfile=None):
 
         self.fsopt = fsopt
         self.staticbs = staticbs
@@ -126,6 +129,7 @@ class BSOptimizer(object):
         self.uselogs = uselogs
         self.penalize = penalize
         self.penaltykwargs = penaltykwargs
+        self.logfile = logfile
 
         if runcore:
             self.function = run_core_energy
@@ -230,6 +234,26 @@ class BSOptimizer(object):
         else:
             self._penaltykwargs = value
 
+    @property
+    def logfile(self):
+        return self._logfile
+
+    @logfile.setter
+    def logfile(self, value):
+
+        if value is None:
+            self._logfile = None
+            self.log = sys.stdout
+        else:
+            self._logfile = value
+            self.log = open(value, 'w')
+            atexit.register(self.finalize)
+
+    def finalize(self):
+
+        if self.log is not sys.stdout:
+            self.log.close()
+
     def header(self):
         '''
         Return the basic information about the execution environment and
@@ -286,10 +310,10 @@ class BSOptimizer(object):
                 An instance of the ``scipy.optimize.OptimizeResult`` class
         '''
 
-        print(self.header())
+        print(self.header(), file=self.log)
         print("\n" + "=" * 80, "STARTING OPTIMIZATION".center(80, "="),
-              "=" * 80, end="\n\n", sep='\n')
-        print(self.jobinfo())
+              "=" * 80, end="\n\n", sep='\n', file=self.log)
+        print(self.jobinfo(), file=self.log)
 
         starttime = time.time()
 
@@ -300,8 +324,9 @@ class BSOptimizer(object):
                                jac=self.optalg['jacob'],
                                tol=self.optalg["tol"],
                                options=self.optalg["options"])
-        print(self.result)
-        print("Elapsed time : {0:>20.3f} sec".format(time.time() - starttime))
+        print(self.result, file=self.log)
+        print("Elapsed time : {0:>20.3f} sec".format(time.time() - starttime),
+              file=self.log)
 
     def get_basis(self, name=None, element=None):
         '''
@@ -463,11 +488,11 @@ def run_total_energy(x0, *args):
         penalty = 1.0
 
     if bso.verbose:
-        print("Current exponents being optimized:")
+        print("Current exponents being optimized:", file=bso.log)
         for atom, functs in bso.fsopt.items():
             basis = BasisSet.from_optpars(x0, funs=functs, name='opt',
                                           element=atom, explogs=bso.uselogs)
-            print(atom, basis.print_functions())
+            print(atom, basis.print_functions(), file=bso.log)
 
     bso.code.write_input(fname=bso.fname, template=bso.template, basis=bsdict,
                          mol=bso.mol, core=bso.core)
@@ -482,12 +507,12 @@ def run_total_energy(x0, *args):
         if objective is None:
             raise ValueError("Unable to parse the objective, check output")
         if bso.verbose:
-            print("{0:<s}".format("Job Terminated without errors"))
-            print("x0 : ", ", ".join([str(x) for x in x0]))
-            print("\n{0:<20s} : {1:>30s}".format("Output", output))
-            print("{0:<20s} : {1:>30.10f}".format(str(bso.objective), objective))
-            print("{0:<20s} : {1:>30.10f}".format("Objective", objective * penalty))
-            print("=" * 80)
+            print("{0:<s}".format("Job Terminated without errors"), file=bso.log)
+            print("x0 : ", ", ".join([str(x) for x in x0]), file=bso.log)
+            print("\n{0:<20s} : {1:>30s}".format("Output", output), file=bso.log)
+            print("{0:<20s} : {1:>30.10f}".format(str(bso.objective), objective), file=bso.log)
+            print("{0:<20s} : {1:>30.10f}".format("Objective", objective * penalty), file=bso.log)
+            print("=" * 80, file=bso.log)
         return objective * penalty
     else:
         raise ValueError("something went wrong, check output {0:s}".format(output))
@@ -533,11 +558,11 @@ def run_core_energy(x0, *args):
         penalty = 1.0
 
     if bso.verbose:
-        print("Current exponents being optimized:")
+        print("Current exponents being optimized:", file=bso.log)
         for atom, functs in bso.fsopt.items():
             basis = BasisSet.from_optpars(x0, funs=functs, name='opt',
                                           element=atom, explogs=bso.uselogs)
-            print(atom, basis.print_functions())
+            print(atom, basis.print_functions(), file=bso.log)
 
     citote = []
     stats = []
@@ -555,21 +580,21 @@ def run_core_energy(x0, *args):
 
     if stats[0] and stats[1]:
         if bso.verbose:
-            print("x0 : ", ", ".join([str(x) for x in x0]))
+            print("x0 : ", ", ".join([str(x) for x in x0]), file=bso.log)
             print("{0:<20s} : {1:>30s} {2:>30s}".format("Terminated OK",
                                                         str(stats[0]),
-                                                        str(stats[1])))
+                                                        str(stats[1])), file=bso.log)
             print("{0:<20s} : {1:>30.10f} {2:>30.10f}".format(str(bso.objective),
                                                               citote[0],
-                                                              citote[1]))
-            print("-" * 84)
+                                                              citote[1]), file=bso.log)
+            print("-" * 84, file=bso.log)
         coreenergy = citote[0] - citote[1]
         if coreenergy > 0.0:
             coreenergy = -1.0 * coreenergy
         if bso.verbose:
-            print("{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy))
+            print("{0:<20s} : {1:>30.10f}".format("Core energy", coreenergy), file=bso.log)
             print("{0:<20s} : {1:>30.10f}".format("Objective",
-                                                  coreenergy * penalty))
+                                                  coreenergy * penalty), file=bso.log)
             print("=" * 84)
         return coreenergy * penalty
     else:
