@@ -24,9 +24,10 @@
 
 from __future__ import division, print_function
 
-import numpy as np
+import json
 import re
 
+import numpy as np
 from mendeleev import element
 
 CFDTYPE = [('idx', np.int32), ('cc', np.float64)]
@@ -158,7 +159,8 @@ def parse_ecp(ecpstring):
 
     ecp = {}
     for i in startstop:
-        ecp = dict(list(ecp.items()) + list(parse_coeffs(lines[i[0]: i[1]]).items()))
+        ecp = dict(list(ecp.items()) +
+                   list(parse_coeffs(lines[i[0]: i[1]]).items()))
     return ecp
 
 
@@ -334,3 +336,22 @@ def merge_exponents(a, b):
     idxa = np.where(np.in1d(u, a))[0]
     idxb = np.where(np.in1d(u, b))[0]
     return u, idxa, idxb
+
+
+class NumpyEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        """If input object is an ndarray it will be converted into a dict
+        holding dtype, shape and the data, base64 encoded.
+        """
+
+        if isinstance(obj, np.ndarray):
+
+            if obj.dtype == CFDTYPE:
+                dtype = 'CFDTYPE'
+            else:
+                dtype = str(obj.dtype)
+
+            return dict(data=obj.tolist(), dtype=dtype)
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
