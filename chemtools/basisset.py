@@ -457,7 +457,7 @@ class BasisSet(object):
             return sum(ncartesian(get_l(shell)) * len(fs['cf'])
                        for shell, fs in self.functions.items())
 
-    def normalze(self):
+    def normalize(self):
         '''
         Normalize contraction coefficients for each contracted functions based
         on the primitive overlaps so that the norm is equal to 1.
@@ -470,7 +470,7 @@ class BasisSet(object):
                 norm2 = np.dot(cc[:, col], np.dot(po, cc[:, col]))
                 fs['cf'][col]['cc'] = cc[fs['cf'][col]['idx'], col] / np.sqrt(norm2)
 
-    def normalzation(self):
+    def normalization(self):
         '''
         For each function (contracted) calculate the norm and return a list of
         tuples containing the shell, function index and the norm respectively.
