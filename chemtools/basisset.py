@@ -24,20 +24,19 @@
 
 from __future__ import division, print_function
 
+import json
 import os
 import pickle
 import re
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 from copy import copy, deepcopy
 from argparse import ArgumentParser
 from itertools import chain
 import numpy as np
 from scipy.linalg import sqrtm, inv
 from scipy.special import factorial, factorial2, binom
-from chemtools.basisparse import parse_basis, merge_exponents, CFDTYPE, get_l
-
-
-Fun = namedtuple('Function', ['shell', 'seq', 'nf', 'params'])
+from chemtools.basisparse import (parse_basis, merge_exponents, CFDTYPE, get_l,
+                                  NumpyEncoder)
 
 
 class BasisSet(object):
@@ -268,6 +267,41 @@ class BasisSet(object):
                                                       key=lambda x: get_l(x[0]))))
             return out
 
+    @classmethod
+    def from_json(cls, jsonstring, **kwargs):
+        '''
+        Instantiate the `BasisSet` object from a JSON string
+
+        Args:
+            jsonstring: str
+                A JSON serialized string with the basis set
+        '''
+
+        def json_numpy_obj_hook(dct):
+            '''
+            Decodes a previously encoded numpy ndarray with proper shape
+            and dtype.
+
+            Args:
+                dct: (dict) json encoded ndarray
+
+            Returns:
+                (ndarray) if input was an encoded ndarray
+            '''
+
+            if isinstance(dct, dict) and 'dtype' in dct:
+                if dct['dtype'] == 'CFDTYPE':
+                    return np.array([tuple(r) for r in dct['data']],
+                                    dtype=CFDTYPE)
+                else:
+                    return np.array(dct['data'], dtype=dct['dtype'])
+            return dct
+
+        loaded = json.loads(jsonstring, object_hook=json_numpy_obj_hook,
+                            **kwargs)
+
+        return cls(**loaded)
+
     def append(self, other):
         '''Append functions from another BasisSet object
 
@@ -395,6 +429,13 @@ class BasisSet(object):
                                         for k in self.functions.keys()])
         else:
             return self.functions[shell]['e']
+
+    def get_filename(self, ext=None):
+
+        name = self.name.strip().replace(' ', '_') + '-' + self.element
+        if ext:
+            return name + '.' + ext
+        return name
 
     def nf(self, spherical=True):
         '''
@@ -729,6 +770,17 @@ class BasisSet(object):
                                                            cfmt=cfmt) + "\n"
         return res + "****\n"
 
+    def to_json(self, fname=None, **kwargs):
+        '''
+        Serizalize the basis set object to JSON format
+        '''
+
+        if fname:
+            with open(fname, 'w') as fjson:
+                json.dump(self.__dict__, fjson)
+
+        return json.dumps(self.__dict__, cls=NumpyEncoder)
+
     def to_latex(self, efmt="20.10f", cfmt="15.8f"):
         '''
         Return a string with the basis set as LaTeX table/
@@ -890,7 +942,7 @@ class BasisSet(object):
         '''
 
         if fname is None:
-            fname = self.name.strip().replace(' ', '_') + '.bas.pkl'
+            fname = self.get_filename('pkl')
 
         with open(fname, 'wb') as fbas:
             pickle.dump(self, fbas)
