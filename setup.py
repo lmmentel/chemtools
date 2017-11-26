@@ -50,8 +50,8 @@ setup(
     entry_points={
         'console_scripts': [
             'writeorbinp = chemtools.calculators.gamessus:writeorbinp',
-            'bsconvert = chemtools.basisset:bsconvert',
-            'bsprint = chemtools.basisset:bsprint',
+            'bsconvert = chemtools.cli:bsconvert',
+            'bsprint = chemtools.cli:bsprint',
         ]
     },
     license=open('LICENSE.rst').read(),
