@@ -44,10 +44,11 @@ class Molpro(Calculator):
 
     def parse(self, fname, objective, regularexp=None):
         '''
-        Parse a value from the output file ``fname`` based on the ``objective``.
+        Parse a value from the output file ``fname`` based on the
+        ``objective``.
 
-        If the value of the ``objective`` is ``regexp`` then the ``regularexp`` will
-        be used to parse the file.
+        If the value of the ``objective`` is ``regexp`` then the
+        ``regularexp`` will be used to parse the file.
         '''
 
         regexps = {
