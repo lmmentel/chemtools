@@ -5,3 +5,4 @@ scipy
 sqlalchemy
 guzzle_sphinx_theme
 nbsphinx
+ipython
