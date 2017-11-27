@@ -39,7 +39,7 @@ import os
 import re
 import sys
 from copy import copy
-from subprocess import Popen, PIPE
+from subprocess import call
 import numpy as np
 
 from .calculator import Calculator, InputTemplate
@@ -96,6 +96,12 @@ class GamessUS(Calculator):
         else:
             self._runopts = value
 
+    def get_command(self, inpfile):
+        'Return the command to execute'
+
+        return [self.executable, os.path.splitext(inpfile)[0], self.version] +\
+            self.runopts
+
     def remove_dat(self, inpfile):
         '''
         Remove the gamess dat file if it exists in the scratch directory.
@@ -117,13 +123,8 @@ class GamessUS(Calculator):
         if logfile is None:
             logfile = os.path.splitext(inpfile)[0] + ".log"
 
-        command = [self.executable, inpfile, self.version] + self.runopts
-        process = Popen(command, stdout=PIPE, stderr=PIPE)
-        output = process.communicate()[0]
-        #process.wait()
-
-        with open(logfile, 'wb') as fout:
-            fout.write(output)
+        with open(logfile, 'w') as fobj:
+            call(self.get_command(inpfile), stdout=fobj, stderr=fobj)
 
         return logfile
 
