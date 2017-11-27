@@ -12,55 +12,33 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
+import sys
+
+import guzzle_sphinx_theme
+import inspect
 
 if sys.version_info.major == 3:
     from unittest.mock import Mock    # if python ver >= 3.3
 else:
     from mock import Mock as Mock     # if python ver 2.7
 
-import sphinx_rtd_theme
-import inspect
-from sphinx import apidoc
-
-#class Mock(MagicMock):
-#    @classmethod
-#    def __getattr__(cls, name):
-#        return Mock()
-
-MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'scipy.linalg', 'scipy.special', 'pandas',
-    'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext', 'sqlalchemy.ext.associationproxy',
-    'sqlalchemy.ext.declarative', 'sqlalchemy.ext.hybrid', 'mendeleev',
-    'numba',
-    ]
+MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'scipy.linalg',
+                'scipy.special', 'pandas',
+                'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext',
+                'sqlalchemy.ext.associationproxy',
+                'sqlalchemy.ext.declarative', 'sqlalchemy.ext.hybrid',
+                'mendeleev', 'numba'
+                ]
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = Mock()
 
-#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    html_theme = 'default'
-else:
-    pass
-    sys.path.append('/home/lmentel/Devel/chemtools')
-
 __location__ = os.path.join(os.getcwd(), os.path.dirname(
     inspect.getfile(inspect.currentframe())))
 
-output_dir = os.path.join(__location__, "_reference")
-module_dir = os.path.join(__location__, "../../chemtools")
-cmd_line_template = "sphinx-apidoc -f --separate -o {outputdir} {moduledir}"
-cmd_line = cmd_line_template.format(outputdir=output_dir, moduledir=module_dir)
-apidoc.main(cmd_line.split(" "))
-
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+module_dir = os.path.normpath(os.path.join(__location__, "../../"))
+sys.path.insert(0, os.path.abspath(module_dir))
 
 # -- General configuration ------------------------------------------------
 
@@ -70,13 +48,19 @@ apidoc.main(cmd_line.split(" "))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.todo',
-              'sphinx.ext.autosummary', 'sphinx.ext.viewcode',
-              'sphinx.ext.mathjax', 'sphinx.ext.ifconfig']
-
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.ifconfig',
+    'nbsphinx'
+]
 
 # MathJax path for rendering the formulas
-mathjax_path="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+mathjax_path = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -115,7 +99,7 @@ release = '0.8.4'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+exclude_patterns = ['_build', 'build', '**.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -126,7 +110,7 @@ exclude_patterns = []
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-#add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
@@ -147,7 +131,7 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #html_theme = 'alabaster'
-html_theme = "sphinx_rtd_theme"
+html_theme = 'guzzle_sphinx_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -156,7 +140,7 @@ html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme_path = guzzle_sphinx_theme.html_theme_path()
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
