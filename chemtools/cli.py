@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
+
 from argparse import ArgumentParser
 import os
+import sys
 
 from chemtools.basisset import BasisSet
 
@@ -39,18 +42,19 @@ def bsconvert():
     parser = ArgumentParser(description='Convert basis set between formats of different programs')
     parser.add_argument("filename",
                         help="file name with a basis set, default='pickle'")
-    parser.add_argument("-if",
+    parser.add_argument("-from",
                         "--inputformat",
                         choices=["gamessus", "gaussian", "json", "molpro",
                                  "pickle"],
                         help="Basis set input format",
                         default="pickle")
-    parser.add_argument("-of",
+    parser.add_argument("-to",
                         "--outputformat",
                         choices=["cfour", "dalton", "gamessus", "gaussian",
                                  "json", "molpro", "nwchem", "pickle"],
                         help="Basis set output format",
                         default="molpro")
+    parser.add_argument('-o', '--output', help='name of the output file')
     args = parser.parse_args()
 
     name = os.path.splitext(args.filename)[0]
@@ -70,14 +74,20 @@ def bsconvert():
         elif isinstance(bsets, BasisSet):
             bsets.to_pickle(name + '_' + bsets.element + '.pkl')
     else:
-        writer = "to_" + args.outputformat
-
+        writer_name = "to_" + args.outputformat
+        writer_objs = []
         if isinstance(bsets, dict):
             for elem, bset in bsets.items():
-                method = getattr(bset, writer)
-                print(method())
+                writer_objs.append(getattr(bset, writer_name))
         elif isinstance(bsets, BasisSet):
-            method = getattr(bsets, writer)
-            print(method())
+            writer_objs.append(getattr(bsets, writer_name))
         else:
             raise ValueError('Something went wrong')
+
+        if args.output:
+            fobj = open(args.output, 'w')
+        else:
+            fobj = sys.stdout
+
+        for writer in writer_objs:
+            print(writer(), file=fobj)

@@ -118,7 +118,10 @@ If you have some questions, remarks or requests email me at `<lmmentel@gmail.com
 Similar projects
 ================
 
-`cclib <http://cclib.github.io/>`_, `pygamess <https://github.com/kzfm/pygamess>`_
+`cclib <http://cclib.github.io/>`_
+    A python library for parsing 
+
+`pygamess <https://github.com/kzfm/pygamess>`_
 
 License
 =======
