@@ -417,17 +417,22 @@ class BasisSet(object):
         if all(all(x == 1 for x in shell) for shell in ppc):
             return "uncontracted 1fps"
 
-    def get_exponents(self, shell=None):
+    def get_exponents(self, asdict=True):
         '''
-        Return the exponents of a given shell or if the shell isn't specified
-        return all of the available exponents
+        Return the exponents of a given shell or if the shell isn't
+        specified return all of the available exponents
+
+        Args:
+            asdict (bool): if `True` a dict with exps per shell is
+                           returned
         '''
 
-        if shell is None:
-            return chain.from_iterable([self.functions[k]['e']
-                                        for k in self.functions.keys()])
+        if asdict:
+            return {shell: f['e'] for shell, f in self.functions.items()}
         else:
-            return self.functions[shell]['e']
+            exps = [self.functions[k]['e'] for k in self.functions.keys()]
+            array = np.fromiter(chain.from_iterable(exps), dtype=np.float)
+            return np.sort(array)[::-1]
 
     def get_filename(self, ext=None):
 
