@@ -3,3 +3,5 @@ numba
 mendeleev
 scipy
 sqlalchemy
+guzzle_sphinx_theme
+nbsphinx
