@@ -31,7 +31,7 @@ Contents
 
    Installation <install>
    Tutorials <tutorial>
-   Module Reference <_reference/modules>
+   API Reference <_reference/modules>
 
 
 Get involved
@@ -39,7 +39,7 @@ Get involved
 
 If you have some questions, remarks or requests email me at `<lmmentel@gmail.com> <mailto:lmmentel@gmail.com>`_.
 
-Similar projects
+Related projects
 ================
 
 `cclib <http://cclib.github.io/>`_
