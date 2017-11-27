@@ -335,8 +335,8 @@ class BSOptimizer(object):
 
     def get_basis(self, name=None, element=None):
         '''
-        Construct the BasisSet object from the result of the optimization and
-        function definition.
+        Construct the BasisSet object from the result of the
+        optimized exponents and function definition.
 
         Args:
             name : str
