@@ -22,7 +22,7 @@ Citing
 
 If you use *chemtools* in a scientific publication, please consider citing the software as 
 
-|    L. M. Mentel, *Chemtools*, 2014-- . Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
+|    L. M. Mentel, *chemtools* -- A Python toolbox for computational chemistry, 2014-- . Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
 
 
 Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en>`_ format
@@ -31,7 +31,7 @@ Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en
 
    @software{chemtools2014,
       author = {Mentel, Łukasz},
-      title = {{chemtools} -- A Python resource for properties of chemical elements, ions and isotopes},
+      title = {{chemtools} -- A Python toolbox for computational chemistry},
       url = {https://bitbucket.org/lukaszmentel/chemtools},
       version = {0.8.4},
       date = {2014--},
@@ -43,11 +43,10 @@ or the older `BibTeX <http://www.bibtex.org/>`_ format
 
    @misc{chemtools2014,
       auhor = {Mentel, Łukasz},
-      title = {chemtools} -- A Python resource for properties of chemical elements, ions and isotopes, ver. 0.8.4},
+      title = {chemtools} -- A Python toolbox for computational chemistry, ver. 0.8.4},
       howpublished = {\url{https://bitbucket.org/lukaszmentel/chemtools}},
       year  = {2014--},
    }
-
 
 Funding
 =======
