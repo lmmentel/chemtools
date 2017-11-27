@@ -2,6 +2,10 @@
 chemtools: Python toolbox for Computational Chemistry
 =====================================================
 
+.. image:: https://readthedocs.org/projects/chemtools/badge/
+   :target: https://chemtools.readthedocs.org
+   :alt: Documentation Status
+
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure methods/
 programs. Currently the is some limited support for Gamess-US_ and
