@@ -26,7 +26,6 @@ Contents
 ========
 
 .. toctree::
-   :caption: Table of contents
    :maxdepth: 2
 
    Installation <install>
