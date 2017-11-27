@@ -365,9 +365,10 @@ class SequentialFile(BinaryFile):
         '''
         Read FORTRAN sequential unformatted file with two-electron
         quantities:
-            - two electron integrals over AO's: .F08 file
-            - two electron integrals over MO's: .F09 file
-            - elements of the two particle density matrix: .F15 file
+
+        - two electron integrals over AO's: .F08 file
+        - two electron integrals over MO's: .F09 file
+        - elements of the two particle density matrix: .F15 file
 
         Args:
             buff_size : int
