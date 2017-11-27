@@ -492,8 +492,8 @@ class BasisSet(object):
 
     def nprimitive(self, spherical=True):
         '''
-        Return the number of primitive functions assuming sphrical or cartesian
-        gaussians.
+        Return the number of primitive functions assuming sphrical or
+        cartesian gaussians.
 
         Args:
           spherical : bool
@@ -781,9 +781,9 @@ class BasisSet(object):
 
         if fname:
             with open(fname, 'w') as fjson:
-                json.dump(self.__dict__, fjson)
+                json.dump(self.__dict__, fjson, **kwargs)
 
-        return json.dumps(self.__dict__, cls=NumpyEncoder)
+        return json.dumps(self.__dict__, cls=NumpyEncoder, **kwargs)
 
     def to_latex(self, efmt="20.10f", cfmt="15.8f"):
         '''
