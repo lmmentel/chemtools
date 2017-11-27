@@ -74,8 +74,7 @@ def main():
     parser.add_argument("-t",
                         "--walltime",
                         default="120:00:00",
-                        help="walltime in the format HH:MM:SS",
-                        default="120:00:00")
+                        help="walltime in the format HH:MM:SS")
     args = vars(parser.parse_args())
     submit_pbs(args)
 
@@ -229,6 +228,7 @@ def submit_ll(args):
         sublog = open(args['jobname'] + ".sublog", 'w')
         proc = subprocess.Popen(["llsubmit", args['script_name']], stdout=sublog, stderr=sublog)
         sublog.close()
+
 
 if __name__ == "__main__":
     main()
