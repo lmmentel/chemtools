@@ -130,16 +130,17 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#html_theme = 'alabaster'
-html_theme = 'guzzle_sphinx_theme'
 
+html_theme = 'guzzle_sphinx_theme'
+extensions.append("guzzle_sphinx_theme")
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
-
+html_theme_options = {
+    # Set the name of the project to appear in the sidebar
+    "project_nav_name": "chemtools",
+}
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
 html_theme_path = guzzle_sphinx_theme.html_theme_path()
 
 # The name for this set of Sphinx documents.  If None, it defaults to
