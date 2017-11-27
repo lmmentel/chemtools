@@ -13,14 +13,13 @@ MolPro_ program packages but other codes can be easily interfaced.
 .. _PSI4: http://www.psicode.org/
 
 Current Modules
----------------
+===============
 
 * :mod:`basisopt`: module for optimizing one electron basis function exponents
 * :mod:`basisset`: module for handling basis set in different formats and obtaining
   exponents from series like: even tempered, well tempered, Legendre expansion,
 * :mod:`molecule`: general purpose module intorducing molecule class for handling
   molecules
-
 
 
 Contents
