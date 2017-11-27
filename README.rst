@@ -1,6 +1,6 @@
-===================================================
-ChemTools: Python tools for Computational Chemistry
-===================================================
+=====================================================
+chemtools: Python toolbox for Computational Chemistry
+=====================================================
 
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure methods/
@@ -22,7 +22,7 @@ Citing
 
 If you use *chemtools* in a scientific publication, please consider citing the software as 
 
-|    L. M. Mentel, *chemtools* -- A Python toolbox for computational chemistry, 2014-- . Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
+    L. M. Mentel, *chemtools* -- A Python toolbox for computational chemistry, 2014-- . Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
 
 
 Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en>`_ format
