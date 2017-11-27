@@ -102,7 +102,8 @@ def parse_molpro_basis(string):
         at_symbol, shell = parse_molpro_shell(lines[i[0]],
                                               lines[i[0] + 1: i[1]])
         if at_symbol in bs.keys():
-            bs[at_symbol] = dict(list(bs[at_symbol].items()) + list(shell.items()))
+            bs[at_symbol] = dict(list(bs[at_symbol].items()) +
+                                 list(shell.items()))
         else:
             bs[at_symbol] = shell
     return bs
@@ -131,7 +132,8 @@ def parse_molpro_shell(expsline, coeffs):
             if lsp[0] == "c":
                 i, j = [int(x) for x in lsp[1].split(".")]
                 coeffs = [float(real.sub('E', x)) for x in lsp[2:]]
-                fs[shell]['cf'].append(np.array(list(zip(list(range(i - 1, j)), coeffs)), dtype=CFDTYPE))
+                fs[shell]['cf'].append(np.array(list(zip(list(range(i - 1, j)),
+                                                coeffs)), dtype=CFDTYPE))
     else:
         for i in range(len(exps)):
             fs[shell]['cf'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
@@ -178,7 +180,7 @@ def parse_coeffs(lines):
     while True:
         try:
             temp = next(liter)
-        except StopIteration as err:
+        except StopIteration:
             break
         nlmax = int(temp.split(";")[0])
         comment = temp.split(";")[1].replace("!", "")
@@ -214,10 +216,11 @@ def parse_gaussian_basis(string):
                     for shell, cc in zip(shells, coeffs.T):
                         if shell in functions.keys():
                             sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
-                            functions[shell]['e'] = sexp
+                            functions[shell]['e'] = sexp * scale**2
                             for cf in functions[shell]['cf']:
                                 cf['idx'] = idxs[cf['idx']]
-                            newcf = np.array(list(zip(idxo[indxs], cc)), dtype=CFDTYPE)
+                            newcf = np.array(list(zip(idxo[indxs], cc)),
+                                             dtype=CFDTYPE)
                             functions[shell]['cf'].append(newcf)
                         else:
                             functions[shell] = dict()
@@ -341,9 +344,10 @@ def merge_exponents(a, b):
 class NumpyEncoder(json.JSONEncoder):
 
     def default(self, obj):
-        """If input object is an ndarray it will be converted into a dict
-        holding dtype, shape and the data, base64 encoded.
-        """
+        '''
+        If input object is an ndarray it will be converted into a dict
+        holding the data and dtype.
+        '''
 
         if isinstance(obj, np.ndarray):
 
