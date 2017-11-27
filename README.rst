@@ -16,19 +16,44 @@ Documentation
 
 The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
 
-Funding
-=======
-
-This project was realized through the support from the National Science Center (Poland) grant number
-UMO-2012/07/B/ST4/01347.
 
 Citing
 ======
 
-If you use *Chemtools* in a scientific publication, please cite the software as 
+If you use *chemtools* in a scientific publication, please consider citing the software as 
 
-|    L. M. Mentel, *Chemtools*, 2014. Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
+|    L. M. Mentel, *Chemtools*, 2014-- . Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
 
+
+Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en>`_ format
+
+.. code-block:: latex
+
+   @software{chemtools2014,
+      author = {Mentel, Łukasz},
+      title = {{chemtools} -- A Python resource for properties of chemical elements, ions and isotopes},
+      url = {https://bitbucket.org/lukaszmentel/chemtools},
+      version = {0.8.4},
+      date = {2014--},
+  }
+
+or the older `BibTeX <http://www.bibtex.org/>`_ format
+
+.. code-block:: latex
+
+   @misc{chemtools2014,
+      auhor = {Mentel, Łukasz},
+      title = {chemtools} -- A Python resource for properties of chemical elements, ions and isotopes, ver. 0.8.4},
+      howpublished = {\url{https://bitbucket.org/lukaszmentel/chemtools}},
+      year  = {2014--},
+   }
+
+
+Funding
+=======
+
+This project was realized through the support from the National Science Center
+(Poland) grant number UMO-2012/07/B/ST4/01347.
 
 License
 =======
