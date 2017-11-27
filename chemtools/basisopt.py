@@ -240,7 +240,10 @@ class BSOptimizer(object):
 
     @logfile.setter
     def logfile(self, value):
-        'if a filename is specified open a text file for writing with line buffering'
+        '''
+        if a filename is specified open a text file for writing with
+        line buffering
+        '''
 
         if value is None:
             self._logfile = None
