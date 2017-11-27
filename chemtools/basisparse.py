@@ -216,7 +216,7 @@ def parse_gaussian_basis(string):
                     for shell, cc in zip(shells, coeffs.T):
                         if shell in functions.keys():
                             sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
-                            functions[shell]['e'] = sexp * scale**2
+                            functions[shell]['e'] = sexp * float(scale)**2
                             for cf in functions[shell]['cf']:
                                 cf['idx'] = idxs[cf['idx']]
                             newcf = np.array(list(zip(idxo[indxs], cc)),
