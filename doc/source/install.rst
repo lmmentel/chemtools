@@ -27,7 +27,7 @@ the installation instructions can be found `here <https://pip.pypa.io/en/latest/
 chemtools is **NOT** hosted on pypi yet but in can be installed by pip from the
 bibbucket repository with::
 
-    $ [sudo] pip install https://bitbucket.org/lukaszmentel/chemtools/get/tip.tar.gz
+    $ [sudo] pip install [-U] chemtools 
 
 
 Using setup.py
