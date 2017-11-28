@@ -1,6 +1,8 @@
-===================================================
-ChemTools: Python tools for Computational Chemistry
-===================================================
+=====================================================
+chemtools: Python toolbox for Computational Chemistry
+=====================================================
+
+
 
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure methods/
