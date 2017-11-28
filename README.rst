@@ -1,10 +1,14 @@
-=====================================================
-chemtools: Python toolbox for Computational Chemistry
-=====================================================
+======================================================
+chemtools_: Python toolbox for Computational Chemistry
+======================================================
 
 .. image:: https://readthedocs.org/projects/chemtools/badge/
    :target: https://chemtools.readthedocs.org
    :alt: Documentation Status
+
+.. image:: https://img.shields.io/pypi/v/chemtools.svg?style=flat-square&label=PyPI%20version
+   :target: https://pypi.python.org/pypi/chemtools
+   :alt: Latest version released on PyPi
 
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure methods/
@@ -82,3 +86,6 @@ License
 | LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 | OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 | SOFTWARE.
+
+
+.. _chemtools: http://chemtools.readthedocs.org
