@@ -781,7 +781,7 @@ class BasisSet(object):
 
         if fname:
             with open(fname, 'w') as fjson:
-                json.dump(self.__dict__, fjson, **kwargs)
+                json.dump(self.__dict__, fjson, cls=NumpyEncoder, **kwargs)
 
         return json.dumps(self.__dict__, cls=NumpyEncoder, **kwargs)
 
@@ -1429,7 +1429,7 @@ def zlmtoxyz(l):
 
     .. [1] Schlegel, H. B., & Frisch, M. J. (1995). "Transformation between
        Cartesian and pure spherical harmonic Gaussians". International Journal
-       of Quantum Chemistry, 54(2), 83â€“87. `doi:10.1002/qua.560540202 <http:www.dx.doi.org/10.1002/qua.560540202>`_
+       of Quantum Chemistry, 54(2), 83–87. `doi:10.1002/qua.560540202 <http:www.dx.doi.org/10.1002/qua.560540202>`_
 
     Args:
       l : int
