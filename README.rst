@@ -25,6 +25,13 @@ Documentation
 The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
 
 
+Contribute
+==========
+
+Source Code: https://bitbucket.org/lucashnegri/peakutils
+Issues: https://bitbucket.org/lucashnegri/peakutils/issues
+Direct contact: Lucas Hermann Negri - lucashnegri <at> gmail.com
+
 Citing
 ======
 
