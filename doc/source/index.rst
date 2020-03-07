@@ -32,7 +32,7 @@ Contents
 
    Installation <install>
    Tutorials <tutorial>
-   API Reference <_reference/modules>
+   API Reference <api>
 
 
 Get involved
