@@ -69,17 +69,18 @@ The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/
 Contributing
 ============
 
-Source Code: https://github.com/lmmentel/chemtools
-Issues: https://github.com/lmmentel/chemtools/issues
-Pull requests: https://github.com/lmmentel/chemtools/pulls
+* `Source <https://github.com/lmmentel/chemtools>`_
+* `Report a bug <https://github.com/lmmentel/chemtools/issues>`_
+* `Request a feature <https://github.com/lmmentel/chemtools/issues>`_
+* `Submit a pull request <https://github.com/lmmentel/chemtools/pulls>`_
 
 Contact
 =======
 
 Łukasz Mentel 
 
-*  `https://github.com/lmmentel <https://github.com/lmmentel>`_
-*  lmmentel <at> gmail.com
+*  github: `lmmentel <https://github.com/lmmentel>`_
+*  email: lmmentel <at> gmail.com
 
 
 Citing
