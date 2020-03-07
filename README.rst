@@ -39,8 +39,8 @@ Table of Contents
 
 * `Getting Started`_
   
-    * Installation_
-    * Documentation_
+  * Installation_
+  * Documentation_
 
 * Contributing_
 * Contact_
