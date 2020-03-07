@@ -1,7 +1,3 @@
-======================================================
-chemtools_: Python toolbox for Computational Chemistry
-======================================================
-
 .. image:: https://readthedocs.org/projects/chemtools/badge/
    :target: https://chemtools.readthedocs.org
    :alt: Documentation Status
@@ -14,27 +10,80 @@ chemtools_: Python toolbox for Computational Chemistry
     :target: https://www.travis-ci.org/lmmentel/chemtools
     :alt: Build Status
 
+.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+    :target: https://opensource.org/licenses/MIT
+    :alt: MIT license
+
+.. image:: https://pepy.tech/badge/chemtools
+    :target: https://pepy.tech/project/chemtools
+    :alt: pepy
+
+.. class:: center
+
+======================================================
+chemtools_: Python toolbox for Computational Chemistry
+======================================================
+
 Chemtools is a set of modules that is intended to help with more
-advanced computations using common electronic structure methods/
-programs. Currently the is some limited support for Gamess-US_ and
-MolPro_ program packages but other codes can be easily interfaced.
+advanced computations using common electronic structure programs.
+Currently there is support for:
+
+* Dalton_
+* Gamess-US_
+* MolPro_
+* PSI4_
 
 .. _Gamess-US: http://www.msg.ameslab.gov/gamess
 .. _MolPro: http://www.molpro.net/
 
+Table of Contents
+=================
+
+* `About the Project`_
+  * Documentation_
+* `Getting Started`_
+  * Installation_
+* Contributing_
+* Contact_
+* Citing_
+* Funding_
+* License_
+
+About the Project
+=================
 
 Documentation
-=============
+-------------
 
 The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
 
+Getting Started
+===============
 
-Contribute
-==========
+Installation
+------------
 
-Source Code: https://bitbucket.org/lukaszmentel/chemtools
-Issues: https://bitbucket.org/lukaszmentel/chemtools/issues
-Direct contact: Lukasz Mentel - lmmentel <at> gmail.com
+Most convenient way to install the package is with `pip <https://pip.pypa.io/en/stable/>`_  
+
+.. code-block:: bash
+
+   pip install chemtools
+
+
+Contributing
+============
+
+Source Code: https://github.com/lmmentel/chemtools
+Issues: https://github.com/lmmentel/chemtools/issues
+Pull requests: https://github.com/lmmentel/chemtools/pulls
+
+Contact
+=======
+
+Łukasz Mentel 
+* <i class="fab fa-github"></i> `https://github.com/lmmentel <https://github.com/lmmentel>`_
+* <i class="far fa-envelope"></i> lmmentel <at> gmail.com
+
 
 Citing
 ======
@@ -51,7 +100,7 @@ Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en
    @software{chemtools2014,
       author = {Mentel, Łukasz},
       title = {{chemtools} -- A Python toolbox for computational chemistry},
-      url = {https://bitbucket.org/lukaszmentel/chemtools},
+      url = {https://github.com/lmmentelmentel/chemtools},
       version = {0.8.4},
       date = {2014--},
   }
@@ -63,7 +112,7 @@ or the older `BibTeX <http://www.bibtex.org/>`_ format
    @misc{chemtools2014,
       auhor = {Mentel, Łukasz},
       title = {{chemtools} -- A Python toolbox for computational chemistry, ver. 0.8.4},
-      howpublished = {\url{https://bitbucket.org/lukaszmentel/chemtools}},
+      howpublished = {\url{https://github.com/lmmentelmentel/chemtools}},
       year  = {2014--},
    }
 
@@ -76,27 +125,6 @@ This project was realized through the support from the National Science Center
 License
 =======
 
-| The MIT License (MIT)
-|
-| Copyright (c) 2014 Lukasz Mentel
-|
-| Permission is hereby granted, free of charge, to any person obtaining a copy
-| of this software and associated documentation files (the "Software"), to deal
-| in the Software without restriction, including without limitation the rights
-| to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-| copies of the Software, and to permit persons to whom the Software is
-| furnished to do so, subject to the following conditions:
-|
-| The above copyright notice and this permission notice shall be included in all
-| copies or substantial portions of the Software.
-|
-| THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-| IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-| FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-| AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-| LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-| OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-| SOFTWARE.
-
+The project is distributed under the MIT License. See `LICENSE <LINCENSE.rst>`_ for more information.
 
 .. _chemtools: http://chemtools.readthedocs.org
