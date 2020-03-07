@@ -1,14 +1,20 @@
 language: python
-
 python:
-  - '3.6'
-  - '3.7'
-  - '3.8'
-
+- '3.6'
+- '3.7'
+- '3.8'
 install:
-  - pip install .
-  - pip install pytest
-
+- pip install .
+- pip install pytest
 script:
-  - pytest tests
-
+- pytest tests
+deploy:
+  matrix:
+  - provider: pypi
+    user: __token__
+    password:
+      secure: mBIibiwVXaFsfjN89+7+6AIOPt57JFgmIAg1OpnW6Ug0qNJc9v4Td41t1CA5K/GUtiqbch/FFnZR/UXMDpxte7J+tF/KpV3FeQ+tHfJQsjTYZ05eM5kErBxupyNrcLOPy3jD0gWHCtyoh1K5y8luXJ4aKsBQJlVluJbZ3WvbIrjsuyha5X7xUyl4cm1GJBIjcuUo8qNRBEQ3EV91UopmDCawg93QDjiENSAlzTfkXo/CcWQZ1MRudaGr+7XsuylcML/FQmR7YL2675wW0bdxwGHBZhF954FbtFJiAcs43EQZadMVOHAdFnTT9IAfdsJ+wmYdiaer8RTWH2jDfZnRxqL1mmmiJPU1LxYZSCuMOQySB2hjjRKf9m1ErnK0l5i93a9NYI7WG6r6S+I7R53YCmR6GG++N6st/8SfSEwhuVgFrx2iXId13zec2pjMvAvahPwQUKhyPSdZdxqUWc28UxyzRKdY3LILAltSJiP50WYqZSWPj68HUlXs1+yuPCwYb5W8o/JKlGkfvo5LL67zTluy2LN8wacCGopkF1P8oY4gQUbVwVRQfZIceQ8pb+C7AI6hIb6lrMhZOC20xlVrXCm1jmlMDVKu6lhBNQ1osVIqa5NBW4dBiTgX62S3HJzHfWE7GRbZAhRrZ+PV89FAsvRmnSpJ9KNKBNgH5OgkJVE=
+  on:
+      tags: true
+  skip_existing: true
+  
