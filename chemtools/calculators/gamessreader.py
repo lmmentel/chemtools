@@ -70,7 +70,7 @@ class GamessFortranReader(object):
             n = self.gp.get_number_of_aos()
         else:
             n = self.gp.get_number_of_mos()
-        return n * (n + 1) / 2
+        return n * (n + 1) // 2
 
     def get_twoe_size(self, aos=False):
         '''
@@ -78,7 +78,7 @@ class GamessFortranReader(object):
         of a supermatrix of size nmos (2RDM and two-electrons integrals).
         '''
         n = self.get_onee_size(aos)
-        return n * (n + 1) / 2
+        return n * (n + 1) // 2
 
     def read_rdm2(self, filename=None, nmo=None):
 
@@ -340,9 +340,9 @@ class SequentialFile(BinaryFile):
         in the 1d vector.
         '''
 
-        ij = max(i, j) * (max(i, j) - 1) / 2 + min(i, j)
-        kl = max(k, l) * (max(k, l) - 1) / 2 + min(k, l)
-        return max(ij, kl) * (max(ij, kl) - 1) / 2 + min(ij, kl) - 1
+        ij = max(i, j) * (max(i, j) - 1) // 2 + min(i, j)
+        kl = max(k, l) * (max(k, l) - 1) // 2 + min(k, l)
+        return max(ij, kl) * (max(ij, kl) - 1) // 2 + min(ij, kl) - 1
 
     def get_index_buffsize(self, buff_size, int_size):
         ''' Return the index buffer size for reading 2-electron integrals'''
@@ -356,7 +356,7 @@ class SequentialFile(BinaryFile):
             if self.large_labels:
                 return buff_size
             else:
-                return (buff_size + 1) / 2
+                return (buff_size + 1) // 2
         else:
             raise ValueError('wrong "int_size": {}'.format(int_size))
 
@@ -394,7 +394,7 @@ class SequentialFile(BinaryFile):
         self.seek(0)
         if mos:
             nmo = self.nmo - self.core
-            nt = self.nmo * (self.nmo+1)/2
+            nt = self.nmo * (self.nmo + 1) // 2
             if skip_first:
                 #n1 = nmo*(nmo+1)/2
                 #self.seek(8+8*n1)
@@ -404,9 +404,9 @@ class SequentialFile(BinaryFile):
                 self.seek(self.tell() + 4)
 
         else:
-            nt = self.nao * (self.nao + 1) / 2
+            nt = self.nao * (self.nao + 1) // 2
 
-        ints = np.zeros(nt * (nt + 1) / 2, dtype=float, order='F')
+        ints = np.zeros(nt * (nt + 1) // 2, dtype=float, order='F')
 
         int_type = np.dtype('i' + str(int_size))
         index_buffer = np.zeros(indexBuffSize, dtype=int_type, order='F')
@@ -415,7 +415,7 @@ class SequentialFile(BinaryFile):
         length = 1
         while length > 0:
             self.seek(self.tell() + 4)
-            length = self.read(int_type)
+            length = int(self.read(int_type))
             if length > buff_size:
                 raise ValueError('the read record length: {0:10d} is greater that the buffer size {1:10d}'.format(int(length), buff_size))
 
@@ -446,13 +446,13 @@ class SequentialFile(BinaryFile):
                         l = label       & 65535
                     else:
                         if m % 2 == 0:
-                            label = int(index_buffer[m / 2 - 1])
+                            label = int(index_buffer[m // 2 - 1])
                             i = label >> 24 & 255
                             j = label >> 16 & 255
                             k = label >>  8 & 255
                             l = label       & 255
                         else:
-                            label = int(index_buffer[m / 2])
+                            label = int(index_buffer[m // 2])
                             i = label >> 56 & 255
                             j = label >> 48 & 255
                             k = label >> 40 & 255
@@ -514,7 +514,7 @@ class GamessReader(object):
             n = self.gp.get_number_of_aos()
         else:
             n = self.gp.get_number_of_mos()
-        return n * (n + 1) / 2
+        return n * (n + 1) // 2
 
     def get_twoe_size(self):
         '''
@@ -522,7 +522,7 @@ class GamessReader(object):
         of a supermatrix of size nmos (2RDM and two-electrons integrals).
         '''
         n = self.get_onee_size(aos=False)
-        return n * (n + 1) / 2
+        return n * (n + 1) // 2
 
     def read_rdm2(self, filename=None, nmo=None):
 
