@@ -28,6 +28,7 @@ from subprocess import Popen
 
 import os
 
+
 class Dmft(Calculator):
 
     '''dmft class'''
@@ -102,7 +103,6 @@ class Dmft(Calculator):
             "twointfile"     : "'{}'".format(gp.twoemofile),
         }
         return inputdata
-
 
     def run(self):
 
