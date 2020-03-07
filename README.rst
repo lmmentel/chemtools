@@ -33,29 +33,20 @@ Currently there is support for:
 * MolPro_
 * PSI4_
 
-.. _Gamess-US: http://www.msg.ameslab.gov/gamess
-.. _MolPro: http://www.molpro.net/
 
 Table of Contents
 =================
 
-* `About the Project`_
-  * Documentation_
 * `Getting Started`_
-  * Installation_
+  
+    * Installation_
+    * Documentation_
+
 * Contributing_
 * Contact_
 * Citing_
 * Funding_
 * License_
-
-About the Project
-=================
-
-Documentation
--------------
-
-The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
 
 Getting Started
 ===============
@@ -69,6 +60,11 @@ Most convenient way to install the package is with `pip <https://pip.pypa.io/en/
 
    pip install chemtools
 
+Documentation
+-------------
+
+The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/en/latest/>`_.
+
 
 Contributing
 ============
@@ -81,8 +77,9 @@ Contact
 =======
 
 Łukasz Mentel 
-* <i class="fab fa-github"></i> `https://github.com/lmmentel <https://github.com/lmmentel>`_
-* <i class="far fa-envelope"></i> lmmentel <at> gmail.com
+
+*  `https://github.com/lmmentel <https://github.com/lmmentel>`_
+*  lmmentel <at> gmail.com
 
 
 Citing
@@ -125,6 +122,10 @@ This project was realized through the support from the National Science Center
 License
 =======
 
-The project is distributed under the MIT License. See `LICENSE <LINCENSE.rst>`_ for more information.
+The project is distributed under the MIT License. See `LICENSE <LICENSE.rst>`_ for more information.
 
 .. _chemtools: http://chemtools.readthedocs.org
+.. _Gamess-US: https://www.msg.chem.iastate.edu/gamess/gamess.html
+.. _MolPro: http://www.molpro.net/
+.. _Dalton: https://www.daltonprogram.org/
+.. _PSI4: http://www.psicode.org/
