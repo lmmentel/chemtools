@@ -61,8 +61,7 @@ setup(
     packages=['chemtools', 'chemtools/pescan', 'chemtools/calculators'],
     scripts=[
         'chemtools/submitgamess.py',
-        'chemtools/submitmolpro.py',
-        'scripts/bsold2new'],
+        'chemtools/submitmolpro.py'],
     url='https://bitbucket.org/lukaszmentel/chemtools/',
     version='0.8.4',
     classifiers=[
@@ -71,7 +70,6 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Chemistry',
         'Topic :: Scientific/Engineering :: Physics'],
