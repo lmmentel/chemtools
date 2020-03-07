@@ -58,7 +58,7 @@ or the older `BibTeX <http://www.bibtex.org/>`_ format
 
    @misc{chemtools2014,
       auhor = {Mentel, Łukasz},
-      title = {chemtools} -- A Python toolbox for computational chemistry, ver. 0.8.4},
+      title = {{chemtools} -- A Python toolbox for computational chemistry, ver. 0.8.4},
       howpublished = {\url{https://bitbucket.org/lukaszmentel/chemtools}},
       year  = {2014--},
    }
