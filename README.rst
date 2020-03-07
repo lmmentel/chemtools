@@ -18,7 +18,6 @@
     :target: https://pepy.tech/project/chemtools
     :alt: pepy
 
-.. class:: center
 
 ======================================================
 chemtools_: Python toolbox for Computational Chemistry
