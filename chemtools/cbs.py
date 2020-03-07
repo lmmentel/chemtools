@@ -67,9 +67,9 @@ def extrapolate(x, energy, method, **kwargs):
 def uste(method="CI"):
     '''
     CBS extrapolation using uniform singlet and triplet pair extrapolation
-    (USTE) scheme [1]_.
+    (USTE) scheme [Varandas2007]_.
 
-    .. [1] Varandas, A. J. C. (2007). "Extrapolating to the one-electron
+    .. [Varandas2007] Varandas, A. J. C. (2007). "Extrapolating to the one-electron
        basis-set limit in electronic structure calculations. The Journal of
        Chemical Physics, 126(24), 244105. `doi:10.1063/1.2741259 <http://www.dx.doi.org/10.1063/1.2741259>`_
 
