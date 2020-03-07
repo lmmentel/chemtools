@@ -50,7 +50,7 @@ class Calculator():
 
         if executable is None and exevar is None:
             self.exe_found = False
-        elif executable is None and exevar is not None:
+        elif executable is None and os.getenv(self.exevar) is not None:
             self.executable = os.getenv(self.exevar)
             self.exe_found = True
         elif executable is not None and exevar is None:
@@ -188,5 +188,3 @@ class InputTemplate(Template):
         for key, val in self.pattern.groupindex.items():
             keys[key] = [x[val - 1] for x in match if x[val - 1] != '']
         return keys
-
-
