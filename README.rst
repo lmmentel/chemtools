@@ -28,9 +28,9 @@ The documentation in hosted at `Read The Docs <http://chemtools.readthedocs.org/
 Contribute
 ==========
 
-Source Code: https://bitbucket.org/lucashnegri/peakutils
-Issues: https://bitbucket.org/lucashnegri/peakutils/issues
-Direct contact: Lucas Hermann Negri - lucashnegri <at> gmail.com
+Source Code: https://bitbucket.org/lukaszmentel/chemtools
+Issues: https://bitbucket.org/lukaszmentel/chemtools/issues
+Direct contact: Lukasz Mentel - lmmentel <at> gmail.com
 
 Citing
 ======
