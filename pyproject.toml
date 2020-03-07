@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "chemtools"
+version = "0.8.4"
+description = "Python tools for quantum chemical calculations"
+authors = ["Lukasz Mentel <lmmentel@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.5"
+sqlalchemy = "^1.3.13"
+scipy = "^1.4.1"
+numpy = "^1.18.1"
+mendeleev = "^0.5.2"
+numba = "^0.48.0"
+pandas = "^1.0.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.3.5"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
