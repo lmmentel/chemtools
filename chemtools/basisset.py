@@ -1425,9 +1425,9 @@ def xyzlist(l):
 def zlmtoxyz(l):
     '''
     Generates the expansion coefficients of the real spherical harmonics in
-    terms of products of cartesian components. Method based on [1]_
+    terms of products of cartesian components. Method based on [Schelegel1995]_
 
-    .. [1] Schlegel, H. B., & Frisch, M. J. (1995). "Transformation between
+    .. [Schelegel1995] Schlegel, H. B., & Frisch, M. J. (1995). "Transformation between
        Cartesian and pure spherical harmonic Gaussians". International Journal
        of Quantum Chemistry, 54(2), 83–87.
        `doi:10.1002/qua.560540202 <http:www.dx.doi.org/10.1002/qua.560540202>`_
