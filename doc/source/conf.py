@@ -18,21 +18,15 @@ import sys
 import guzzle_sphinx_theme
 import inspect
 
-if sys.version_info.major == 3:
-    from unittest.mock import Mock    # if python ver >= 3.3
-else:
-    from mock import Mock as Mock     # if python ver 2.7
-
-MOCK_MODULES = ['argparse', 'numpy', 'scipy', 'scipy.optimize', 'scipy.linalg',
-                'scipy.special', 'pandas',
-                'sqlalchemy', 'sqlalchemy.orm', 'sqlalchemy.ext',
-                'sqlalchemy.ext.associationproxy',
-                'sqlalchemy.ext.declarative', 'sqlalchemy.ext.hybrid',
-                'mendeleev', 'numba'
-                ]
-
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = Mock()
+autodoc_mock_imports = [
+    'argparse',
+    'mendeleev',
+    'numba'
+    'numpy',
+    'pandas',
+    'scipy',
+    'sqlalchemy',
+]
 
 __location__ = os.path.join(os.getcwd(), os.path.dirname(
     inspect.getfile(inspect.currentframe())))
@@ -56,7 +50,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
-    'nbsphinx'
+    'nbsphinx',
+    'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 # MathJax path for rendering the formulas
