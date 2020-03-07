@@ -99,7 +99,7 @@ Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en
       author = {Mentel, Łukasz},
       title = {{chemtools} -- A Python toolbox for computational chemistry},
       url = {https://github.com/lmmentelmentel/chemtools},
-      version = {0.8.4},
+      version = {0.9.0},
       date = {2014--},
   }
 
@@ -109,7 +109,7 @@ or the older `BibTeX <http://www.bibtex.org/>`_ format
 
    @misc{chemtools2014,
       auhor = {Mentel, Łukasz},
-      title = {{chemtools} -- A Python toolbox for computational chemistry, ver. 0.8.4},
+      title = {{chemtools} -- A Python toolbox for computational chemistry, ver. 0.9.0},
       howpublished = {\url{https://github.com/lmmentelmentel/chemtools}},
       year  = {2014--},
    }

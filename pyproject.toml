@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "chemtools"
-version = "0.8.4"
+version = "0.9.0"
 description = "Python tools for quantum chemical calculations"
 authors = ["Lukasz Mentel <lmmentel@gmail.com>"]
 license = "MIT"

@@ -63,7 +63,7 @@ setup(
         'chemtools/submitgamess.py',
         'chemtools/submitmolpro.py'],
     url='https://bitbucket.org/lukaszmentel/chemtools/',
-    version='0.8.4',
+    version='0.9.0',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
