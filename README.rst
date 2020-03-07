@@ -10,6 +10,10 @@ chemtools_: Python toolbox for Computational Chemistry
    :target: https://pypi.python.org/pypi/chemtools
    :alt: Latest version released on PyPi
 
+.. image:: https://www.travis-ci.org/lmmentel/chemtools.svg?branch=master
+    :target: https://www.travis-ci.org/lmmentel/chemtools
+    :alt: Build Status
+
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure methods/
 programs. Currently the is some limited support for Gamess-US_ and
