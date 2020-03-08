@@ -5,7 +5,7 @@ chemtools: Python toolbox for Computational Chemistry
 Chemtools is a set of modules that is intended to help with more
 advanced computations using common electronic structure programs.
 
-The main to goal was to enable convientnt `basis set <https://en.wikipedia.org/wiki/Basis_set_%28chemistry%29>`_ manipulations, including designing and optimizing exponents of basis sets. To acheive that there are several modules abstracting various functionalities:
+The main to goal was to enable convenient `basis set <https://en.wikipedia.org/wiki/Basis_set_%28chemistry%29>`_ manipulations, including designing and optimizing exponents of basis sets. To achieve that there are several modules abstracting various functionalities:
 
 Basis set object 
   :mod:`basisset <chemtools.basisset>` module that contains the :class:`chemtools.basisset.BasisSet`. See the :doc:`tutorial` page for a overview
@@ -18,7 +18,7 @@ Basis set optimization
 
 Calculators
   :mod:`chemtools.calculators.calculator` contains wrappers for several packages
-  handling the actual electronic structure calcualtions. Currently there is support for:
+  handling the actual electronic structure calculations. Currently there is support for:
 
   * Dalton_
   * Gamess-US_
@@ -66,7 +66,7 @@ Citing
 
 If you use *chemtools* in a scientific publication, please consider citing the software as 
 
-  Łukasz Mentel, *chemtools* -- A Python toolbox for computational chemistry, 2014-- . Available at: `https://bitbucket.org/lukaszmentel/chemtools <https://bitbucket.org/lukaszmentel/chemtools>`_.
+  Łukasz Mentel, *chemtools* -- A Python toolbox for computational chemistry, 2014-- . Available at: `https://github.com/lmmentel/chemtools <https://github.com/lmmentel/chemtools>`_.
 
 
 Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en>`_ format
