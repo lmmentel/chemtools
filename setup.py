@@ -31,8 +31,8 @@ class Tox(TestCommand):
 
 
 def readme():
-    'Return the contents of the README.rst file.'
-    with open('README.rst') as freadme:
+    '''Return the contents of the README.rst file.'''
+    with open('README.rst', encoding='utf8') as freadme:
         return freadme.read()
 
 
