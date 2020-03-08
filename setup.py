@@ -57,6 +57,7 @@ setup(
     },
     license=open('LICENSE.rst').read(),
     long_description=readme(),
+    long_description_content_type='text/x-rst',
     name='chemtools',
     packages=['chemtools', 'chemtools/pescan', 'chemtools/calculators'],
     scripts=[
