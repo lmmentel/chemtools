@@ -55,7 +55,7 @@ setup(
             'bsprint = chemtools.cli:bsprint',
         ]
     },
-    license=open('LICENSE.rst').read(),
+    license='MIT',
     long_description=readme(),
     long_description_content_type='text/x-rst',
     name='chemtools',
