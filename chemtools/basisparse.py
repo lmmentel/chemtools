@@ -60,15 +60,15 @@ def parse_basis(string, fmt=None):
         basis set functions as values
     '''
 
-    formats = ['molpro', 'gamessus', 'gaussian']
-
-    if fmt == 'molpro':
-        return parse_molpro_basis(string)
-    elif fmt == 'gamessus':
+    if fmt == 'gamessus':
         return parse_gamessus_basis(string)
     elif fmt == 'gaussian':
         return parse_gaussian_basis(string)
+    elif fmt == 'molpro':
+        return parse_molpro_basis(string)
     else:
+        formats = ['molpro', 'gamessus', 'gaussian']
+
         raise ValueError("Can only parse <fmt>: {}".format(", ".join(formats)))
 
 
@@ -85,23 +85,23 @@ def parse_molpro_basis(string):
     else:
         raise ValueError('basis string: "basis={*}" not found')
 
-    start = []
-    for i, line in enumerate(lines):
-        if line.split(",")[0].lower() in ORBITALS:
-            start.append(i)
-    if len(start) == 0:
+    start = [
+        i
+        for i, line in enumerate(lines)
+        if line.split(",")[0].lower() in ORBITALS
+    ]
+
+    if not start:
         return None
 
-    startstop = []
-    for i in range(len(start) - 1):
-        startstop.append((start[i], start[i + 1]))
+    startstop = [(start[i], start[i + 1]) for i in range(len(start) - 1)]
     startstop.append((start[-1], len(lines)))
 
     bs = {}
     for i in startstop:
         at_symbol, shell = parse_molpro_shell(lines[i[0]],
                                               lines[i[0] + 1: i[1]])
-        if at_symbol in bs.keys():
+        if at_symbol in bs:
             bs[at_symbol] = dict(list(bs[at_symbol].items()) +
                                  list(shell.items()))
         else:
@@ -126,7 +126,10 @@ def parse_molpro_shell(expsline, coeffs):
                      for x in expsline.rstrip(";").split(",")[2:]])
 
     fs[shell] = {'e': exps, 'cf': []}
-    if len(coeffs) != 0:
+    if not coeffs:
+        for i in range(len(exps)):
+            fs[shell]['cf'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
+    else:
         for line in coeffs:
             lsp = line.rstrip(";").split(",")
             if lsp[0] == "c":
@@ -134,9 +137,6 @@ def parse_molpro_shell(expsline, coeffs):
                 coeffs = [float(real.sub('E', x)) for x in lsp[2:]]
                 fs[shell]['cf'].append(np.array(list(zip(list(range(i - 1, j)),
                                                 coeffs)), dtype=CFDTYPE))
-    else:
-        for i in range(len(exps)):
-            fs[shell]['cf'].append(np.array([tuple([i, 1.0])], dtype=CFDTYPE))
     return at_symbol, fs
 
 
@@ -146,17 +146,16 @@ def parse_ecp(ecpstring):
 
     lines = ecpstring.split("\n")
 
-    start = []
-    for i, line in enumerate(lines):
-        if line.split(",")[0].lower() == 'ecp':
-            start.append(i)
+    start = [
+        i
+        for i, line in enumerate(lines)
+        if line.split(",")[0].lower() == 'ecp'
+    ]
 
-    if len(start) == 0:
+    if not start:
         return None
 
-    startstop = []
-    for i in range(len(start) - 1):
-        startstop.append((start[i], start[i + 1]))
+    startstop = [(start[i], start[i + 1]) for i in range(len(start) - 1)]
     startstop.append((start[-1], len(lines)))
 
     ecp = {}
@@ -185,7 +184,7 @@ def parse_coeffs(lines):
         nlmax = int(temp.split(";")[0])
         comment = temp.split(";")[1].replace("!", "")
         tt = {'comment': comment, 'parameters': []}
-        for i in range(nlmax):
+        for _ in range(nlmax):
             param = next(liter).replace(";", "").split(",")
             tt['parameters'].append({'m': float(param[0]),
                                      'gamma': float(param[1]),
@@ -201,20 +200,20 @@ def parse_gaussian_basis(string):
     '''
 
     shellre = re.compile(r'^\s*(?P<shells>[SPDFGHILspdfghil]+)\s*(?P<nf>[1-9]+)\s*(?P<scale>\-?\d+\.\d+)')
-    out = dict()
+    out = {}
     for i, item in enumerate(string.split('****\n')):
         if len(item) > 5:
             atomline, basis = item.split('\n', 1)
             atom = atomline.split()[0]
             bslines = basis.split('\n')
-            functions = dict()
+            functions = {}
             for i, line in enumerate(bslines):
                 match = shellre.search(line)
                 if match:
                     shells, nf, scale = match.group('shells').lower(), match.group('nf'), match.group('scale')
                     exps, indxs, coeffs = parse_gaussian_function(bslines[i + 1: i + int(nf) + 1])
                     for shell, cc in zip(shells, coeffs.T):
-                        if shell in functions.keys():
+                        if shell in functions:
                             sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
                             functions[shell]['e'] = sexp * float(scale)**2
                             for cf in functions[shell]['cf']:
@@ -223,9 +222,7 @@ def parse_gaussian_basis(string):
                                              dtype=CFDTYPE)
                             functions[shell]['cf'].append(newcf)
                         else:
-                            functions[shell] = dict()
-                            functions[shell]['cf'] = list()
-                            functions[shell]['e'] = exps
+                            functions[shell] = {'cf': [], 'e': exps}
                             functions[shell]['cf'].append(np.array(list(zip(indxs, cc)), dtype=CFDTYPE))
                 out[atom] = functions
     return out
@@ -265,14 +262,14 @@ def parse_gamessus_basis(string):
     else:
         raise ValueError("basis not found, should be inside '$DATA' and '$END' group")
 
-    pat = re.compile(r'^\s*(?P<shells>[SPDFGHILspdfghil]+)\s*(?P<nf>[1-9]+)')
-    res = dict()
+    pat = re.compile(r'^\s*(?P<shells>[SPDFGHILspdfghil]+)\s*(?P<nf>[0-9]+)')
+    res = {}
 
     for item in basisstr.split('\n\n'):
         if len(item) > 0:
             atom, basis = item.split('\n', 1)
             if atom != "":
-                functions = dict()
+                functions = {}
                 elem = element(atom.capitalize())
                 bslines = basis.split("\n")
                 for i, line in enumerate(bslines):
@@ -283,7 +280,7 @@ def parse_gamessus_basis(string):
                         if shells in ['L', 'l']:
                             shells = ['s', 'p']
                         for shell, cc in zip(shells, coeffs.T):
-                            if shell in functions.keys():
+                            if shell in functions:
                                 sexp, idxs, idxo = merge_exponents(functions[shell]['e'], exps)
                                 functions[shell]['e'] = sexp
                                 for cf in functions[shell]['cf']:
@@ -292,9 +289,7 @@ def parse_gamessus_basis(string):
                                                  dtype=CFDTYPE)
                                 functions[shell]['cf'].append(newcf)
                             else:
-                                functions[shell] = dict()
-                                functions[shell]['cf'] = list()
-                                functions[shell]['e'] = exps
+                                functions[shell] = {'cf': [], 'e': exps}
                                 functions[shell]['cf'].append(np.array(list(zip(indxs - 1, cc)), dtype=CFDTYPE))
                 res[elem.symbol] = functions
     return res
@@ -351,11 +346,7 @@ class NumpyEncoder(json.JSONEncoder):
 
         if isinstance(obj, np.ndarray):
 
-            if obj.dtype == CFDTYPE:
-                dtype = 'CFDTYPE'
-            else:
-                dtype = str(obj.dtype)
-
+            dtype = 'CFDTYPE' if obj.dtype == CFDTYPE else str(obj.dtype)
             return dict(data=obj.tolist(), dtype=dtype)
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, obj)
