@@ -4,7 +4,7 @@
 chemtools package doscstring
 '''
 
-__version__ = "0.9.1"
+__version__ = "0.9.2"
 
 import chemtools.basisset
 import chemtools.basisopt

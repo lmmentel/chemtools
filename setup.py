@@ -64,7 +64,7 @@ setup(
         'chemtools/submitgamess.py',
         'chemtools/submitmolpro.py'],
     url='https://github.com/lmmentel/chemtools/',
-    version='0.9.1',
+    version='0.9.2',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Environment :: Console',

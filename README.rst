@@ -104,7 +104,7 @@ Here's the reference in the `BibLaTeX <https://www.ctan.org/pkg/biblatex?lang=en
       author = {Mentel, Łukasz},
       title = {{chemtools} -- A Python toolbox for computational chemistry},
       url = {https://github.com/lmmentel/chemtools},
-      version = {0.9.1},
+      version = {0.9.2},
       date = {2014--},
   }
 
@@ -114,7 +114,7 @@ or the older `BibTeX <http://www.bibtex.org/>`_ format
 
    @misc{chemtools2014,
       auhor = {Mentel, Łukasz},
-      title = {{chemtools} -- A Python toolbox for computational chemistry, ver. 0.9.1},
+      title = {{chemtools} -- A Python toolbox for computational chemistry, ver. 0.9.2},
       howpublished = {\url{https://github.com/lmmentel/chemtools}},
       year  = {2014--},
    }
