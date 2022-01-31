@@ -725,17 +725,14 @@ class GamessLogParser(object):
         cencom = r'\s*(?P<center>\d+)\s*(?P<component>[A-Z]{1,})'
         ao_patt = re.compile(indsym + cencom)
 
-        istart = 3
-        if orbs == 'local orbs':
-            istart = 1
+        istart = 1 if orbs == 'local orbs' else 3
         locstr = self.get_loc_strings(orbs)
         lines = getlines(self.logfile, locstr)
         lines = lines[istart:istart + self.get_number_of_aos()]
 
-        res = list()
+        res = []
         for line in lines:
-            match = ao_patt.search(line)
-            if match:
+            if match := ao_patt.search(line):
                 index = int(match.group('index')) - 1
                 symbol = match.group('symbol')
                 center = int(match.group('center'))
@@ -747,7 +744,7 @@ class GamessLogParser(object):
                     "component": component})
         return res
 
-    def get_variable(self, rawstring):
+    def get_variable(self, rawstring):  # sourcery skip: use-named-expression
         'wrapper around a regex search method'
 
         with open(self.logfile, 'r') as out:
@@ -777,7 +774,7 @@ class GamessLogParser(object):
                            ('EIGENVECTORS', -2)],
         }
 
-        if name in locators.keys():
+        if name in locators:
             return locators[name]
         else:
             raise ValueError('wrong "name", should be one of: {}'.format(', '.join(locators.keys())))
@@ -854,12 +851,10 @@ class GamessLogParser(object):
         for csfstr in csfs:
             endvec = csfstr.find('FOR MS=')
             vector = csfstr[:endvec].strip()
-            csf = {'vector': vector}
-            csf['dets'] = []
+            csf = {'vector': vector, 'dets': []}
             csfstart = csfstr.find('CSF')
             for i, line in enumerate(csfstr[csfstart:].split('\n')):
-                match = patt.search(line)
-                if match:
+                if match := patt.search(line):
                     gd = match.groupdict()
                     # in the first line of the csf specification there is the CSF number
                     # (index) that should be stored
@@ -874,8 +869,11 @@ class GamessLogParser(object):
 
         if withcoeffs:
             coeffs = self.get_ci_coeffs()
-            merged = [dict(csf.items() + [('coeff', coeffs.get(csf['no'], None))]) for csf in out]
-            return merged
+            return [
+                dict(csf.items() + [('coeff', coeffs.get(csf['no'], None))])
+                for csf in out
+            ]
+
         else:
             return out
 
@@ -1091,8 +1089,8 @@ class GamessDatParser(object):
         orblines = vecstr.split('\n')
         orbs = np.zeros((naos, nmos), dtype=float)
         counter = -1
-        for i in range(0, nmos):
-            for j in range(0, nlines):
+        for i in range(nmos):
+            for j in range(nlines):
                 counter += 1
                 nitems = int(len(orblines[counter][5:])) // clength
                 orbs[5 * j: 5 * (j + 1), i] = \
@@ -1139,6 +1137,7 @@ def get_naos_nmos(vecstr, clength=15):
 
 
 def to_gamess_vec(coeffs, cfmt='15.8e'):
+    # sourcery skip: assign-if-exp, remove-zero-from-range, simplify-numeric-comparison
     '''
     Given a 2D array return a string with the elements converted to the
     GAMESS(US) $VEC format

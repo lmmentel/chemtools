@@ -43,7 +43,7 @@ from .gamessus import GamessLogParser
 # from gamessusfortranext import twoe
 
 
-class GamessFortranReader(object):
+class GamessFortranReader:
     '''
     Class for holding method for reading gamess binary files:
         $JOB.F08 : two electron integrals over AO's,
@@ -66,10 +66,7 @@ class GamessFortranReader(object):
         Get the size of the vector holding upper (or lower) triangle
         of a square matrix of size naos or nmos.
         '''
-        if aos:
-            n = self.gp.get_number_of_aos()
-        else:
-            n = self.gp.get_number_of_mos()
+        n = self.gp.get_number_of_aos() if aos else self.gp.get_number_of_mos()
         return n * (n + 1) // 2
 
     def get_twoe_size(self, aos=False):
@@ -102,7 +99,6 @@ class GamessFortranReader(object):
             sys.exit("File '{0:s}' doesn't exist, exiting...".format(self.rdm2file))
 
     def read_twoeao(self, filename=None, nmo=None):
-
         '''Read the two electron integrals from the gamess-us file'''
 
         # initialize numpy array to zeros
@@ -121,7 +117,6 @@ class GamessFortranReader(object):
             raise OSError("File '{0:s}' doesn't exist, exiting...".format(self.twoeaofile))
 
     def read_twoemo(self, filename=None, nmo=None):
-
         '''Read the two electron integrals from the gamess-us file'''
 
         # initialize numpy array to zeros
@@ -159,14 +154,13 @@ def factor(i, j, k, l):
     '''
 
     if i == j and k == l and i == k:
-        fijkl = 1.0
+        return 1.0
     elif i == j and k == l:
-        fijkl = 2.0
+        return 2.0
     elif (i == k and j == l) or (i == j and i == k) or (j == k and j == l) or (i == j or k == l):
-        fijkl = 4.0
+        return 4.0
     else:
-        fijkl = 8.0
-    return fijkl
+        return 8.0
 
 
 def print_twoe(twoe, nbf):
@@ -180,10 +174,9 @@ def print_twoe(twoe, nbf):
             for k in xrange(nbf):
                 for l in xrange(k + 1):
                     kl += 1
-                    if ij >= kl:
-                        if abs(twoe[ijkl(i, j, k, l)]) > 1.0e-10:
-                            print("{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
-                                i, j, k, l, twoe[ijkl(i, j, k, l)]))
+                    if ij >= kl and abs(twoe[ijkl(i, j, k, l)]) > 1.0e-10:
+                        print("{0:3d}{1:3d}{2:3d}{3:3d} {4:25.14f}".format(
+                            i, j, k, l, twoe[ijkl(i, j, k, l)]))
 
 
 #"""
@@ -231,6 +224,7 @@ class BinaryFile(object):
         """The order for file ('c' or 'fortran')."""
 
     def read(self, dtype, shape=(1,)):
+        # sourcery skip: assign-if-exp, identity-comprehension, merge-else-if-into-elif
         """Read an array of `dtype` and `shape` from current position.
 
         `shape` must be any tuple made of integers or even () for scalars.
@@ -329,10 +323,7 @@ class SequentialFile(BinaryFile):
         self.nao = glp.get_number_of_aos()
         self.nmo = glp.get_number_of_mos()
         self.core = glp.get_number_of_core_mos()
-        if self.nao < 255:
-            self.large_labels = False
-        else:
-            self.large_labels = True
+        self.large_labels = self.nao >= 255
 
     def ijkl(self, i, j, k, l):
         '''
@@ -348,15 +339,9 @@ class SequentialFile(BinaryFile):
         ''' Return the index buffer size for reading 2-electron integrals'''
 
         if int_size == 4:
-            if self.large_labels:
-                return 2 * buff_size
-            else:
-                return buff_size
+            return 2 * buff_size if self.large_labels else buff_size
         elif int_size == 8:
-            if self.large_labels:
-                return buff_size
-            else:
-                return (buff_size + 1) // 2
+            return buff_size if self.large_labels else (buff_size + 1) // 2
         else:
             raise ValueError('wrong "int_size": {}'.format(int_size))
 
@@ -444,19 +429,18 @@ class SequentialFile(BinaryFile):
                         j = label >> 32 & 65535
                         k = label >> 16 & 65535
                         l = label       & 65535
+                    elif m % 2 == 0:
+                        label = int(index_buffer[m // 2 - 1])
+                        i = label >> 24 & 255
+                        j = label >> 16 & 255
+                        k = label >>  8 & 255
+                        l = label       & 255
                     else:
-                        if m % 2 == 0:
-                            label = int(index_buffer[m // 2 - 1])
-                            i = label >> 24 & 255
-                            j = label >> 16 & 255
-                            k = label >>  8 & 255
-                            l = label       & 255
-                        else:
-                            label = int(index_buffer[m // 2])
-                            i = label >> 56 & 255
-                            j = label >> 48 & 255
-                            k = label >> 40 & 255
-                            l = label >> 32 & 255
+                        label = int(index_buffer[m // 2])
+                        i = label >> 56 & 255
+                        j = label >> 48 & 255
+                        k = label >> 40 & 255
+                        l = label >> 32 & 255
                 ints[self.ijkl(i, j, k, l)] = value_buffer[m - 1]
             self.seek(self.tell() + 4)
         return ints
@@ -510,10 +494,7 @@ class GamessReader(object):
         Get the size of the vector holding upper (or lower) triangle
         of a square matrix of size naos or nmos.
         '''
-        if aos:
-            n = self.gp.get_number_of_aos()
-        else:
-            n = self.gp.get_number_of_mos()
+        n = self.gp.get_number_of_aos() if aos else self.gp.get_number_of_mos()
         return n * (n + 1) // 2
 
     def get_twoe_size(self):
