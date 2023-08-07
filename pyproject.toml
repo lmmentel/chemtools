@@ -6,9 +6,9 @@ authors = ["Lukasz Mentel <lmmentel@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9,<3.13"
 sqlalchemy = "^1.3.13"
-scipy = "^1.4.1"
+scipy = "^1.10.0"
 numpy = "^1.18.1"
 mendeleev = "^0.5.2"
 numba = "^0.48.0"
