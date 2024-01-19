@@ -21,7 +21,7 @@ guzzle_sphinx_theme = "^0.7.11"
 nbsphinx = "^0.5.1"
 ipython = "^8.10.0"
 bumpversion = "^0.5.3"
-jupyterlab = "^3.2.8"
+jupyterlab = "^3.6.7"
 
 [build-system]
 requires = ["poetry>=0.12"]
